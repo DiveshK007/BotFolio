@@ -8,12 +8,12 @@ Repo: https://github.com/DiveshK007/BotFolio
 ## Workstreams and owners
 | WS | Folder(s) | Owner |
 |---|---|---|
-| A — Chain | `packages/contracts` | TBD |
-| B — Runner | `apps/worker`, `packages/db`, `packages/llm`, `scripts/replay` | TBD |
-| C — App | `apps/web` (except cards + public API) | TBD |
-| D — Growth & ecosystem | `apps/web/app/api/card`, `apps/web/app/api/v1`, `docs/` | TBD |
+| A — Chain | `packages/contracts` | Gokul (GitHub: Gokul-social) — until Sun Nov 22 |
+| B — Runner | `apps/worker`, `packages/db`, `packages/llm`, `scripts/replay` | Gokul (GitHub: Gokul-social) — until Sun Nov 22 |
+| C — App | `apps/web` (except cards + public API) | Gokul (GitHub: Gokul-social) — until Sun Nov 22 |
+| D — Growth & ecosystem | `apps/web/app/api/card`, `apps/web/app/api/v1`, `docs/` | Divesh (GitHub: DiveshK007) for registration, wallets, QIE checks, launch; Gokul for code |
 
-Don't edit another workstream's folder without asking its owner. Frozen interfaces — `packages/shared/*`, `packages/contracts/abi/*`, `packages/db/schema.sql` — change only via one announced PR.
+Until Sunday Nov 22 night Gokul builds all code workstreams; Divesh and Dijo join after. Don't edit another workstream's folder without asking its owner. Frozen interfaces — `packages/shared/*`, `packages/contracts/abi/*`, `packages/db/schema.sql` — change only via one announced PR.
 
 ## Hard rules
 - **Chain:** QIE mainnet, chain ID 1990. RPCs `https://rpc{1..5}mainnet.qie.digital` with failover (rpc1/rpc2 drop TLS sometimes). Explorer `https://mainnet.qie.digital`.

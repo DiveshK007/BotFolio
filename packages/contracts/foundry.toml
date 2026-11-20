@@ -12,7 +12,8 @@ optimizer_runs = 200
 fs_permissions = [{ access = "read-write", path = "./abi" }]
 
 [rpc_endpoints]
-qie = "https://rpc2mainnet.qie.digital"
+# rpc1/rpc2 drop TLS sometimes (SPEC §0.1); rpc3 is the default fork RPC. CI falls back to rpc4/rpc5.
+qie = "https://rpc3mainnet.qie.digital"
 qie_testnet = "https://rpc1testnet.qie.digital"
 
 [fmt]

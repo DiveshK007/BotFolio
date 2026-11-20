@@ -1,4 +1,4 @@
-import { defineChain } from "viem";
+import { defineChain, type Chain } from "viem";
 
 /** QIE mainnet. Verified Nov 19 2026 (SPEC §0.1). rpc1/rpc2 drop TLS sometimes — always use failover. */
 export const QIE_RPC_URLS = [
@@ -9,7 +9,8 @@ export const QIE_RPC_URLS = [
   "https://rpc5mainnet.qie.digital",
 ] as const;
 
-export const qieMainnet = defineChain({
+// Typed as Chain so `declaration: true` builds don't hit TS2742 (inferred viem type not portable).
+export const qieMainnet: Chain = defineChain({
   id: 1990,
   name: "QIE Mainnet",
   nativeCurrency: { name: "QIE", symbol: "QIE", decimals: 18 },

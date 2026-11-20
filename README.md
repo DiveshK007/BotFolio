@@ -33,4 +33,6 @@ docs                 Architecture, trust rules, replay guide, decisions
 Tasks live in [GitHub Issues](https://github.com/DiveshK007/BotFolio/issues), grouped by workstream label and day milestone. See `CLAUDE.md` → "How we work".
 
 ## Team
-_Add names and workstreams here._
+- **Divesh** (DiveshK007) — product, QIE ecosystem, launch and submission
+- **Gokul** (Gokul-social) — builds all workstreams through Sun Nov 22
+- **Dijo** — joins after Nov 22
