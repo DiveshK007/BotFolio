@@ -14,7 +14,7 @@
 - **Live data:** not live yet. Contracts deploy to QIE mainnet ~Nov 22; the app goes live ~Nov 25. Planned public sources (SPEC §10, §10.1):
   - `GET /api/v1/bots/:id/record` — bot, versions + config hashes, trades with tx hashes + oracle roundIds, season results, trust score
   - `/stats` data — user-signed vs system on-chain activity
-  - leaderboards (Top Returns, Steadiest, Most Trusted, Coach vs Bot)
+  - leaderboards (Top Returns, Best Risk-Adjusted (Sortino), Most Trusted, Coach vs Bot)
   - BotFolio MCP server (`get_bot_record`, `get_leaderboard`, `verify_trade`)
   - QIE mainnet explorer `https://mainnet.qie.digital` for every tx and contract
   Until these respond, build from the data shapes in SPEC §3 and §4, mark every value EXAMPLE, and leave the fetch wiring ready. When they're live, snapshot real responses and swap.
