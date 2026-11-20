@@ -17,6 +17,7 @@
 | 5 | **Something happens every day**: hold lines with personality, daily recap card at 21:30, live "thinking" feed between slots | §2.2, §9 | 4 slots × 5 assets means many quiet days; roast cards alone (≥3% loss) are too rare to drive return visits |
 | 6 | **Innovation framing**: lead with coaching + provable version history (the v2 diff), not "AI paper trading" | §1.1, §13 | Competitors (Strategy Arena, pip.world, Botsfolio, Alpha Arena) already do AI paper trading. Coaching with on-chain versions is the new part |
 | 7 | **Build plan replaced** with a 4-workstream team plan and Claude Code conventions | §12, §16 | Team build, not solo |
+| 8 | **Review fixes (Nov 20, before interface freeze):** per-order replay key `orderId`; runner-signed Daily Call bot view; `setLimits` bounded like `createBot`; relay auth via Privy **or** SIWE JWT; Daily Call settle retries to 23:50 + next 09:00; bot-view fallback for late bots; 8 card kinds in schema; S6 shows all 4 boards; contract-derived challenge codes; users 18+; fork tests on rpc3 | §3, §4.2–§4.8, §6.4–§6.4.1, §11, §14, §16.3 | External review found these before contracts were frozen (#194) |
 
 ---
 
@@ -194,7 +195,7 @@ Stopwatch target ≤ 30 s total; measured on Nov 27 with 20 people (§12).
 | S3 | `/me` | My bot: value in ₹, today's calls, correct-a-call, version, trust score |
 | S4 | `/bot/[botId]` | Public bot page: balance, holdings, every decision and trade with reason, oracle roundId, tx + explorer links, versions with config hashes, trust score breakdown, "replay this season" link |
 | S5 | `/season/[n]` | Season close: battle result, v2 diff, Approve |
-| S6 | `/leaderboards` | Tabs: Top Returns · Best Risk-Adjusted · Most Trusted |
+| S6 | `/leaderboards` | Tabs: Top Returns · Best Risk-Adjusted (Sortino) · Most Trusted · Coach vs Bot |
 | S7 | `/card/[cardId]` | Share card landing (OG image + CTA "Make a bot that beats mine") |
 | S8 | `/proof` | How verification works, contract addresses, trust rules (versioned), replay instructions, oracle caveat |
 | S9 | `/about` | Play-money / not-advice / no-prizes notice |
@@ -231,7 +232,7 @@ oracle_reads(slot_id, asset enum(BTC,ETH,SOL,XRP,GOLD), feed text, round_id nume
 decisions(id uuid pk, bot_id, version, slot_id, prompt_version text, model text, input_json jsonb,
      input_hash bytea32, raw_output_json jsonb, output_hash bytea32, gate_result jsonb,
      reason text, reason_tag text, roast text, status enum(executed,held,skipped_stale,invalid), created_at)
-trades(id pk, decision_id, bot_id, asset, side enum(BUY,SELL), cash_e8 numeric, units_e18 numeric,
+trades(id pk, decision_id, action_index int, order_id bytea32, bot_id, asset, side enum(BUY,SELL), cash_e8 numeric, units_e18 numeric,
      price_e8 numeric, round_id numeric, tx_hash text, log_index int, block_number bigint)
 portfolio_marks(bot_id, slot_id, cash_e8, holdings jsonb, value_e8, pk(bot_id,slot_id))
 corrections(id pk, bot_id, decision_id, user_wallet, chip text, note text, note_hash bytea32, tx_hash, created_at)
@@ -241,13 +242,13 @@ season_results(season_id, bot_id, start_value_e8, end_value_e8, return_bps int, 
      max_dd_bps int, trades int, battle_rank int, pk(season_id,bot_id))
 trust_scores(season_id, bot_id, rules_version, f_rules int, f_drawdown int, f_consistency int,
      f_explains int, total int, provisional bool, leaf_hash bytea32)
-cards(id text pk, bot_id, kind enum(trade,roast,battle,season), payload jsonb, created_at)
+cards(id text pk, bot_id, kind enum(trade,roast,battle,season,recap,evolution,challenge,call), payload jsonb, created_at)
 relay_log(id pk, user_wallet, target text, selector text, status, tx_hash, gas_used, created_at)
 -- v1.1
 seasons: + kind enum(sprint,weekly), + provisional_min_trades int   -- 8 during sprint, 20 from S6
-big_moves(id pk, decision_id, bot_id, asset, side, bps int, runner_sig bytea, deadline timestamptz,
+big_moves(id pk, decision_id, action_index int, order_id bytea32, bot_id, asset, side, bps int, runner_sig bytea, deadline timestamptz,
      status enum(pending,approved,shrunk,blocked,expired), user_tx text, created_at)
-daily_calls(id pk, bot_id, user_wallet, day int, asset, user_up bool, bot_up bool, price_at_call_e8 numeric,
+daily_calls(id pk, bot_id, user_wallet, day int, asset, user_up bool, bot_up bool, bot_up_sig bytea, price_at_call_e8 numeric,
      round_at_call numeric, settle_price_e8 numeric, settle_round numeric, user_correct bool, bot_correct bool,
      call_tx text, settle_tx text)
 challenges(code text pk, season_id, challenger_bot, opponent_bot null, create_tx text, accept_tx text,
@@ -255,6 +256,10 @@ challenges(code text pk, season_id, challenger_bot, opponent_bot null, create_tx
 qie_names(wallet_address text pk, qie_name text null, checked_at)   -- cache of reverse lookups (24 h TTL)
 users: + login_method enum(passkey,qie_wallet), + pass_verified bool default false, + pass_verified_at
 ```
+**Order IDs (v1.1 fix):** one decision can hold up to 3 actions, so replay protection is per order, not per decision: `orderId = keccak256(abi.encode(decisionId, actionIndex))`, where `actionIndex` is the action's position in the decision's `actions` array (0-based).
+
+**Public read surface:** the web reads only Postgres *views* (defined in `schema.sql`, anon-readable under RLS). Base tables — especially `users`, `relay_log`, `big_moves.runner_sig`, `daily_calls.bot_up_sig` — are never anon-readable (§11).
+
 Indexer source of truth = chain events; `trades`, `bots`, `bot_versions.committed_tx`, `corrections.tx_hash` are written only from indexed events (plus optimistic UI rows marked pending).
 
 ---
@@ -287,7 +292,7 @@ mapping(address => uint256) public botOf;        // MVP: 1 bot per wallet
 Functions:
 - `createBot(bytes32 personaHash, uint16 maxPerCoinBps, uint8 maxTradesPerDay) returns (uint256 botId)` — `_msgSender()` is owner; require `botOf[owner]==0`, `1000 ≤ maxPerCoinBps ≤ 5000`, `1 ≤ maxTradesPerDay ≤ 8`. Calls `PaperLedger.initPortfolio(botId)`. Owner implicitly authorises the runner to trade this bot (stated in the signed EIP-712 request; UI says so).
 - `createHouseBot(bytes32 personaHash, uint16, uint8)` — `ADMIN_ROLE` only, `house=true`.
-- `setLimits(uint256 botId, uint16, uint8)` — `SEASON_LEDGER` only (called from `commitVersion`).
+- `setLimits(uint256 botId, uint16, uint8)` — `SEASON_LEDGER` only (called from `commitVersion`). **Enforces the same bounds as `createBot`** (`1000 ≤ maxPerCoinBps ≤ 5000`, `1 ≤ maxTradesPerDay ≤ 8`) through one shared internal check, so no version can exceed them.
 - `setActive(uint256 botId, bool)` — owner (pause) or `ADMIN_ROLE` (abuse ban).
 Events: `BotCreated(botId, owner, personaHash, maxPerCoinBps, maxTradesPerDay)`, `BotLimitsChanged(botId, version, maxPerCoinBps, maxTradesPerDay)`, `BotActiveChanged(botId, active)`.
 
@@ -304,23 +309,24 @@ mapping(uint256 => mapping(uint8 => uint256)) public unitsE18;  // holdings
 ```
 Functions:
 - `initPortfolio(uint256 botId)` — `REGISTRY` only; cash = `START_CASH_E8`.
-- `executeBatch(Order[] calldata orders)` — `RUNNER_ROLE` only. `struct Order { uint256 botId; uint8 asset; bool buy; uint16 bps; bytes32 decisionId; }`. Per order:
+- `executeBatch(Order[] calldata orders)` — `RUNNER_ROLE` only. `struct Order { uint256 botId; uint8 asset; bool buy; uint16 bps; bytes32 decisionId; uint8 actionIndex; }`. `orderId = keccak256(abi.encode(decisionId, actionIndex))` (§3). Per order:
+  0. `usedOrder[orderId] == false`, else emit `OrderSkipped(…, USED)` and continue.
   1. bot active; `asset ≤ 4`.
   2. `(roundId, answer, , updatedAt, ) = AggregatorV3(feed[asset]).latestRoundData()`; require `answer > 0` and `block.timestamp - updatedAt ≤ maxAge[asset]`. **Stale → emit `OrderSkipped(botId, asset, decisionId, reason=STALE)` and continue** (never revert the batch).
   3. Day counter in IST (`(block.timestamp + 19800) / 86400`); enforce `tradesToday < maxTradesPerDay`.
   4. BUY: `cash = portfolio.cashE8 × bps / 10000`; post-trade position value ≤ `maxPerCoinBps` of portfolio value at current prices (reads other feeds' latest answers; if any held asset is stale, use its last answer for the cap check only). `units = cash × 1e18 / answer`. SELL: `units = held × bps / 10000`; `cash = units × answer / 1e18`.
-  5. Emit `Trade(botId, asset, buy, cashE8, unitsE18, priceE8, roundId, updatedAt, decisionId)`.
+  5. Set `usedOrder[orderId] = true`; emit `Trade(botId, asset, buy, cashE8, unitsE18, priceE8, roundId, updatedAt, decisionId, actionIndex)`.
 - Views: `portfolioValueE8(botId)`, `holdings(botId)`.
-- **`executeApproved(ApprovedOrder calldata o, bytes calldata runnerSig)` (v1.1)** — called through the forwarder by the bot owner. `struct ApprovedOrder { uint256 botId; uint8 asset; bool buy; uint16 bps; bytes32 decisionId; uint64 deadline; }`.
+- **`executeApproved(ApprovedOrder calldata o, bytes calldata runnerSig)` (v1.1)** — called through the forwarder by the bot owner. `struct ApprovedOrder { uint256 botId; uint8 asset; bool buy; uint16 bps; bytes32 decisionId; uint8 actionIndex; uint64 deadline; }`; the runner signs the whole struct, so it signs this exact `orderId`.
   1. `_msgSender() == BotRegistry.bots(botId).owner`.
   2. `runnerSig` is a valid EIP-712 signature over `o` by an address with `RUNNER_ROLE` (domain "BotFolio PaperLedger", v1, chain 1990). This proves the bot proposed exactly this order.
-  3. `block.timestamp ≤ o.deadline`; `usedDecision[o.decisionId] == false` → set true (replay guard; the runner also checks this before any clipped fallback).
+  3. `block.timestamp ≤ o.deadline`; `usedOrder[orderId] == false` → set true (replay guard per order; the runner checks the same `orderId` before any clipped fallback). Counts toward `tradesToday`.
   4. Same oracle read, staleness and limit checks as `executeBatch` steps 2–4. Here a stale price **reverts** (the user can retry; the UI says "price too old — try again in a few minutes").
-  5. Emit `Trade(...)` plus `ApprovedTrade(botId, decisionId, owner)`.
+  5. Emit `Trade(...)` plus `ApprovedTrade(botId, decisionId, actionIndex, owner)`.
   Result: the user's own signed tx is the trade, priced on-chain by the oracle.
-- `executeBatch` also sets `usedDecision[decisionId]`, so a big move is never executed twice (approved by the user and clipped by the runner).
+- `executeBatch` and `executeApproved` share `usedOrder[orderId]`, so a big move is never executed twice (approved by the user and clipped by the runner), while the other actions of the same decision still execute.
 - No price is ever accepted as an input. No real tokens are held.
-Events: `Trade(...)`, `ApprovedTrade(...)`, `OrderSkipped(botId, asset, decisionId, uint8 reason)` (reasons: STALE, LIMIT, INACTIVE, ZERO, USED).
+Events: `Trade(...)`, `ApprovedTrade(botId, decisionId, actionIndex, owner)`, `OrderSkipped(botId, asset, decisionId, actionIndex, uint8 reason)` (reasons: STALE, LIMIT, INACTIVE, ZERO, USED).
 
 ### 4.4 `SeasonLedger`
 Storage: `mapping(uint256 => mapping(uint32 => bytes32)) configHash; struct Season { uint64 start; uint64 end; bytes32 dataRoot; string dataURI; bool closed; } mapping(uint32 => Season) seasons; uint32 public currentSeason;`
@@ -339,22 +345,22 @@ OZ `AccessControl`. Roles: `DEFAULT_ADMIN_ROLE` = deployer cold key (hardware or
 ### 4.7 `DailyCall` (v1.1)
 Storage: `struct Call { bool userUp; bool botUp; int256 priceAtCall; uint80 roundAtCall; uint64 calledAt; bool settled; bool userCorrect; bool botCorrect; }` `mapping(uint256 botId => mapping(uint32 day => Call)) calls;` Day = IST day number (`(block.timestamp + 19800) / 86400`). Asset fixed to BTC for MVP (most reliable feed, §0.2).
 Functions:
-- `call(uint256 botId, bool userUp, bool botUp)` — via forwarder; `_msgSender()` must be bot owner; one call per bot per IST day; must be before 20:00 IST that day (so there's ≥ 1 h to the 21:00 settle). Reads BTC `latestRoundData()` (max age 30 min, else revert "price too old") and stores price + roundId. `botUp` is the bot's view, shown to the user only after they pick; the runner signs it off-chain and the contract does not verify it (it's a game score, not money). Event `Called(botId, day, userUp, botUp, price, roundId)`.
-- `settle(uint256[] botIds, uint32 day)` — `COMMITTER_ROLE`, run at the 21:00 slot; reads BTC `latestRoundData()` (must be fresh and `updatedAt` ≥ that day's 21:00 IST, else skip and retry with the stale retries). Sets `userCorrect = (price > priceAtCall) == userUp`, same for bot; equal price = no winner. Event `Settled(botId, day, price, roundId, userCorrect, botCorrect)`.
+- `call(uint256 botId, bool userUp, bool botUp, bytes calldata botSig)` — via forwarder; `_msgSender()` must be bot owner; one call per bot per IST day; must be before 20:00 IST that day (so there's ≥ 1 h to the 21:00 settle). Reads BTC `latestRoundData()` (max age 30 min, else revert "price too old") and stores price + roundId. `botUp` is the bot's view, shown to the user only after they pick. **`botSig` must be a valid EIP-712 signature by a `RUNNER_ROLE` key over `(botId, day, botUp)`** (domain "BotFolio DailyCall", v1, chain 1990), else revert — so a user can't choose the bot's answer and rig the Coach vs Bot board. Event `Called(botId, day, userUp, botUp, price, roundId)`.
+- `settle(uint256[] botIds, uint32 day)` — `COMMITTER_ROLE`, run at the 21:00 slot; reads BTC `latestRoundData()` (must be fresh and `updatedAt` ≥ that day's 21:00 IST, else **skip, don't revert**). The worker retries every 10 min until 23:50 IST, then once more at the next 09:00 slot, because BTC sometimes goes 45–104 min without a new round (§0.2). The app shows "Settles late" meanwhile. Sets `userCorrect = (price > priceAtCall) == userUp`, same for bot; equal price = no winner. Event `Settled(botId, day, price, roundId, userCorrect, botCorrect)`.
 - Anyone can recompute settlement from `getRoundData`.
 
 ### 4.8 `Challenges` (v1.1)
 Storage: `struct Challenge { uint256 challengerBot; uint256 opponentBot; uint32 season; uint8 status; }` `mapping(bytes32 code => Challenge)`; `openCount[botId] ≤ 10`.
 Functions (all via forwarder, owner-only for the bot named):
-- `create(bytes32 code, uint256 myBot, uint32 season)` — code is random 8 bytes from the client, padded; must be unused; season must be open or next. Event `ChallengeCreated(code, myBot, season)`.
-- `accept(bytes32 code, uint256 theirBot)` — `theirBot ≠ challengerBot`; status open. Event `ChallengeAccepted(code, theirBot)`.
+- `create(uint256 myBot, uint32 season) returns (bytes32 code)` — the contract derives `code = keccak256(abi.encode(_msgSender(), nonce++))`, so nobody can front-run a client-chosen code; season must be open or next. Event `ChallengeCreated(code, myBot, season)`; the app reads the code from the event. Share links use the first 8 bytes of `code`, hex-encoded.
+- `accept(bytes32 code, uint256 theirBot)` — `theirBot ≠ challengerBot` and the two bots have different owners; status open. `openCount` drops when a challenge is settled or expires. Event `ChallengeAccepted(code, theirBot)`.
 - `settle(bytes32 code, uint256 winnerBot)` — `COMMITTER_ROLE`, at season close, winner = higher season return (tiebreak lower maxDD), recomputable off-chain. Event `ChallengeSettled(code, winnerBot)`.
 
 ### 4.9 Contract list (v1.1)
 `BotForwarder`, `BotRegistry`, `PaperLedger`, `SeasonLedger`, `TrustScoreRegistry`, `DailyCall`, `Challenges` — 7 contracts, all verified on `mainnet.qie.digital`, all listed on `/proof` and in the README.
 
 ### 4.10 Gas estimate approach
-- Measure with `forge test --gas-report` on a mainnet fork (`--fork-url https://rpc2mainnet.qie.digital`) against the real feeds; then confirm with `eth_estimateGas` on mainnet before launch.
+- Measure with `forge test --gas-report` on a mainnet fork (`--fork-url https://rpc3mainnet.qie.digital`, falling back to rpc4/rpc5) against the real feeds; then confirm with `eth_estimateGas` on mainnet before launch.
 - Cost model: `cost_QIE = gasUsed × (baseFee 1 gwei + tip ~0.125 gwei)`. Reference point measured: forwarder deploy 899,309 gas ≈ 0.001 QIE.
 - Budget formula for the relayer + runner float: `daily_gas ≈ bots × (4 slots × avg_orders × gas_per_order + corrections × gas_corr) + users_new × gas_create`. Per-order and per-call gas numbers come from the gas report (not estimated here). Keep ≥ 10 QIE float in each hot wallet (sizing UNVERIFIED until gas report); alert < 2 QIE.
 
@@ -434,10 +440,11 @@ Persona creation call has its own schema: `{name ≤ 20, emoji, persona ≤ 120,
 7. Record each clip as a "gate event" (feeds trust factor F1).
 8. Banned content filter on `reason`/`roast` (slurs, real-money advice phrases like "buy now on…") → replace with neutral text, flag.
 9. **Big-move split (v1.1):** after clipping, any order meeting the big-move rule (§2.2: BUY → post-trade weight ≥ 30 %, or SELL ≥ 50 % of a holding) is removed from the batch and becomes a `big_moves` row: runner signs the `ApprovedOrder` (EIP-712), deadline = now + 2 h, user is notified. A big move is *not* a gate clip (no F1 penalty). House bots never produce big moves (they always execute directly).
-10. **Expiry fallback (v1.1):** if the big move is still pending at its deadline, the runner shrinks it to just under the threshold, re-checks limits and freshness, and executes it in the next batch with the same `decisionId` (contract blocks double execution).
+10. **Expiry fallback (v1.1):** if the big move is still pending at its deadline, the runner shrinks it to just under the threshold, re-checks limits and freshness, and executes it in the next batch with the same `orderId` (contract blocks double execution; the decision's other actions are unaffected).
 
 ### 6.4.1 Bot's Daily Call view (v1.1)
-At the 09:00 slot, the decision call also returns `daily_call: {"btc_up": bool, "why": string ≤ 80}` (add to the output schema as an optional field). Stored and revealed to the user after they pick.
+At the 09:00 slot, the decision call also returns `daily_call: {"btc_up": bool, "why": string ≤ 80}` (add to the output schema as an optional field). The worker signs `(botId, day, btc_up)` with the runner key (§4.7) and serves view + signature to the app; the view is revealed to the user after they pick.
+- **Bots created after 09:00 (v1.1 fix):** the debut decision also returns `daily_call`. If a bot still has no view for today, the app hides Daily Call and shows "Your bot joins tomorrow's call".
 
 ### 6.5 Determinism and replay (honest claim)
 - LLM calls use temperature 0 (where the model accepts it) and a fixed, logged model id, but LLM output is **not** guaranteed reproducible. The claim is: *given the logged LLM output, everything after it is deterministic and recomputable.*
@@ -590,13 +597,13 @@ APP_URL=
 ## 11. Security and abuse
 
 - **Relayer allowlist (v1.1):** only `forwarder.execute` where `(request.to, selector)` ∈ {`BotRegistry.createBot`, `BotRegistry.setActive`, `SeasonLedger.commitVersion`, `SeasonLedger.recordCorrection`, `PaperLedger.executeApproved`, `DailyCall.call`, `Challenges.create`, `Challenges.accept`}; `value == 0`; `gas ≤ 300k` (tune after gas report; `executeApproved` reads several feeds, so measure it); deadline ≤ 10 min; verify with `forwarder.verify()` (staticcall) before sending. Also `eth_call` the inner request first and refuse to relay anything that would revert (saves gas on stale-price reverts).
-- **Rate limits:** per wallet 30 relays/day, 1 bot per wallet, 3 new bots per IP/day, 20 corrections/day per bot (also on-chain), global 2,000 relays/hour; Privy session token (verified server-side) required for `POST /relay` on the Render service.
+- **Rate limits:** per wallet 30 relays/day, 1 bot per wallet, 3 new bots per IP/day, 20 corrections/day per bot (also on-chain), global 2,000 relays/hour. **Relay auth (v1.1 fix):** `POST /relay` on the Render service requires **either** a Privy session token (verified server-side) **or**, for QIE Wallet users who have no Privy session, a short-lived JWT from a SIWE-style login: `GET /auth/nonce` → the wallet signs an EIP-4361 message → `POST /auth/verify` returns a 15-min JWT bound to that address. Rate limits apply per wallet on both paths.
 - **Hot wallets:** relayer, runner, committer are separate keys with small floats; admin role on a separate key not on servers; low-balance alerts; pause switch (`RELAY_ENABLED=false`).
 - **Contracts:** no real funds, no `payable`, no token transfers; feeds immutable; runner cannot set prices; batch never reverts on one bad order.
 - **LLM safety:** prompt injection via persona text can only affect that bot's play trades (gate caps everything); content filter on persona/reason/roast; persona length cap; no URLs in persona.
 - **Sybil/metrics honesty:** report unique `_msgSender` signers and weekly active coaches; never present relayer/runner tx counts as user activity.
 - **User-signed tx metric (v1.1):** the public `/stats` page splits on-chain activity into **user-signed** (createBot, corrections, v2 approvals, approved big moves, daily calls, challenges — counted by `_msgSender`) and **system** (runner batches, settlements, season roots). Lead with user-signed numbers in the deck; show system numbers separately. Optional "verified human" count from QIE Pass when enabled.
-- **Legal / India gaming law:** no entry fees, no stakes, no prizes or rewards, no token, no cash-out, no real-asset purchase links. Copy on every page footer: "Play money. Not investment advice. No prizes." Recognition-only season shoutouts. Age gate not needed for play money, but the team itself must meet the hackathon 18+ rule.
+- **Legal / India gaming law:** no entry fees, no stakes, no prizes or rewards, no token, no cash-out, no real-asset purchase links. Copy on every page footer: "Play money. Not investment advice. No prizes." Recognition-only season shoutouts. Users must be 18+ (stated in the Terms of use and at sign-up as a one-line confirmation, decided Nov 20); the team also meets the hackathon 18+ rule.
 - **Privacy:** store wallet address and Privy DID only; no phone/email unless the user opts into Privy email login.
 
 ---
@@ -700,7 +707,7 @@ Four workstreams run in parallel, each with one owner using Claude Code (§16). 
 | 7 | **Name clash:** botsfolio.com (AI paper-trading bots) is a near-identical name | Differentiate everywhere by personality bots raised in one sentence, season-by-season coaching with on-chain version history, and provable QIE records; always write "BotFolio" with capital F and the tagline |
 | 8 | (v1.1) QIE Wallet MCP, `.qie` lookup or QIE Pass API not available / no partner creds in time | Each has a fallback in §0.6; Pass is behind `PASS_ENABLED`; never block the core loop on them |
 | 9 | (v1.1) Users ignore Approve Big Move prompts | Expiry fallback executes a clipped order after 2 h (§6.4 step 10), so the bot never stalls; prompt is also a push/feed item |
-| 10 | (v1.1) Double execution of a big move (user approves + runner fallback) | `usedDecision[decisionId]` in `PaperLedger` for both paths; fork test covers it |
+| 10 | (v1.1) Double execution of a big move (user approves + runner fallback) | `usedOrder[orderId]` (per action, §3) in `PaperLedger` for both paths; fork test covers a 3-action decision with one big move |
 | 11 | (v1.1) Interface churn between 4 parallel workstreams | Interfaces frozen Day 1 (§12.2); changes only via one announced PR |
 | 12 | (v1.1) Judges read the repo as "AI-generated with minimal developer contribution" | Small commits per person with real messages; each owner writes their own README section and can explain it live (§16.4) |
 
@@ -752,7 +759,7 @@ botfolio/
 ### 16.3 Starting prompts per workstream (paste into Claude Code on Day 1)
 
 **WS A — Chain**
-> Read CLAUDE.md, then SPEC.md §0.1–0.3, §4 and §5. Scaffold `packages/contracts` with Foundry (solc 0.8.24, evm_version shanghai, OZ 5.0.2 pinned). Write the 7 contracts in §4.9 exactly as specified, with OZ AccessControl roles from §4.6. Then write fork tests against `https://rpc2mainnet.qie.digital` using the real feed addresses from §0.2: stale feed skip, limits, max-per-coin cap, batch never reverts, forwarder `_msgSender`, `executeApproved` runner signature + deadline + `usedDecision` replay guard, DailyCall call/settle, Challenges create/accept/settle. Export ABIs to `abi/` and list every event in `events.md`. Don't deploy yet. Stop and show me the interface (function signatures + events) before writing implementations.
+> Read CLAUDE.md, then SPEC.md §0.1–0.3, §4 and §5. Scaffold `packages/contracts` with Foundry (solc 0.8.24, evm_version shanghai, OZ 5.0.2 pinned). Write the 7 contracts in §4.9 exactly as specified, with OZ AccessControl roles from §4.6. Then write fork tests against `https://rpc3mainnet.qie.digital` (fall back to rpc4/rpc5) using the real feed addresses from §0.2: stale feed skip, limits, max-per-coin cap, batch never reverts, forwarder `_msgSender`, `executeApproved` runner signature + deadline + per-order `usedOrder` replay guard, DailyCall call/settle with the runner-signed bot view, Challenges create/accept/settle. Export ABIs to `abi/` and list every event in `events.md`. Don't deploy yet. Stop and show me the interface (function signatures + events) before writing implementations.
 
 **WS B — Runner**
 > Read CLAUDE.md, then SPEC.md §3, §6, §7, §8, §10, §10.1, §11. Start with `packages/db/schema.sql` (all §3 tables incl. v1.1) and `packages/shared/relay.ts` (ForwardRequest type, EIP-712 domains for the forwarder and ApprovedOrder, POST /relay shape). Then build `packages/llm` (LlmClient interface + XaiClient with strict json_schema output) and `apps/worker`: relay endpoint with the §11 allowlist and rate limits, then the pure `gate()` function with unit tests (including the big-move split, §6.4 steps 9–10). Use ABIs from `packages/contracts/abi` once WS A publishes them; until then, stub them. Show me schema.sql and relay.ts first — they get frozen tonight.
