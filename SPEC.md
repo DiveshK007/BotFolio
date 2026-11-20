@@ -18,6 +18,7 @@
 | 6 | **Innovation framing**: lead with coaching + provable version history (the v2 diff), not "AI paper trading" | §1.1, §13 | Competitors (Strategy Arena, pip.world, Botsfolio, Alpha Arena) already do AI paper trading. Coaching with on-chain versions is the new part |
 | 7 | **Build plan replaced** with a 4-workstream team plan and Claude Code conventions | §12, §16 | Team build, not solo |
 | 8 | **Review fixes (Nov 20, before interface freeze):** per-order replay key `orderId`; runner-signed Daily Call bot view; `setLimits` bounded like `createBot`; relay auth via Privy **or** SIWE JWT; Daily Call settle retries to 23:50 + next 09:00; bot-view fallback for late bots; 8 card kinds in schema; S6 shows all 4 boards; contract-derived challenge codes; users 18+; fork tests on rpc3 | §3, §4.2–§4.8, §6.4–§6.4.1, §11, §14, §16.3 | External review found these before contracts were frozen (#194) |
+| 9 | **Same review, leftovers:** §6.1 Daily Call settle cron matches the 10-min retry through 23:50 IST plus the next 09:00, and skips instead of reverting; owners filled from `CLAUDE.md`; §10 env lists the browser-visible addresses plus relay JWT config; short challenge links resolve to the full code via the DB/indexer | §2.5, §4.3, §4.8, §6.1, §10, §11, §12.1, §15 | Those spots still described the pre-fix behaviour |
 
 ---
 
@@ -203,8 +204,8 @@ Stopwatch target ≤ 30 s total; measured on Nov 27 with 20 people (§12).
 | S11 | `/me/call` (sheet on S3) | Daily Call + Approve Big Move prompts (v1.1) |
 
 ### 2.5 Challenge links (v1.1, user-signed, no stakes)
-- On `/me` or any share card: "Challenge a friend" → user signs `Challenges.create(myBotId, seasonId)` → link `/challenge/<code>`.
-- Friend opens link → creates a bot (newcomer path §2.1, ≤ 30 s) or picks their existing bot → signs `Challenges.accept(code, theirBotId)`.
+- On `/me` or any share card: "Challenge a friend" → user signs `Challenges.create(myBotId, seasonId)` → link `/challenge/<code>`, where `<code>` is the first 8 bytes of the contract's `bytes32` code, hex-encoded.
+- Friend opens the link → creates a bot (newcomer path §2.1, ≤ 30 s) or picks their existing bot. The app resolves that short code to the full code via the DB/indexer, then the friend signs `Challenges.accept(fullCode, theirBotId)`.
 - Result is computed at season close from the same season returns (no extra trading). Battle card shows both bots + "Rematch next season?" (one tap = new signed challenge).
 - No stakes, no prizes, no tokens. Recognition only. Max 10 open challenges per bot.
 
@@ -312,7 +313,7 @@ Functions:
 - `executeBatch(Order[] calldata orders)` — `RUNNER_ROLE` only. `struct Order { uint256 botId; uint8 asset; bool buy; uint16 bps; bytes32 decisionId; uint8 actionIndex; }`. `orderId = keccak256(abi.encode(decisionId, actionIndex))` (§3). Per order:
   0. `usedOrder[orderId] == false`, else emit `OrderSkipped(…, USED)` and continue.
   1. bot active; `asset ≤ 4`.
-  2. `(roundId, answer, , updatedAt, ) = AggregatorV3(feed[asset]).latestRoundData()`; require `answer > 0` and `block.timestamp - updatedAt ≤ maxAge[asset]`. **Stale → emit `OrderSkipped(botId, asset, decisionId, reason=STALE)` and continue** (never revert the batch).
+  2. `(roundId, answer, , updatedAt, ) = AggregatorV3(feed[asset]).latestRoundData()`; require `answer > 0` and `block.timestamp - updatedAt ≤ maxAge[asset]`. **Stale → emit `OrderSkipped(botId, asset, decisionId, actionIndex, reason=STALE)` and continue** (never revert the batch).
   3. Day counter in IST (`(block.timestamp + 19800) / 86400`); enforce `tradesToday < maxTradesPerDay`.
   4. BUY: `cash = portfolio.cashE8 × bps / 10000`; post-trade position value ≤ `maxPerCoinBps` of portfolio value at current prices (reads other feeds' latest answers; if any held asset is stale, use its last answer for the cap check only). `units = cash × 1e18 / answer`. SELL: `units = held × bps / 10000`; `cash = units × answer / 1e18`.
   5. Set `usedOrder[orderId] = true`; emit `Trade(botId, asset, buy, cashE8, unitsE18, priceE8, roundId, updatedAt, decisionId, actionIndex)`.
@@ -352,7 +353,7 @@ Functions:
 ### 4.8 `Challenges` (v1.1)
 Storage: `struct Challenge { uint256 challengerBot; uint256 opponentBot; uint32 season; uint8 status; }` `mapping(bytes32 code => Challenge)`; `openCount[botId] ≤ 10`.
 Functions (all via forwarder, owner-only for the bot named):
-- `create(uint256 myBot, uint32 season) returns (bytes32 code)` — the contract derives `code = keccak256(abi.encode(_msgSender(), nonce++))`, so nobody can front-run a client-chosen code; season must be open or next. Event `ChallengeCreated(code, myBot, season)`; the app reads the code from the event. Share links use the first 8 bytes of `code`, hex-encoded.
+- `create(uint256 myBot, uint32 season) returns (bytes32 code)` — the contract derives `code = keccak256(abi.encode(_msgSender(), nonce++))`, so nobody can front-run a client-chosen code; season must be open or next. Event `ChallengeCreated(code, myBot, season)`; the app reads the full code from the event. Share links use the first 8 bytes of `code`, hex-encoded. `accept` needs the full `bytes32`; the app resolves the short code to the full code via the DB/indexer (the indexer stores the event's code) before the friend signs.
 - `accept(bytes32 code, uint256 theirBot)` — `theirBot ≠ challengerBot` and the two bots have different owners; status open. `openCount` drops when a challenge is settled or expires. Event `ChallengeAccepted(code, theirBot)`.
 - `settle(bytes32 code, uint256 winnerBot)` — `COMMITTER_ROLE`, at season close, winner = higher season return (tiebreak lower maxDD), recomputable off-chain. Event `ChallengeSettled(code, winnerBot)`.
 
@@ -391,7 +392,7 @@ Render cron schedules are evaluated in UTC ([Render cron docs](https://render.co
 | Season close check (v1.1) | daily 21:30 — closes any season whose `ends_at` slot has passed | `0 16 * * *` |
 | Season open check (v1.1) | daily 00:00 — opens any season whose `starts_at` has arrived | `30 18 * * *` (18:30 UTC previous day) |
 | Daily recap cards (v1.1) | daily 21:35 (after close check) | `5 16 * * *` |
-| DailyCall settle (v1.1) | with the 21:00 slot + stale retries | same as 21:00 slot + retries |
+| DailyCall settle (v1.1) | 21:00, then every 10 min until 23:50; once more at the next 09:00. No fresh price → skip, don't revert | `30,40,50 15 * * *`; `*/10 16-17 * * *`; `0,10,20 18 * * *` (every 10 min, 15:30–18:20 UTC); `30 3 * * *` (next 09:00) |
 | Big-move expiry sweep (v1.1) | every 10 min — pending big moves past deadline → clipped order into next batch | `*/10 * * * *` |
 | Indexer | continuous | 10 s loop in-process |
 
@@ -558,8 +559,23 @@ FORWARDER_ADDRESS= BOT_REGISTRY_ADDRESS= PAPER_LEDGER_ADDRESS= SEASON_LEDGER_ADD
 # keys (server only, never NEXT_PUBLIC)
 RELAYER_PRIVATE_KEY= RUNNER_PRIVATE_KEY= COMMITTER_PRIVATE_KEY=
 DEPLOYER_PRIVATE_KEY=   # local only, for forge script; not on any server
+# browser-visible (safe to expose: addresses and public URLs only)
+NEXT_PUBLIC_QIE_CHAIN_ID=1990
+NEXT_PUBLIC_FORWARDER_ADDRESS=
+NEXT_PUBLIC_BOT_REGISTRY_ADDRESS=
+NEXT_PUBLIC_PAPER_LEDGER_ADDRESS=
+NEXT_PUBLIC_SEASON_LEDGER_ADDRESS=
+NEXT_PUBLIC_DAILY_CALL_ADDRESS=
+NEXT_PUBLIC_CHALLENGES_ADDRESS=
+NEXT_PUBLIC_RELAY_URL=
+NEXT_PUBLIC_SUPABASE_URL=
 # wallet
-NEXT_PUBLIC_PRIVY_APP_ID= PRIVY_APP_SECRET=
+NEXT_PUBLIC_PRIVY_APP_ID=
+PRIVY_APP_SECRET=
+# server-only HMAC secret for the 15-min relay JWT; placeholder, never a real secret
+RELAY_JWT_SECRET=replace-me
+# EIP-4361 domain for the SIWE-style signed login (placeholder)
+SIWE_DOMAIN=localhost
 # data
 SUPABASE_URL= SUPABASE_SERVICE_ROLE_KEY= NEXT_PUBLIC_SUPABASE_ANON_KEY= DATABASE_URL=
 # llm
@@ -597,7 +613,7 @@ APP_URL=
 ## 11. Security and abuse
 
 - **Relayer allowlist (v1.1):** only `forwarder.execute` where `(request.to, selector)` ∈ {`BotRegistry.createBot`, `BotRegistry.setActive`, `SeasonLedger.commitVersion`, `SeasonLedger.recordCorrection`, `PaperLedger.executeApproved`, `DailyCall.call`, `Challenges.create`, `Challenges.accept`}; `value == 0`; `gas ≤ 300k` (tune after gas report; `executeApproved` reads several feeds, so measure it); deadline ≤ 10 min; verify with `forwarder.verify()` (staticcall) before sending. Also `eth_call` the inner request first and refuse to relay anything that would revert (saves gas on stale-price reverts).
-- **Rate limits:** per wallet 30 relays/day, 1 bot per wallet, 3 new bots per IP/day, 20 corrections/day per bot (also on-chain), global 2,000 relays/hour. **Relay auth (v1.1 fix):** `POST /relay` on the Render service requires **either** a Privy session token (verified server-side) **or**, for QIE Wallet users who have no Privy session, a short-lived JWT from a SIWE-style login: `GET /auth/nonce` → the wallet signs an EIP-4361 message → `POST /auth/verify` returns a 15-min JWT bound to that address. Rate limits apply per wallet on both paths.
+- **Rate limits:** per wallet 30 relays/day, 1 bot per wallet, 3 new bots per IP/day, 20 corrections/day per bot (also on-chain), global 2,000 relays/hour. **Relay auth (v1.1 fix):** `POST /relay` on the Render service requires **either** a Privy session token (verified server-side) **or**, for QIE Wallet users who have no Privy session, a short-lived JWT from a SIWE-style login: `GET /auth/nonce` → the wallet signs an EIP-4361 message (domain `SIWE_DOMAIN`) → `POST /auth/verify` returns a 15-min JWT signed with `RELAY_JWT_SECRET` and bound to that address. Rate limits apply per wallet on both paths.
 - **Hot wallets:** relayer, runner, committer are separate keys with small floats; admin role on a separate key not on servers; low-balance alerts; pause switch (`RELAY_ENABLED=false`).
 - **Contracts:** no real funds, no `payable`, no token transfers; feeds immutable; runner cannot set prices; batch never reverts on one bad order.
 - **LLM safety:** prompt injection via persona text can only affect that bot's play trades (gate caps everything); content filter on persona/reason/roast; persona length cap; no URLs in persona.
@@ -610,16 +626,16 @@ APP_URL=
 
 ## 12. Team build plan (IST, v1.1)
 
-Four workstreams run in parallel, each with one owner using Claude Code (§16). The owners are listed in §15 for Divesh to fill in. The plan only works if **interfaces freeze on Day 1** (contract ABIs + events, DB schema, relay request format, card payload) so nobody waits on anyone.
+Four workstreams run in parallel using Claude Code (§16). Until Sunday Nov 22 night Gokul builds all code workstreams; Divesh and Dijo join after. The plan only works if **interfaces freeze on Day 1** (contract ABIs + events, DB schema, relay request format, card payload) so nobody waits on anyone.
 
 ### 12.1 Workstreams
 
 | WS | Owner | Scope | Main sections |
 |---|---|---|---|
-| **A — Chain** | _TBD_ | 7 contracts, Foundry tests on mainnet fork, deploy + verify, ABI package, gas report | §4, §5, §0.1–0.3 |
-| **B — Runner** | _TBD_ | Render service: relayer + allowlist, LLM client, decision runner, gate + big-move split, scheduler, indexer, season close, DailyCall settle, trust/leaderboards, replay script, BotFolio MCP server | §6, §7, §8, §10, §10.1, §11 |
-| **C — App** | _TBD_ | Next.js PWA: all screens S1–S11, Privy passkey + QIE Wallet connect, `.qie` display, ₹ display rule, price-age labels, `/proof`, `/stats` | §2, §3 (reads), §5.7 |
-| **D — Growth & ecosystem** | _TBD_ (Divesh if 4 people aren't available; merge D into C if 3) | Share cards + Verify-on-QIE panel, public API, QIE Wallet MCP + Pass checks (§0.6), domain, launch content, soft launch + public launch, demo video, deck, README/docs | §0.6, §9, §13, traction |
+| **A — Chain** | Gokul (GitHub: Gokul-social) — until Sun Nov 22 | 7 contracts, Foundry tests on mainnet fork, deploy + verify, ABI package, gas report | §4, §5, §0.1–0.3 |
+| **B — Runner** | Gokul (GitHub: Gokul-social) — until Sun Nov 22 | Render service: relayer + allowlist, LLM client, decision runner, gate + big-move split, scheduler, indexer, season close, DailyCall settle, trust/leaderboards, replay script, BotFolio MCP server | §6, §7, §8, §10, §10.1, §11 |
+| **C — App** | Gokul (GitHub: Gokul-social) — until Sun Nov 22 | Next.js PWA: all screens S1–S11, Privy passkey + QIE Wallet connect, `.qie` display, ₹ display rule, price-age labels, `/proof`, `/stats` | §2, §3 (reads), §5.7 |
+| **D — Growth & ecosystem** | Divesh (GitHub: DiveshK007) for registration, wallets, QIE checks, launch; Gokul for code | Share cards + Verify-on-QIE panel, public API, QIE Wallet MCP + Pass checks (§0.6), domain, launch content, soft launch + public launch, demo video, deck, README/docs | §0.6, §9, §13, traction |
 
 ### 12.2 Interfaces frozen on Day 1 (Fri Nov 20, by 23:00)
 - `packages/contracts/abi/*.json` + `events.md` — every function signature and event in §4 (WS A publishes; B, C, D consume).
@@ -717,11 +733,12 @@ Four workstreams run in parallel, each with one owner using Claude Code (§16). 
 
 Resolved Nov 19: track = AI + Autonomous Agents; gold max age = 6 h with price-age label; LLM = Grok via xAI (swappable); host = Render, relayer in the same Render service.
 
+Resolved Nov 20: workstream owners, copied from `CLAUDE.md` — A, B and C: Gokul (GitHub: Gokul-social) until Sun Nov 22; D: Divesh (GitHub: DiveshK007) for registration, wallets, QIE checks, launch; Gokul for code. Until Sunday Nov 22 night Gokul builds all code workstreams; Divesh and Dijo join after (README). See §12.1.
+
 1. **LLM monthly budget cap** (`LLM_MONTHLY_BUDGET_USD`); about $28/mo per 100 active bots at the default model (estimate, §6.6).
 2. **Domain** purchase (botfolio.* availability to confirm at a registrar).
 3. **Demo-week presenter** (Dec 1–5) and who records the demo video.
-4. (v1.1) **Workstream owners** for A (Chain), B (Runner), C (App), D (Growth & ecosystem) — fill into §12.1 and `CLAUDE.md`.
-5. (v1.1) **Big-move thresholds** (default 30 % buy weight / 50 % sell) — fine for launch, revisit after S1.
+4. (v1.1) **Big-move thresholds** (default 30 % buy weight / 50 % sell) — fine for launch, revisit after S1.
 
 ---
 
