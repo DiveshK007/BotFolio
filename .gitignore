@@ -1,0 +1,21 @@
+node_modules/
+.pnpm-store/
+dist/
+build/
+.next/
+out/
+coverage/
+*.log
+.DS_Store
+.vercel/
+.turbo/
+# env — never commit secrets
+.env
+.env.*
+!.env.example
+# foundry
+packages/contracts/out/
+packages/contracts/cache/
+packages/contracts/broadcast/*/31337/
+# media over 10 MB stays out of git
+media/*.mp4

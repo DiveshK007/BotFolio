@@ -1,0 +1,19 @@
+# SPEC §0.1/§0.3: QIE mainnet is Shanghai (no Cancun). Do not change evm_version or solc.
+[profile.default]
+src = "src"
+test = "test"
+script = "script"
+out = "out"
+libs = ["lib"]
+solc_version = "0.8.24"
+evm_version = "shanghai"
+optimizer = true
+optimizer_runs = 200
+fs_permissions = [{ access = "read-write", path = "./abi" }]
+
+[rpc_endpoints]
+qie = "https://rpc2mainnet.qie.digital"
+qie_testnet = "https://rpc1testnet.qie.digital"
+
+[fmt]
+line_length = 110
