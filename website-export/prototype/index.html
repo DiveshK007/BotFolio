@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BotFolio · Raise an AI trader in one sentence</title>
+<meta name="description" content="Raise an AI trader in one sentence, coach it every season, and let QIE keep score. Play money. Not investment advice. No prizes.">
+<meta property="og:title" content="BotFolio: raise an AI trader in one sentence">
+<meta property="og:description" content="Coach it every season and let QIE keep score. Play money, every trade on QIE mainnet.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/og/home.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#14161C">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/*
+VOICE: warm, quick, a little cheeky. The bots roast; the site stays plain and honest.
+IDEA: a scoreboard and a trading card. Every bot is a card, every number has a receipt.
+PICTURE: a geometric bot head that watches you, a persona card that builds itself, a card that flips to show its receipts.
+COLOUR and TYPE: ink on warm paper, signal-blue accent, sunflower highlight; Archivo 800 display, Inter body, JetBrains Mono receipts.
+LAYOUT: full-width bands, 1200px content, phone-first stacking at 600px.
+*/
+:root{
+  --paper:#FAFAF7;--surface:#FFFFFF;--surface-2:#F1F1EC;--ink:#14161C;--muted:#5A5F6B;--line:#E2E1DA;--line-2:#CFCEC5;
+  --accent:#2B50FF;--accent-ink:#2440E0;--on-accent:#FFFFFF;--accent-soft:#E7EBFF;
+  --sun:#FFC93C;--on-sun:#14161C;--sun-soft:#FFF3CF;
+  --up:#0B7A53;--down:#C23B25;--amber:#8A5A00;--amber-soft:#FFF1D6;--grey:#6B6F78;
+  --live:#0B7A53;--example:#8A5A00;--example-bg:#FFF1D6;--coming:#5B3FD0;--coming-bg:#EEE9FF;--verified:#2440E0;--verified-bg:#E7EBFF;
+  --night:#14161C;--on-night:#F4F5F8;--shadow:0 1px 0 rgba(20,22,28,.06),0 10px 26px rgba(20,22,28,.07);
+  --shadow-lg:0 2px 0 rgba(20,22,28,.08),0 22px 48px rgba(20,22,28,.12);
+  --r1:8px;--r2:14px;--r3:22px;
+  --f-display:"Archivo",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --f-body:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --t1:160ms;--t2:280ms;--t3:420ms;--ease:cubic-bezier(.2,.8,.2,1);--ease-back:cubic-bezier(.34,1.56,.64,1);
+  color-scheme:light;
+}
+:root[data-theme=dark]{
+  --paper:#0D0F14;--surface:#171A22;--surface-2:#1E222C;--ink:#ECEEF3;--muted:#9AA0AD;--line:#2A2F3B;--line-2:#3A4050;
+  --accent:#8FA2FF;--accent-ink:#8FA2FF;--on-accent:#0D0F14;--accent-soft:#1E2547;
+  --sun:#FFC93C;--on-sun:#14161C;--sun-soft:#3A3016;
+  --up:#3DDC97;--down:#FF8A73;--amber:#FFC24D;--amber-soft:#3A2E12;--grey:#8E94A0;
+  --live:#3DDC97;--example:#FFC24D;--example-bg:#3A2E12;--coming:#C3B5FF;--coming-bg:#2A2347;--verified:#8FA2FF;--verified-bg:#1E2547;
+  --night:#05060A;--on-night:#F4F5F8;--shadow:0 1px 0 rgba(0,0,0,.4),0 10px 26px rgba(0,0,0,.35);
+  --shadow-lg:0 2px 0 rgba(0,0,0,.5),0 22px 48px rgba(0,0,0,.5);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box;min-width:0}
+html{scroll-padding-top:84px;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 var(--f-body);overflow-x:clip;-webkit-font-smoothing:antialiased}
+img,svg{display:block;max-width:100%}
+a{color:var(--accent-ink);text-underline-offset:3px}
+a:hover{text-decoration-thickness:2px}
+h1,h2,h3,h4{font-family:var(--f-display);line-height:1.06;margin:0;letter-spacing:-.01em;text-wrap:balance}
+h1{font-size:clamp(34px,6.2vw,62px);font-weight:800}
+h2{font-size:clamp(28px,4vw,44px);font-weight:800}
+h3{font-size:22px;font-weight:700}
+h4{font-size:17px;font-weight:700}
+p{margin:0}
+.lede{font-size:clamp(17px,1.6vw,20px);color:var(--muted);max-width:60ch}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.mono{font-family:var(--f-mono);font-size:.92em;letter-spacing:-.01em}
+.nowrap{white-space:nowrap}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:6px}
+.skip{position:absolute;left:12px;top:-60px;background:var(--ink);color:var(--paper);padding:10px 14px;border-radius:8px;z-index:100}
+.skip:focus{top:12px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* layout */
+.wrap{max-width:1200px;margin:0 auto;padding-inline:max(4vw,16px)}
+.band{padding-block:clamp(48px,7vw,96px)}
+.band.tight{padding-block:clamp(32px,4vw,56px)}
+.band.alt{background:var(--surface-2)}
+.band.ink{background:var(--night);color:var(--on-night)}
+.band.ink .muted{color:color-mix(in srgb,var(--on-night) 72%,transparent)}
+.stack-s>*+*{margin-top:8px}.stack>*+*{margin-top:16px}.stack-l>*+*{margin-top:28px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.grid{display:grid;gap:20px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:900px){.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.g2,.g3,.g4{grid-template-columns:minmax(0,1fr)}}
+.section-head{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:end;justify-content:space-between;margin-bottom:28px}
+.section-head .lede{margin-top:10px}
+
+/* nav */
+.nav{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap;min-height:64px;padding-block:8px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:800;font-size:21px;color:var(--ink);text-decoration:none;letter-spacing:-.02em}
+.brand svg{width:30px;height:30px}
+.nav-links{display:flex;flex-wrap:wrap;gap:2px;margin-inline-start:auto;list-style:none;padding:0;margin-block:0}
+.nav-links a{display:inline-flex;align-items:center;min-height:40px;padding:6px 10px;border-radius:999px;color:var(--ink);text-decoration:none;font-weight:500;font-size:15px}
+.nav-links a:hover{background:var(--surface-2)}
+.nav-links a[aria-current=page]{background:var(--ink);color:var(--paper)}
+.nav-cta{display:flex;gap:8px;align-items:center}
+.icon-btn{inline-size:44px;block-size:44px;display:inline-grid;place-items:center;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);cursor:pointer}
+.icon-btn svg{width:20px;height:20px}
+.menu-btn{display:none}
+@media(max-width:980px){
+  .menu-btn{display:inline-grid}
+  .nav-links{order:5;flex-basis:100%;display:none;margin:0;padding-bottom:8px}
+  .nav[data-open=true] .nav-links{display:flex}
+  .nav-cta{margin-inline-start:auto}
+}
+@media(max-width:420px){.nav-cta .btn-label-long{display:none}}
+
+/* buttons, chips, badges */
+.btn{--bg:var(--ink);--fg:var(--paper);display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:10px 20px;border-radius:999px;border:2px solid var(--bg);background:var(--bg);color:var(--fg);font:600 16px/1.1 var(--f-body);text-decoration:none;cursor:pointer;transition:transform var(--t1) var(--ease-back),background var(--t1)}
+.btn:hover{transform:translateY(-2px)}
+.btn:active{transform:translateY(0) scale(.98)}
+.btn.accent{--bg:var(--accent);--fg:var(--on-accent)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line-2)}
+.btn.sun{--bg:var(--sun);--fg:var(--on-sun)}
+.btn.sm{min-height:44px;padding:8px 14px;font-size:15px}
+.btn[disabled],.btn[aria-disabled=true]{opacity:.55;cursor:not-allowed;transform:none}
+.band.ink .btn.ghost{color:var(--on-night);border-color:color-mix(in srgb,var(--on-night) 40%,transparent)}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:8px 14px;border-radius:999px;border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink);font:500 15px/1.2 var(--f-body);cursor:pointer;transition:transform var(--t1) var(--ease-back),border-color var(--t1)}
+.chip:hover{border-color:var(--ink);transform:translateY(-1px)}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font:700 11.5px/1.3 var(--f-body);letter-spacing:.02em;white-space:nowrap;border:1px solid currentColor}
+.badge.example{color:var(--example);background:var(--example-bg)}
+.badge.live{color:var(--live);background:transparent}
+.badge.live::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 1.6s infinite}
+.badge.coming{color:var(--coming);background:var(--coming-bg)}
+.badge.verified{color:var(--verified);background:var(--verified-bg)}
+.badge.house{color:var(--muted);background:var(--surface-2)}
+.badge.new{color:var(--accent-ink);background:var(--accent-soft)}
+.badge.ph{color:var(--down);background:transparent;border-style:dashed}
+.ph-text{font-family:var(--f-mono);font-size:.85em;color:var(--down);border:1px dashed currentColor;border-radius:6px;padding:1px 6px;white-space:nowrap}
+@keyframes pulse{50%{opacity:.35}}
+.up{color:var(--up)}.down{color:var(--down)}
+.age{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;color:var(--muted);white-space:nowrap}
+.age.amber{color:var(--amber);font-weight:600}
+.age.grey{color:var(--grey);font-style:italic}
+.tx{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:4px 10px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);font:500 12.5px/1.2 var(--f-mono);color:var(--ink);text-decoration:none;white-space:nowrap}
+.tx[aria-disabled=true]{color:var(--muted);cursor:help}
+a.tx:hover{border-color:var(--accent);color:var(--accent-ink)}
+.tx svg{width:13px;height:13px}
+
+/* cards, tiles */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:22px;box-shadow:var(--shadow)}
+.card.flat{box-shadow:none}
+.card h3+p,.card h4+p{margin-top:8px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:18px}
+.tile .k{font-size:13px;color:var(--muted);font-weight:500}
+.tile .v{font:800 clamp(26px,3.4vw,36px)/1.1 var(--f-display);margin-top:6px;font-variant-numeric:tabular-nums}
+.tile .s{font-size:13px;color:var(--muted);margin-top:4px}
+.block-head{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--r1);background:var(--surface-2);font-size:14px;color:var(--muted)}
+.note svg{flex:none;width:18px;height:18px;margin-top:2px}
+.note.warn{background:var(--amber-soft);color:var(--ink)}
+.note.err{background:color-mix(in srgb,var(--down) 12%,var(--surface));color:var(--ink)}
+
+/* tables */
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:var(--r2);background:var(--surface)}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:12.5px;font-weight:600;color:var(--muted);background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.scroll table{min-width:640px}
+
+/* code */
+.code{position:relative;background:#0F1218;color:#E6E8EE;border-radius:var(--r2);padding:18px 18px 18px;font:13.5px/1.6 var(--f-mono);overflow-x:auto;border:1px solid #232835}
+.code pre{margin:0;white-space:pre}
+.code .c{color:#8C93A3}.code .s{color:#9EE6B8}.code .n{color:#FFC93C}.code .k{color:#A9B7FF}
+.copy{position:absolute;top:10px;right:10px;min-height:36px;padding:6px 12px;border-radius:999px;border:1px solid #3A4050;background:#1B1F29;color:#E6E8EE;font:600 13px var(--f-body);cursor:pointer}
+.copy:hover{background:#262B37}
+
+/* bot head */
+.bothead{--c:var(--accent);--c2:#fff;position:relative;flex:none}
+.bothead svg{width:100%;height:100%;overflow:visible}
+.bothead .face{fill:var(--c)}
+.bothead .eye{fill:#fff}
+.bothead .pupil{fill:#14161C;transition:transform 90ms linear}
+.bothead .emo{position:absolute;right:-6%;bottom:-6%;width:42%;aspect-ratio:1;display:grid;place-items:center;border-radius:50%;background:var(--surface);border:2px solid var(--line);font-size:clamp(12px,1.2em,40px);line-height:1}
+.av{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:12px;font-size:21px;flex:none;line-height:1}
+
+/* hero */
+.hero{padding-block:clamp(32px,6vw,72px) clamp(40px,6vw,80px);position:relative;overflow:hidden}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:clamp(24px,4vw,56px);align-items:start}
+@media(max-width:900px){.hero-grid{grid-template-columns:minmax(0,1fr)}}
+.hero h1 .hl{background:linear-gradient(transparent 62%,var(--sun) 62%);padding-inline:2px}
+.hero-mascot{display:flex;gap:16px;align-items:center;margin-top:28px}
+.hero-mascot .bothead{width:88px;height:88px;cursor:pointer;border:0;background:none;padding:0}
+.bubble{position:relative;background:var(--surface);border:1.5px solid var(--ink);border-radius:16px;padding:10px 14px;font-weight:500;font-size:15px;max-width:34ch;box-shadow:var(--shadow)}
+.bubble::before{content:"";position:absolute;left:-8px;top:22px;width:14px;height:14px;background:var(--surface);border-left:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink);transform:rotate(45deg)}
+.pitch-points{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.pitch-points span{display:inline-flex;gap:6px;align-items:center;padding:6px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:14px;font-weight:500}
+
+/* try widget */
+.try{background:var(--surface);border:1.5px solid var(--ink);border-radius:var(--r3);box-shadow:var(--shadow-lg);padding:clamp(16px,2.4vw,24px)}
+.try label{font:700 18px/1.2 var(--f-display);display:block;margin-bottom:10px}
+.inp{width:100%;min-height:54px;padding:12px 16px;border-radius:14px;border:1.5px solid var(--line-2);background:var(--paper);color:var(--ink);font:16px var(--f-body)}
+.inp:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 4px var(--accent-soft)}
+.try-row{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+.try-row .btn{flex:1 1 160px}
+.examples{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.examples .chip{font-size:14px;min-height:40px;padding:6px 12px}
+.persona{margin-top:18px;border-radius:18px;border:1px solid var(--line);background:var(--paper);padding:18px;display:none}
+.persona[data-on=true]{display:block;animation:pop var(--t3) var(--ease-back)}
+.persona-top{display:flex;gap:14px;align-items:center}
+.persona-top .bothead{width:64px;height:64px}
+.persona-name{font:800 24px/1.1 var(--f-display)}
+.persona-line{color:var(--muted);font-size:14.5px;margin-top:2px}
+.rules{margin:14px 0 0;padding-left:18px;font-size:14.5px}
+.rules li+li{margin-top:2px}
+.slider{margin-top:14px}
+.slider-top{display:flex;justify-content:space-between;font-size:14px;font-weight:600}
+input[type=range]{width:100%;accent-color:var(--accent);min-height:32px}
+.trade-card{margin-top:14px;padding:14px;border-radius:14px;background:var(--surface);border:1.5px dashed var(--line-2);display:none}
+.trade-card[data-on=true]{display:block;animation:pop var(--t3) var(--ease-back)}
+.trade-line{font-weight:600}
+.trade-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+.typing::after{content:"▍";animation:blink 1s steps(1) infinite;color:var(--accent)}
+@keyframes blink{50%{opacity:0}}
+
+/* how it works */
+.how{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;position:relative;list-style:none;padding:0;margin:0}
+.how li{position:relative}
+.how button{width:100%;height:100%;text-align:left;border:1.5px solid var(--line);background:var(--surface);border-radius:var(--r2);padding:16px 14px;cursor:pointer;color:var(--ink);font:inherit;transition:transform var(--t2) var(--ease-back),border-color var(--t1),background var(--t1)}
+.how button:hover{transform:translateY(-3px)}
+.how button[aria-current=step]{border-color:var(--ink);background:var(--sun-soft);transform:translateY(-4px)}
+.how .n{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--ink);color:var(--paper);font:700 14px var(--f-display);margin-bottom:10px}
+.how .t{font:700 16px/1.2 var(--f-display);display:block}
+.how .ico{width:34px;height:34px;margin-bottom:8px;color:var(--accent-ink)}
+.how-track{height:6px;border-radius:6px;background:var(--line);margin:18px 0 0;overflow:hidden}
+.how-track i{display:block;height:100%;width:0;background:var(--accent);transition:width var(--t3) var(--ease)}
+.how-detail{margin-top:18px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:center}
+.how-detail .card{min-height:150px}
+@media(max-width:900px){.how{grid-template-columns:repeat(3,minmax(0,1fr))}.how-detail{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:480px){.how{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* coach widget */
+.coach{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:24px;align-items:start}
+@media(max-width:900px){.coach{grid-template-columns:minmax(0,1fr)}}
+.stepper{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.stepper li{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:12px;color:var(--muted);font-weight:500}
+.stepper li .d{width:28px;height:28px;flex:none;border-radius:50%;border:2px solid var(--line-2);display:grid;place-items:center;font:700 13px var(--f-display)}
+.stepper li[data-s=now]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.stepper li[data-s=now] .d{border-color:var(--accent);color:var(--accent-ink)}
+.stepper li[data-s=done] .d{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.stage{background:var(--surface);border:1.5px solid var(--ink);border-radius:var(--r3);padding:clamp(16px,2.4vw,26px);box-shadow:var(--shadow-lg);min-height:360px}
+.stage .panel{animation:pop var(--t3) var(--ease-back)}
+.phone-msg{display:flex;gap:12px;align-items:flex-start}
+.phone-msg .bothead{width:48px;height:48px}
+.msg{background:var(--surface-2);border-radius:4px 16px 16px 16px;padding:12px 14px}
+.msg .roast{display:block;margin-top:6px;font-style:italic;color:var(--muted)}
+.diff{display:grid;gap:10px;margin-top:14px}
+.diff-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px 14px;border-radius:12px;background:var(--paper);border:1px solid var(--line)}
+.diff-row .from{text-decoration:line-through;color:var(--muted)}
+.diff-row .to{font-weight:800;font-family:var(--f-display);font-size:20px}
+.counter{display:inline-flex;gap:4px}
+.counter i{width:12px;height:12px;border-radius:50%;border:2px solid var(--ink)}
+.counter i[data-on=true]{background:var(--ink)}
+.commit{display:flex;gap:10px;align-items:center;padding:14px;border-radius:12px;background:var(--accent-soft);margin-top:14px;flex-wrap:wrap}
+
+/* flip card */
+.flip{perspective:1400px;max-width:560px;width:100%}
+.flip-inner{position:relative;display:grid;transition:transform 640ms var(--ease);transform-style:preserve-3d}
+.flip[data-flipped=true] .flip-inner{transform:rotateY(180deg)}
+.face-f,.face-b{grid-area:1/1;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:var(--r3);border:1.5px solid var(--ink);box-shadow:var(--shadow-lg);overflow:hidden}
+.face-b{transform:rotateY(180deg);background:var(--surface);padding:20px}
+.share-card{background:#14161C;color:#F4F5F8;padding:clamp(18px,3vw,28px);display:flex;flex-direction:column;gap:14px;min-height:100%}
+.share-card .top{display:flex;gap:12px;align-items:center;justify-content:space-between}
+.share-card .who{display:flex;gap:12px;align-items:center}
+.share-card .who .bothead{width:52px;height:52px}
+.share-card .big{font:800 clamp(24px,3.6vw,34px)/1.08 var(--f-display);color:#fff}
+.share-card .big .neg{color:#FF8A73}.share-card .big .pos{color:#3DDC97}
+.share-card .foot{display:flex;flex-wrap:wrap;gap:8px 14px;justify-content:space-between;font:12px/1.4 var(--f-mono);color:#B4B9C6;border-top:1px solid #343A48;padding-top:12px}
+.share-card .kind{font:700 12px var(--f-body);background:var(--sun);color:#14161C;padding:4px 10px;border-radius:999px}
+.share-card .score{font:700 14px var(--f-body);color:#C9CEDA}
+.proofs{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:10px}
+.proofs li{padding:12px;border-radius:12px;background:var(--paper);border:1px solid var(--line)}
+.proofs .what{font-size:14px;margin-top:6px}
+
+/* live proof */
+.feed{list-style:none;margin:0;padding:0}
+.feed li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.feed li:last-child{border-bottom:0}
+.feed .what{font-weight:600;font-size:15px}
+.feed .meta{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12.5px;color:var(--muted);margin-top:2px}
+@media(max-width:520px){.feed li{grid-template-columns:auto minmax(0,1fr)}.feed li>.tx,.feed li>span.tx{grid-column:2;justify-self:start}}
+.skel{display:block;height:14px;border-radius:6px;background:linear-gradient(90deg,var(--surface-2),var(--line),var(--surface-2));background-size:200% 100%;animation:shimmer 1.2s infinite}
+@keyframes shimmer{to{background-position:-200% 0}}
+.countdown{font:800 clamp(26px,3.4vw,36px)/1 var(--f-display);font-variant-numeric:tabular-nums}
+
+/* why */
+.why .card .num{font:800 46px/1 var(--f-display);color:var(--accent-ink)}
+.moments .card{display:flex;flex-direction:column;gap:10px}
+.moments .card .q{font:700 18px/1.3 var(--f-display)}
+.moments .card a{margin-top:auto}
+
+/* status */
+.status{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+@media(max-width:700px){.status{grid-template-columns:minmax(0,1fr)}}
+.checks{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:10px}
+.checks li{display:flex;gap:10px;align-items:flex-start;font-size:15px}
+.checks .ic{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:700 12px var(--f-body);margin-top:1px}
+.checks .ok{background:var(--up);color:var(--paper)}
+.checks .todo{border:2px solid var(--line-2);color:var(--muted)}
+.timeline{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:0}
+.timeline li{display:grid;grid-template-columns:92px minmax(0,1fr);gap:12px;padding:10px 0;border-bottom:1px dashed var(--line-2);font-size:15px}
+.timeline li:last-child{border-bottom:0}
+.timeline .when{font:600 13px var(--f-mono);color:var(--muted)}
+
+/* next steps */
+.next{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media(max-width:900px){.next{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.next{grid-template-columns:minmax(0,1fr)}}
+.next a,.next .disabled{display:flex;flex-direction:column;gap:6px;padding:18px;border-radius:var(--r2);background:color-mix(in srgb,var(--on-night) 8%,transparent);border:1px solid color-mix(in srgb,var(--on-night) 22%,transparent);color:var(--on-night);text-decoration:none;min-height:120px}
+.next a:hover{background:color-mix(in srgb,var(--on-night) 14%,transparent)}
+.next .t{font:700 18px/1.2 var(--f-display)}
+.next .s{font-size:14px;color:color-mix(in srgb,var(--on-night) 74%,transparent)}
+.poster{aspect-ratio:16/9;border-radius:var(--r2);background:repeating-linear-gradient(135deg,var(--surface-2) 0 14px,var(--surface) 14px 28px);border:1.5px dashed var(--line-2);display:grid;place-items:center;text-align:center;padding:16px}
+.poster .play{width:64px;height:64px;border-radius:50%;background:var(--ink);color:var(--paper);display:grid;place-items:center;margin:0 auto 10px}
+
+/* judges tour */
+.tourbar{position:sticky;top:64px;z-index:30;background:var(--paper);border-bottom:1px solid var(--line)}
+.tourbar .wrap{display:flex;gap:10px;align-items:center;padding-block:10px;flex-wrap:wrap}
+.tour-steps{display:flex;gap:6px;overflow-x:auto;flex:1 1 300px;padding-bottom:2px;scrollbar-width:thin}
+.tour-steps button{flex:none;min-height:40px;padding:6px 12px;border-radius:999px;border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink);font:500 14px var(--f-body);cursor:pointer;white-space:nowrap}
+.tour-steps button[aria-current=step]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.tour-prog{flex-basis:100%;height:4px;background:var(--line);border-radius:4px;overflow:hidden}
+.tour-prog i{display:block;height:100%;width:0;background:var(--accent);transition:width 300ms linear}
+.tour-sec{min-height:min(78vh,760px);display:flex;align-items:center;border-bottom:1px solid var(--line);padding-block:56px}
+.tour-sec .wrap{width:100%}
+.kicker{display:inline-flex;gap:8px;align-items:center;font:700 14px var(--f-body);color:var(--accent-ink);margin-bottom:12px}
+.kicker b{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-size:13px}
+.remember{font:800 clamp(26px,4.4vw,48px)/1.1 var(--f-display);max-width:22ch}
+.comp-list{display:grid;gap:12px}
+.comp{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:center;padding:16px;border-radius:var(--r2);background:var(--surface);border:1px solid var(--line)}
+.comp .w{grid-column:1/-1;font-size:14.5px;color:var(--muted)}
+
+/* tabs */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.tabs [role=tab]{min-height:44px;padding:8px 16px;border-radius:999px;border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink);font:600 15px var(--f-body);cursor:pointer}
+.tabs [role=tab][aria-selected=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.select{min-height:44px;padding:8px 36px 8px 14px;border-radius:999px;border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink);font:500 15px var(--f-body)}
+.rank{font:800 18px var(--f-display);width:28px;display:inline-block}
+.botcell{display:flex;gap:10px;align-items:center}
+.botcell b{display:block;font-weight:600}
+.botcell .o{font:12px var(--f-mono);color:var(--muted)}
+.leader{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;align-items:center;padding:20px;border-radius:var(--r3);background:var(--night);color:var(--on-night);margin-bottom:16px}
+.leader .bothead{width:64px;height:64px}
+.leader .muted{color:color-mix(in srgb,var(--on-night) 72%,transparent)}
+@media(max-width:520px){.leader{grid-template-columns:auto minmax(0,1fr)}.leader .lv{grid-column:1/-1}}
+
+/* bot page */
+.bot-hero{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:20px;align-items:center}
+.bot-hero .bothead{width:96px;height:96px}
+@media(max-width:700px){.bot-hero{grid-template-columns:auto minmax(0,1fr)}.bot-hero .bv{grid-column:1/-1}}
+.bars{display:grid;gap:10px}
+.bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;font-size:14px}
+.bar .tr{grid-column:1/-1;height:10px;border-radius:6px;background:var(--surface-2);overflow:hidden}
+.bar .tr i{display:block;height:100%;background:var(--accent);border-radius:6px}
+.decisions{list-style:none;padding:0;margin:0;display:grid;gap:12px}
+.decisions li{display:grid;grid-template-columns:86px minmax(0,1fr);gap:12px;padding:14px;border-radius:var(--r2);background:var(--surface);border:1px solid var(--line)}
+@media(max-width:520px){.decisions li{grid-template-columns:minmax(0,1fr)}}
+.decisions .slot{font:600 13px var(--f-mono);color:var(--muted)}
+.decisions .r{font-weight:500}
+.decisions .ro{font-style:italic;color:var(--muted);font-size:14px;margin-top:4px}
+.versions{display:grid;gap:12px}
+.ver{padding:16px;border-radius:var(--r2);border:1px solid var(--line);background:var(--surface)}
+.ver .vh{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
+.weight{display:inline-block;height:8px;border-radius:4px;background:var(--accent);vertical-align:middle;margin-inline-end:8px}
+
+/* developers */
+.chat{display:grid;gap:12px;min-height:340px}
+.chat .m{max-width:88%;padding:12px 14px;border-radius:16px;font-size:15px;animation:pop var(--t3) var(--ease-back)}
+.chat .u{justify-self:end;background:var(--ink);color:var(--paper);border-bottom-right-radius:4px}
+.chat .a{background:var(--surface-2);border-bottom-left-radius:4px}
+.chat .t{font:12.5px/1.5 var(--f-mono);background:#0F1218;color:#E6E8EE;border-radius:12px;padding:10px 12px;max-width:100%;overflow-x:auto}
+.chat .t b{color:#FFC93C;font-weight:500}
+
+/* about */
+.rule-big{font:800 clamp(28px,4vw,40px)/1.05 var(--f-display)}
+
+/* footer */
+.foot{background:var(--night);color:var(--on-night);padding-block:40px 28px}
+.foot a{color:var(--on-night)}
+.foot-grid{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(2,minmax(0,1fr));gap:24px}
+@media(max-width:700px){.foot-grid{grid-template-columns:minmax(0,1fr)}}
+.foot ul{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:4px}
+.foot ul a{display:inline-flex;min-height:36px;align-items:center;text-decoration:none;color:color-mix(in srgb,var(--on-night) 82%,transparent)}
+.foot ul a:hover{color:var(--on-night);text-decoration:underline}
+.foot .brand{color:var(--on-night)}
+.legal{margin-top:28px;padding-top:18px;border-top:1px solid color-mix(in srgb,var(--on-night) 18%,transparent);display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between;font-size:14px}
+.legal strong{font:800 16px var(--f-display)}
+.foot .muted{color:color-mix(in srgb,var(--on-night) 72%,transparent)}
+
+/* prototype controls */
+.proto{position:fixed;right:12px;bottom:12px;z-index:60}
+.proto>button{min-height:44px;padding:8px 14px;border-radius:999px;background:var(--sun);color:#14161C;border:2px solid #14161C;font:700 14px var(--f-body);cursor:pointer;box-shadow:var(--shadow-lg)}
+.proto-panel{position:absolute;right:0;bottom:54px;width:min(320px,calc(100vw - 24px));background:var(--surface);border:1.5px solid var(--ink);border-radius:var(--r2);padding:16px;box-shadow:var(--shadow-lg);display:none;max-height:70vh;overflow:auto}
+.proto[data-open=true] .proto-panel{display:block}
+.proto fieldset{border:0;padding:0;margin:0 0 12px}
+.proto legend{font:700 13px var(--f-body);margin-bottom:6px}
+.proto label{display:flex;gap:8px;align-items:center;min-height:32px;font-size:14px;cursor:pointer}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(120%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:999px;font-weight:600;z-index:70;transition:transform var(--t2) var(--ease-back),visibility var(--t2);max-width:calc(100vw - 32px);text-align:center}
+.toast{visibility:hidden}.toast[data-on=true]{transform:translateX(-50%) translateY(0);visibility:visible}
+
+.view{display:none}.view[data-active=true]{display:block}
+.view[data-active=true]>.enter{animation:pop var(--t3) var(--ease-back) both}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+:root[data-motion=reduce] *,:root[data-motion=reduce] *::before,:root[data-motion=reduce] *::after{animation:none!important;transition:none!important}
+
+.lb table{min-width:560px}
+@media(max-width:600px){.lb table{min-width:0}.lb .opt{display:none}.lb th,.lb td{padding:10px 8px}.lb .botcell .o{display:none}}
+:root[data-shot] .proto{display:none}
+.band.ink .ph-text,.code .ph-text,.next .ph-text,.foot .ph-text{color:#FF9C88}
+
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17v.5"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="m13 7 4 4"/></symbol>
+  <symbol id="i-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="13" rx="4"/><path d="M12 7V3"/><circle cx="9" cy="13" r="1.4" fill="currentColor"/><circle cx="15" cy="13" r="1.4" fill="currentColor"/></symbol>
+  <symbol id="i-oracle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 3 6-8 3 4"/><path d="M3 21h18"/></symbol>
+  <symbol id="i-coach" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M9 11h6M9 14h4"/></symbol>
+  <symbol id="i-chain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="8" height="8" rx="2"/><rect x="13" y="8" width="8" height="8" rx="2"/><path d="M11 12h2"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-github" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.4-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.6.3-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.8-1 2.8-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.9V21c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></symbol>
+</svg>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav" id="nav" data-open="false">
+  <div class="wrap">
+    <a class="brand" href="#home" aria-label="BotFolio home"><span class="bothead" data-head="brand" style="width:30px;height:30px"></span>BotFolio</a>
+    <ul class="nav-links" id="navlinks">
+      <li><a href="#leaderboards" data-nav="leaderboards">Leaderboards</a></li>
+      <li><a href="#proof" data-nav="proof">Proof</a></li>
+      <li><a href="#judges" data-nav="judges">For judges</a></li>
+      <li><a href="#developers" data-nav="developers">Developers</a></li>
+      <li><a href="#about" data-nav="about">Play money</a></li>
+    </ul>
+    <div class="nav-cta">
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark theme"><svg><use href="#i-moon"/></svg></button>
+      <a class="btn accent sm" href="#home" data-go-try><span>Make a bot</span></a>
+      <button class="icon-btn menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="navlinks" aria-label="Menu"><svg><use href="#i-menu"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<main id="main" tabindex="-1">
+
+<!-- ============ HOME ============ -->
+<div class="view" id="v-home" data-view="home">
+  <section class="hero enter">
+    <div class="wrap hero-grid">
+      <div>
+        <h1>Raise an AI trader in <span class="hl">one sentence</span>.</h1>
+        <p class="lede" style="margin-top:18px">Coach it every season and let QIE keep score. Every bot starts with ₹1,00,000 of play money, and every trade it makes is recorded on QIE mainnet.</p>
+        <div class="pitch-points" aria-label="Key facts">
+          <span>5 assets: BTC, ETH, SOL, XRP, Gold</span>
+          <span>4 calls a day</span>
+          <span>No gas, no seed phrase</span>
+        </div>
+        <div class="hero-mascot">
+          <button class="bothead" id="mascot" data-head="mascot" type="button" aria-label="Poke the bot"></button>
+          <p class="bubble" id="mascotLine" aria-live="polite">Hi. I watch prices so you don't have to. Poke me.</p>
+        </div>
+      </div>
+
+      <form class="try" id="tryForm" autocomplete="off" novalidate>
+        <div class="block-head" style="margin-bottom:6px">
+          <label for="tryInput" style="margin:0">Describe your bot in one sentence</label>
+          <span class="badge example" title="This preview runs in your browser. It is not the real AI.">EXAMPLE</span>
+        </div>
+        <input class="inp" id="tryInput" maxlength="120" placeholder="Careful like my dad, loves gold" aria-describedby="tryHelp">
+        <div class="examples" role="group" aria-label="Tap an example">
+          <button type="button" class="chip" data-ex="Careful like my dad, loves gold">Careful like my dad, loves gold</button>
+          <button type="button" class="chip" data-ex="YOLO Bitcoin maxi, never sells">YOLO Bitcoin maxi, never sells</button>
+          <button type="button" class="chip" data-ex="Buys dips on SOL and XRP, sells fast on the way up">Buys dips on SOL and XRP, sells fast on the way up</button>
+        </div>
+        <div class="try-row"><button class="btn accent" type="submit" id="tryGo">Make my bot</button></div>
+        <p class="small muted" id="tryHelp" style="margin-top:10px">Preview only: a small script in your browser guesses a persona. In the app, the AI writes it and your bot is born on QIE mainnet.</p>
+
+        <div class="persona" id="persona" data-on="false" aria-live="polite">
+          <div class="persona-top">
+            <span class="bothead" id="pHead"></span>
+            <div><div class="persona-name" id="pName">Gold Guru</div><div class="persona-line" id="pLine"></div></div>
+          </div>
+          <ul class="rules" id="pRules"></ul>
+          <div class="slider">
+            <div class="slider-top"><label for="sMax">Max per coin</label><output id="oMax" for="sMax">30%</output></div>
+            <input type="range" id="sMax" min="10" max="50" step="5" value="30">
+          </div>
+          <div class="slider">
+            <div class="slider-top"><label for="sTrades">Max trades per day</label><output id="oTrades" for="sTrades">3</output></div>
+            <input type="range" id="sTrades" min="1" max="8" step="1" value="3">
+          </div>
+          <div class="try-row"><button class="btn" type="button" id="launchBtn">Launch</button></div>
+          <div class="trade-card" id="tradeCard" data-on="false">
+            <div class="block-head" style="margin-bottom:6px"><b class="small">First trade</b><span class="badge example">EXAMPLE</span></div>
+            <p class="trade-line" id="tLine"></p>
+            <div class="trade-meta" id="tMeta"></div>
+            <p class="small muted" style="margin-top:10px">The real one takes about 30 seconds from here to a trade on QIE mainnet. <a href="#about">Play money only.</a></p>
+            <div class="try-row"><a class="btn accent sm" aria-disabled="true" href="#home" data-soon title="App opens ~Nov 25">App opens ~Nov 25</a><button class="btn ghost sm" type="button" id="tryAgain">Try another sentence</button></div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="band alt" id="how" aria-labelledby="howH">
+    <div class="wrap">
+      <div class="section-head"><div><h2 id="howH">From one sentence to a record anyone can check</h2><p class="lede">Six steps. Tap any of them, or let it play.</p></div><button class="btn ghost sm" type="button" id="howPlay" aria-pressed="true">Pause</button></div>
+      <ol class="how" id="howSteps"></ol>
+      <div class="how-track" aria-hidden="true"><i id="howBar"></i></div>
+      <div class="how-detail">
+        <div class="card" id="howCard" aria-live="polite"></div>
+        <div class="card flat" id="howVis" aria-hidden="true" style="background:var(--paper)"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="coach" aria-labelledby="coachH">
+    <div class="wrap">
+      <div class="section-head"><div><h2 id="coachH">Your AI trader. Your rules. Your fault.</h2><p class="lede">You don't write code. You tell it when it messed up, and once a season it proposes a better version of itself. You approve, and that version is committed on QIE.</p></div><span class="badge example">EXAMPLE walkthrough</span></div>
+      <div class="coach">
+        <ol class="stepper" id="coachSteps">
+          <li data-s="now"><span class="d">1</span>It makes a bad call</li>
+          <li><span class="d">2</span>You coach it: "too risky"</li>
+          <li><span class="d">3</span>It asks before a big move</li>
+          <li><span class="d">4</span>Season ends: it proposes v2</li>
+          <li><span class="d">5</span>You approve. v2 is on-chain</li>
+        </ol>
+        <div class="stage" id="coachStage" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band alt" id="proofHome" aria-labelledby="proofH">
+    <div class="wrap">
+      <div class="section-head"><div><h2 id="proofH">No fake screenshots. Every trade on-chain.</h2><p class="lede">Prices are read by the contract from QIE's oracle at the moment of the trade. Nobody types them in, us included.</p></div><a class="btn ghost sm" href="#proof">See all the proof</a></div>
+      <div class="liveproof" data-liveproof="home"></div>
+    </div>
+  </section>
+
+  <section class="band why" aria-labelledby="whyH">
+    <div class="wrap">
+      <div class="section-head"><div><h2 id="whyH">Why a blockchain? Three reasons you can test</h2></div></div>
+      <div class="grid g3">
+        <article class="card"><div class="num">1</div><h3 style="margin-top:10px">Anyone can check, not just us</h3><p class="muted">Every share card has a Verify on QIE button. A screenshot can be faked. The trade tx, the oracle round it was priced against and the version hash can't.</p><a href="#card" style="display:inline-block;margin-top:12px">Flip a card →</a></article>
+        <article class="card"><div class="num">2</div><h3 style="margin-top:10px">Other apps and agents can read the record</h3><p class="muted">A public read API and a BotFolio MCP server let any app or AI agent fetch a bot's track record straight from chain data.</p><a href="#developers" style="display:inline-block;margin-top:12px">Watch an agent check a bot →</a></article>
+        <article class="card"><div class="num">3</div><h3 style="margin-top:10px">The record outlives the app</h3><p class="muted">The bot, its trades and its versions belong to the owner's address. If BotFolio shut down tomorrow, the history stays on QIE and the replay script still recomputes it.</p><a href="#proof" style="display:inline-block;margin-top:12px">How replay works →</a></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="band alt moments" aria-labelledby="momH">
+    <div class="wrap">
+      <div class="section-head"><div><h2 id="momH">Something happens every day</h2><p class="lede">Four calls a day, and your bot has an opinion every time, even when it does nothing.</p></div></div>
+      <div class="grid g4">
+        <article class="card"><span class="badge example" style="align-self:start">EXAMPLE</span><p class="q">"Gold Guru wants 35% in Gold. Allow?"</p><p class="muted small">Big moves wait for you. Allow it and your own signature is the trade. Ignore it for 2 hours and the bot does a smaller, safe version.</p></article>
+        <article class="card"><span class="badge example" style="align-self:start">EXAMPLE</span><p class="q">You vs your bot: BTC up or down by 21:00?</p><p class="muted small">Daily Call. You pick, then see the bot's pick. QIE's oracle settles it. Bragging rights only.</p></article>
+        <article class="card"><span class="badge example" style="align-self:start">EXAMPLE</span><p class="q">"AlphaWolf is sulking in cash after Tuesday's gold mess."</p><p class="muted small">Even a hold comes with a reason in the bot's own voice. Losses come with a roast.</p></article>
+        <article class="card"><span class="badge example" style="align-self:start">EXAMPLE</span><p class="q">"My bot vs yours, this season."</p><p class="muted small">Send a challenge link. Your friend makes a bot in 30 seconds and the season decides. No stakes.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" aria-labelledby="statusH">
+    <div class="wrap">
+      <div class="section-head"><div><h2 id="statusH">Where we actually are</h2><p class="lede">Built during QIE Hackathon 3.0, Nov 20 to Nov 30. Updated Nov 20.</p></div></div>
+      <div class="status">
+        <div class="card"><h3>What works today</h3>
+          <ul class="checks">
+            <li><span class="ic ok">✓</span><span>QIE mainnet and its 5 oracle feeds checked live on Nov 19 (chain 1990, 8-decimal feeds, update gaps measured).</span></li>
+            <li><span class="ic ok">✓</span><span>Full product and contract spec, with every unverified item marked.</span></li>
+            <li><span class="ic ok">✓</span><span>Public repo with the build plan and contributor rules.</span></li>
+            <li><span class="ic ok">✓</span><span>This website, with example data clearly marked.</span></li>
+          </ul>
+        </div>
+        <div class="card"><h3>What's next</h3>
+          <ol class="timeline">
+            <li><span class="when">~Nov 22</span><span>7 contracts deployed and verified on QIE mainnet</span></li>
+            <li><span class="when">~Nov 25</span><span>App opens. Soft launch with 20 people</span></li>
+            <li><span class="when">Nov 26</span><span>Season 1 opens</span></li>
+            <li><span class="when">Nov 27</span><span>Season 1 closes 21:30 IST. First v2 approvals</span></li>
+            <li><span class="when">Later</span><span>QIE Wallet connect, .qie names, QIE Wallet MCP, QIE Pass badge <span class="badge coming">COMING</span></span></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band ink" aria-labelledby="nextH">
+    <div class="wrap">
+      <h2 id="nextH" style="margin-bottom:24px">Pick your next step</h2>
+      <div class="next">
+        <a href="#home" data-go-try><span class="t">Try it</span><span class="s">Make an example bot above. The real app opens ~Nov 25.</span></a>
+        <a href="#judges"><span class="t">Watch the demo</span><span class="s">Video lands after Season 1 <span class="ph-text">[DEMO VIDEO URL]</span></span></a>
+        <a href="#proof"><span class="t">See the proof</span><span class="s">Contracts, oracle feeds, replay.</span></a>
+        <a href="https://github.com/DiveshK007/BotFolio" rel="noopener"><span class="t">Read the code</span><span class="s">github.com/DiveshK007/BotFolio</span></a>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ============ JUDGES ============ -->
+<div class="view" id="v-judges" data-view="judges">
+  <div class="tourbar">
+    <div class="wrap">
+      <button class="btn accent sm" id="tourPlay" type="button">Play the 90-second tour</button>
+      <div class="tour-steps" id="tourSteps" role="group" aria-label="Tour steps"></div>
+      <div class="tour-prog" aria-hidden="true"><i id="tourProg"></i></div>
+    </div>
+  </div>
+
+  <section class="tour-sec" id="t1"><div class="wrap grid g2" style="align-items:center">
+    <div class="stack"><p class="kicker"><b>1</b>What it is</p><h2>Anyone raises an AI trader in one sentence, coaches it, and QIE keeps score.</h2><p class="lede">BotFolio, built for QIE Hackathon 3.0 (Mainnet Edition), AI + Autonomous Agents track. Bots paper-trade BTC, ETH, SOL, XRP and Gold with play money, 4 times a day.</p>
+      <p><b>What's new:</b> AI paper trading exists already. What doesn't: you coach your bot, and every version of its brain is committed on-chain, so the record shows how it learned from you.</p></div>
+    <div class="card" style="background:var(--paper)"><p class="small muted" style="margin-bottom:8px">The hero moment <span class="badge example">EXAMPLE</span></p><p style="font:800 clamp(22px,2.6vw,30px)/1.15 var(--f-display)">You said "too risky" 3× → max per coin 40% → 25%</p><p class="mono small muted" style="margin-top:12px">config hash committed on QIE</p></div>
+  </div></section>
+
+  <section class="tour-sec" id="t2"><div class="wrap stack">
+    <p class="kicker"><b>2</b>Live mainnet proof</p><h2>Real contracts on QIE mainnet, deploying ~Nov 22</h2>
+    <p class="lede">The 7 contracts deploy and get verified around Nov 22. Until then, this panel says so rather than showing anything made up.</p>
+    <div data-contracts="judges"></div>
+    <div class="liveproof" data-liveproof="judges"></div>
+  </div></section>
+
+  <section class="tour-sec" id="t3"><div class="wrap stack">
+    <p class="kicker"><b>3</b>QIE pieces used, and where</p><h2>Oracles at the core. The rest labelled honestly.</h2>
+    <div class="comp-list" id="compList"></div>
+  </div></section>
+
+  <section class="tour-sec" id="t4"><div class="wrap stack">
+    <p class="kicker"><b>4</b>User-signed traction</p><h2>We count people by who signed, not by how many txs our bots sent</h2>
+    <p class="lede">User-signed means bots created, coaching corrections, v2 approvals, approved big moves, daily calls and challenges, counted by the signer's address. Runner and settlement txs are shown separately.</p>
+    <div data-stats="judges"></div>
+  </div></section>
+
+  <section class="tour-sec" id="t5"><div class="wrap stack">
+    <p class="kicker"><b>5</b>Why blockchain</p><h2>Because a screenshot proves nothing</h2>
+    <div class="grid g3">
+      <div class="card"><h4>Anyone can check</h4><p class="muted small">Verify on QIE on every card: tx, oracle round, version hash.</p></div>
+      <div class="card"><h4>Agents can read it</h4><p class="muted small">Public API plus a read-only BotFolio MCP server.</p></div>
+      <div class="card"><h4>It outlives us</h4><p class="muted small">History stays on QIE; the replay script recomputes it.</p></div>
+    </div>
+  </div></section>
+
+  <section class="tour-sec" id="t6"><div class="wrap stack">
+    <p class="kicker"><b>6</b>The one sentence to remember</p>
+    <p class="remember" id="rememberText">Raise an AI trader in one sentence, coach it every season, and let QIE keep score.</p>
+    <div class="row"><button class="btn" type="button" data-copy="#rememberText">Copy the sentence</button>
+      <a class="btn ghost" href="https://github.com/DiveshK007/BotFolio" rel="noopener"><svg width="18" height="18"><use href="#i-github"/></svg>Repo</a>
+      <a class="btn ghost" href="#proof">Proof page</a></div>
+    <div class="poster" style="max-width:560px"><div><div class="play"><svg width="26" height="26"><use href="#i-play"/></svg></div><b>Demo video, 2 minutes</b><p class="small muted">Recorded on real Season 1 data, after Nov 27. <span class="ph-text">[DEMO VIDEO URL]</span></p></div></div>
+  </div></section>
+</div>
+
+<!-- ============ PROOF ============ -->
+<div class="view" id="v-proof" data-view="proof">
+  <section class="band tight enter"><div class="wrap stack">
+    <h1>Don't trust us. Check.</h1>
+    <p class="lede">Everything a bot does that matters is on QIE mainnet. This page lists the contracts, the price feeds, what the oracle can and can't promise, and how to recompute a whole season yourself.</p>
+    <div class="row" role="group" aria-label="Jump to section">
+      <button class="chip" data-jump="pc">Contracts</button><button class="chip" data-jump="pf">Price feeds</button><button class="chip" data-jump="pcav">Oracle caveat</button><button class="chip" data-jump="stats">Activity</button><button class="chip" data-jump="ptr">Trust score</button><button class="chip" data-jump="prp">Replay a season</button>
+    </div>
+  </div></section>
+
+  <section class="band tight" id="pc"><div class="wrap">
+    <div class="section-head"><div><h2>7 contracts, all verified on the explorer</h2><p class="lede">Solidity 0.8.24, OpenZeppelin 5.0.2. Feed addresses are fixed at deploy, with no setter, so prices can't be swapped.</p></div></div>
+    <div data-contracts="proof"></div>
+  </div></section>
+
+  <section class="band tight alt" id="pf"><div class="wrap">
+    <div class="section-head"><div><h2>Five price feeds, read inside the contract</h2><p class="lede">QIE's oracle feeds, read with <span class="mono">latestRoundData()</span> at trade time. Crypto is quoted in USDT, gold in USD, all with 8 decimals.</p></div><span class="badge verified">ADDRESSES VERIFIED NOV 19</span></div>
+    <div class="scroll"><table id="feedTable"></table></div>
+    <p class="small muted" style="margin-top:10px">QIE and BNB feeds exist but are switched off in BotFolio. Source: SPEC §0.2.</p>
+  </div></section>
+
+  <section class="band tight" id="pcav"><div class="wrap grid g2" style="align-items:start">
+    <div class="stack"><h2>What the oracle can and can't promise</h2>
+      <p>All five feeds are updated by one QIE-operated wallet. So our wording is exact: trades are <b>settled against QIE's official mainnet oracle</b>. We don't call that anything grander.</p>
+      <p>Feeds sometimes go quiet. On Nov 19 we measured crypto gaps of up to 144 minutes and gold gaps of over 6 hours. When a price is too old, the bot holds that asset and says so ("Gold market quiet — holding"). It never trades on a stale price.</p></div>
+    <div class="card stack"><h4>How price age is shown</h4>
+      <p><span class="age">BTC $63,922.95 · round 50887 · 1m old</span></p>
+      <p><span class="age amber">▲ Gold price 3h old</span></p>
+      <p><span class="age grey">Holding — price too old</span></p>
+      <p class="small muted">Under 60 min: muted. 60 min or more: amber. Past the limit (30 min crypto, 6 h gold): grey, no trade. <span class="badge example">EXAMPLE values</span></p></div>
+  </div></section>
+
+  <section class="band tight alt" id="stats"><div class="wrap">
+    <div class="section-head"><div><h2>Activity: people first, robots second</h2><p class="lede">User-signed txs are counted by the signer's address. System txs (runner batches, settlements, season roots) are listed apart and never added to user numbers.</p></div></div>
+    <div data-stats="proof"></div>
+    <div style="margin-top:24px" class="liveproof" data-liveproof="proof"></div>
+  </div></section>
+
+  <section class="band tight" id="ptr"><div class="wrap">
+    <div class="section-head"><div><h2>Trust score: 0 to 1000, four public rules</h2><p class="lede">Rules version <span class="mono">trust-v1</span>, published on-chain. Each factor is worth 250. New bots are marked "new" until they have 8 trades and one finished season (20 trades from Season 6).</p></div></div>
+    <div class="scroll"><table>
+      <thead><tr><th>Factor</th><th>What it measures</th><th>Formula</th></tr></thead>
+      <tbody>
+        <tr><td><b>Follows its rules</b></td><td>Proposed actions that pass the risk gate unclipped</td><td class="mono small">250 × (1 − clipped / proposed)</td></tr>
+        <tr><td><b>Drawdown control</b></td><td>Small peak-to-trough drops</td><td class="mono small">250 × max(0, 1 − maxDD / 0.30)</td></tr>
+        <tr><td><b>Consistency</b></td><td>Calm daily returns</td><td class="mono small">250 × max(0, 1 − σ_daily / 0.04)</td></tr>
+        <tr><td><b>Explains its trades</b></td><td>Reasons that name the asset and match the action</td><td class="mono small">250 × valid / executed</td></tr>
+      </tbody></table></div>
+  </div></section>
+
+  <section class="band tight alt" id="prp"><div class="wrap grid g2" style="align-items:start">
+    <div class="stack"><h2>Replay a season yourself</h2>
+      <p>Each season gets a replay file with every decision, the logged AI output, the risk-gate result, oracle round ids and tx hashes. Its Merkle root is committed on QIE at season close.</p>
+      <p>The honest claim: AI output isn't guaranteed to repeat, so we log it. <b>Given the logged output, everything after it is deterministic and recomputable.</b></p>
+      <p class="small muted">Season 1 closes Nov 27, 21:30 IST. First replay file after that. <span class="ph-text">[REPLAY FILE URL]</span></p></div>
+    <div class="code"><button class="copy" type="button" data-copy-code>Copy</button><pre><span class="c"># re-runs the risk gate, re-reads oracle rounds from QIE,</span>
+<span class="c"># recomputes balances, marks, boards and trust scores,</span>
+<span class="c"># and checks the root against the on-chain record</span>
+npx botfolio-replay season-1.jsonl</pre></div>
+  </div></section>
+</div>
+
+<!-- ============ LEADERBOARDS ============ -->
+<div class="view" id="v-leaderboards" data-view="leaderboards">
+  <section class="band tight enter"><div class="wrap">
+    <div class="section-head"><div><h1>Leaderboards</h1><p class="lede">Every bot starts with the same ₹1,00,000, so the numbers are comparable. Recognition only.</p></div>
+      <div class="row"><label class="sr" for="seasonSel">Season</label><select class="select" id="seasonSel"><option value="1">Season 1 · Nov 26–27</option><option value="2">Season 2 · Nov 28–29</option></select><span class="badge example">EXAMPLE DATA</span></div></div>
+    <div class="tabs" role="tablist" aria-label="Boards" id="lbTabs">
+      <button role="tab" id="tab-returns" aria-controls="lbPanel" aria-selected="true" data-board="returns">Top Returns</button>
+      <button role="tab" id="tab-risk" aria-controls="lbPanel" aria-selected="false" tabindex="-1" data-board="risk">Best Risk-Adjusted</button>
+      <button role="tab" id="tab-trusted" aria-controls="lbPanel" aria-selected="false" tabindex="-1" data-board="trusted">Most Trusted</button>
+      <button role="tab" id="tab-coach" aria-controls="lbPanel" aria-selected="false" tabindex="-1" data-board="coach">Coach vs Bot</button>
+    </div>
+    <div id="lbPanel" role="tabpanel" aria-labelledby="tab-returns" tabindex="0"></div>
+  </div></section>
+</div>
+
+<!-- ============ BOT ============ -->
+<div class="view" id="v-bot" data-view="bot">
+  <section class="band tight enter"><div class="wrap" id="botRoot"></div></section>
+</div>
+
+<!-- ============ CARD ============ -->
+<div class="view" id="v-card" data-view="card">
+  <section class="band tight enter"><div class="wrap grid g2" style="align-items:center">
+    <div class="stack">
+      <span class="badge example" style="align-self:start">EXAMPLE CARD</span>
+      <h1>A friend sent you this. Is it real?</h1>
+      <p class="lede">Every BotFolio card carries its receipts. Flip it to see the transactions it cites and what each one proves.</p>
+      <div class="row" role="group" aria-label="Card type"><button class="chip" aria-pressed="true" data-kind="roast">Roast</button><button class="chip" aria-pressed="false" data-kind="evolution">Evolution</button><button class="chip" aria-pressed="false" data-kind="trade">First trade</button></div>
+      <div class="row"><button class="btn accent" id="flipBtn" type="button" aria-controls="flip" aria-expanded="false"><svg width="18" height="18"><use href="#i-eye"/></svg>Verify on QIE</button><button class="btn ghost" type="button" data-copylink>Copy link</button></div>
+      <a class="btn sun" href="#home" data-go-try style="align-self:start">Make a bot that beats mine</a>
+    </div>
+    <div class="flip" id="flip" data-flipped="false">
+      <div class="flip-inner">
+        <div class="face-f" id="cardFront"></div>
+        <div class="face-b" id="cardBack" aria-hidden="true"></div>
+      </div>
+    </div>
+  </div></section>
+</div>
+
+<!-- ============ DEVELOPERS ============ -->
+<div class="view" id="v-developers" data-view="developers">
+  <section class="band tight enter"><div class="wrap stack">
+    <h1>Read any bot's record from your own app or agent</h1>
+    <p class="lede">A public JSON API and a read-only MCP server. No keys, no writes, 60 requests a minute per IP. Both go live with the app <span class="badge coming">COMING ~NOV 25</span></p>
+  </div></section>
+  <section class="band tight alt"><div class="wrap grid g2" style="align-items:start">
+    <div class="stack">
+      <h2>Ask an agent: "Is AlphaWolf actually good?"</h2>
+      <p class="muted">The agent calls <span class="mono">get_bot_record</span>, then <span class="mono">verify_trade</span> to re-read a trade and its oracle round from QIE, and answers from chain data.</p>
+      <div class="row"><button class="btn accent" id="agentPlay" type="button"><svg width="16" height="16"><use href="#i-play"/></svg>Play the conversation</button><span class="badge example">EXAMPLE replay</span></div>
+    </div>
+    <div class="card"><div class="chat" id="chat" aria-live="polite"><p class="muted small">Press play to watch an example conversation.</p></div></div>
+  </div></section>
+  <section class="band tight"><div class="wrap grid g2" style="align-items:start">
+    <div class="stack">
+      <h3>Public record API</h3>
+      <p class="muted">Bot, versions with config hashes, trades with tx hashes and oracle round ids, season results, trust score with its Merkle proof.</p>
+      <div class="code"><button class="copy" type="button" data-copy-code>Copy</button><pre>curl <span class="ph-text">[APP URL]</span>/api/v1/bots/7/record</pre></div>
+      <div class="code" style="max-height:420px;overflow:auto"><button class="copy" type="button" data-copy-code>Copy</button><pre id="recordJson"></pre></div>
+      <p class="small muted">Response shape follows SPEC §3. Values above are EXAMPLE.</p>
+    </div>
+    <div class="stack">
+      <h3>BotFolio MCP server</h3>
+      <p class="muted">Streamable HTTP at <span class="mono">/mcp</span> on our service. Read-only.</p>
+      <div class="scroll"><table style="min-width:0"><thead><tr><th>Tool</th><th>Returns</th></tr></thead><tbody>
+        <tr><td class="mono">get_bot_record(bot_id)</td><td>Same payload as the API</td></tr>
+        <tr><td class="mono">get_leaderboard(board, season?)</td><td>Top 20 for a board</td></tr>
+        <tr><td class="mono">verify_trade(tx_hash)</td><td><span class="mono small">{valid, price, roundId, matchesOracle}</span></td></tr>
+      </tbody></table></div>
+      <div class="code"><button class="copy" type="button" data-copy-code>Copy</button><pre><span class="c">// MCP client config (example)</span>
+{ <span class="k">"mcpServers"</span>: { <span class="k">"botfolio"</span>: {
+  <span class="k">"url"</span>: <span class="s">"[SERVICE URL]/mcp"</span> } } }</pre></div>
+    </div>
+  </div></section>
+</div>
+
+<!-- ============ ABOUT ============ -->
+<div class="view" id="v-about" data-view="about">
+  <section class="band tight enter"><div class="wrap stack">
+    <h1>Play money. Not investment advice. No prizes.</h1>
+    <p class="lede">BotFolio is a game about raising and coaching AI traders. Here's what that does and doesn't mean, in plain words.</p>
+  </div></section>
+  <section class="band tight"><div class="wrap grid g3">
+    <article class="card stack"><p class="rule-big">Play money</p><p>Every bot gets ₹1,00,000 of play money. It isn't real, can't be topped up, and can't be cashed out. There's no token, no NFT, no entry fee and nothing to buy.</p></article>
+    <article class="card stack"><p class="rule-big">Not advice</p><p>Bots are AI characters making pretend trades. Nothing they say is a recommendation to buy or sell anything, and we never link to places that sell real assets.</p></article>
+    <article class="card stack"><p class="rule-big">No prizes</p><p>Leaderboards and seasons are for bragging rights. A "Bot of the Week" shoutout is the whole trophy cabinet. No stakes on challenges or daily calls.</p></article>
+  </div></section>
+  <section class="band tight alt"><div class="wrap grid g2" style="align-items:start">
+    <div class="stack"><h2>What we store</h2><p>Your wallet address and your login id. That's it. No phone number or email, unless you choose email login.</p>
+      <h2 style="margin-top:28px">What "on-chain" means here</h2><p>Your bot's creation, its trades, your coaching and its versions are recorded on QIE mainnet so anyone can check them. Gas is paid by BotFolio, so you never need crypto to play.</p></div>
+    <div class="stack"><h2>Questions</h2>
+      <details class="card"><summary><b>Why does the ₹ number look exact?</b></summary><p class="muted" style="margin-top:8px">On-chain values are in play USDT. We show ₹ as 1,00,000 × current value ÷ starting value, so it's exact for your bot. Any USDT-to-₹ figure in a tooltip is approximate.</p></details>
+      <details class="card"><summary><b>Who sets the prices?</b></summary><p class="muted" style="margin-top:8px">QIE's official mainnet oracle. The contract reads it at the moment of each trade. We never pass a price in.</p></details>
+      <details class="card"><summary><b>Can I lose real money?</b></summary><p class="muted" style="margin-top:8px">No. There is no real money anywhere in BotFolio.</p></details>
+      <p class="small muted">Contact: <span class="ph-text">[CONTACT EMAIL]</span></p>
+    </div>
+  </div></section>
+</div>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="stack-s"><a class="brand" href="#home"><span class="bothead" data-head="brandf" style="width:28px;height:28px"></span>BotFolio</a><p class="muted" style="max-width:40ch">Raise an AI trader in one sentence, coach it every season, and let QIE keep score.</p><p class="muted small">Built for QIE Hackathon 3.0 · AI + Autonomous Agents track.</p></div>
+      <div><b>Product</b><ul><li><a href="#home">Home</a></li><li><a href="#leaderboards">Leaderboards</a></li><li><a href="#bot">Example bot</a></li><li><a href="#card">Example card</a></li></ul></div>
+      <div><b>Proof and code</b><ul><li><a href="#proof">Proof and activity</a></li><li><a href="#judges">For judges</a></li><li><a href="#developers">Developers</a></li><li><a href="https://github.com/DiveshK007/BotFolio" rel="noopener">GitHub</a></li></ul></div>
+    </div>
+    <div class="legal"><strong>Play money. Not investment advice. No prizes.</strong><span class="muted">Settled against QIE's official mainnet oracle.</span></div>
+  </div>
+</footer>
+
+<div class="proto" id="proto" data-open="false">
+  <div class="proto-panel" id="protoPanel" role="dialog" aria-label="Prototype controls">
+    <p class="small" style="margin-bottom:10px"><b>Prototype controls.</b> For design review only; not in the real site.</p>
+    <fieldset><legend>Data state</legend>
+      <label><input type="radio" name="dmode" value="example" checked> Example data</label>
+      <label><input type="radio" name="dmode" value="notlive"> Not live yet (today)</label>
+      <label><input type="radio" name="dmode" value="loading"> Loading</label>
+      <label><input type="radio" name="dmode" value="error"> API down</label>
+    </fieldset>
+    <fieldset><legend>Gold price</legend>
+      <label><input type="radio" name="gold" value="amber" checked> 3h old (amber)</label>
+      <label><input type="radio" name="gold" value="fresh"> Fresh</label>
+      <label><input type="radio" name="gold" value="stale"> Too old (holding)</label>
+    </fieldset>
+    <fieldset><legend>Bot page</legend>
+      <label><input type="radio" name="botstate" value="ok" checked> Found</label>
+      <label><input type="radio" name="botstate" value="missing"> Not found</label>
+    </fieldset>
+    <fieldset><legend>Motion</legend><label><input type="checkbox" id="rmToggle"> Reduce motion</label></fieldset>
+  </div>
+  <button type="button" id="protoBtn" aria-expanded="false" aria-controls="protoPanel">Review states</button>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+{
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const inr = n => '₹' + Math.round(n).toLocaleString('en-IN');
+const pct = (n, d = 2) => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n).toFixed(d) + '%';
+const arrow = n => n > 0 ? '▲' : n < 0 ? '▼' : '•';
+const cls = n => n > 0 ? 'up' : n < 0 ? 'down' : 'muted';
+const usd = (v, d = 2) => '$' + v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const short = h => h.slice(0, 6) + '…' + h.slice(-4);
+const EXPLORER = 'https://mainnet.qie.digital';
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'reduce';
+const ico = id => `<svg aria-hidden="true"><use href="#i-${id}"/></svg>`;
+
+/* state */
+const S = { mode: 'example', gold: 'amber', botstate: 'ok', previewStats: false };
+
+/* ---------- data (EXAMPLE unless marked) ---------- */
+// Real: feed addresses + limits, SPEC §0.2 / packages/shared/assets.ts (verified Nov 19 2026)
+const FEEDS = [
+  { id: 'BTC', label: 'Bitcoin', quote: 'USDT', feed: '0x9E596d809a20A272c788726f592c0d1629755440', maxAge: '30 min' },
+  { id: 'ETH', label: 'Ethereum', quote: 'USDT', feed: '0x4bb7012Fbc79fE4Ae9B664228977b442b385500d', maxAge: '30 min' },
+  { id: 'SOL', label: 'Solana', quote: 'USDT', feed: '0xe86999c8e6C8eeF71bebd35286bCa674E0AD7b21', maxAge: '30 min' },
+  { id: 'XRP', label: 'XRP', quote: 'USDT', feed: '0x804582B1f8Fea73919e7c737115009f668f97528', maxAge: '30 min' },
+  { id: 'GOLD', label: 'Gold', quote: 'USD', feed: '0x9aD0199a67588ee293187d26bA1BE61cb07A214c', maxAge: '6 h' }
+];
+// EXAMPLE prices. BTC round 50887 and Gold round 14811 come from SPEC examples; the rest are made up.
+const PRICES = {
+  BTC: { p: 63922.95, round: 50887, ageMin: 1 },
+  ETH: { p: 3412.18, round: 40219, ageMin: 8 },
+  SOL: { p: 148.62, round: 31207, ageMin: 12 },
+  XRP: { p: 2.1834, round: 28844, ageMin: 4, d: 4 },
+  GOLD: { p: 3730.84, round: 14811, ageMin: 180 }
+};
+const goldAge = () => S.gold === 'fresh' ? 22 : S.gold === 'stale' ? 410 : 180;
+const ageOf = a => a === 'GOLD' ? goldAge() : PRICES[a].ageMin;
+const maxAgeMin = a => a === 'GOLD' ? 360 : 30;
+function ageLabel(a) {
+  const m = ageOf(a);
+  if (m > maxAgeMin(a)) return `<span class="age grey">Holding — price too old</span>`;
+  if (m >= 60) return `<span class="age amber">▲ ${a === 'GOLD' ? 'Gold price' : a + ' price'} ${Math.floor(m / 60)}h old</span>`;
+  return `<span class="age">${m}m old</span>`;
+}
+const priceStr = a => usd(PRICES[a].p, PRICES[a].d || 2);
+
+// EXAMPLE tx hashes: deliberately patterned so nobody mistakes them for real ones.
+const exHash = n => '0x' + 'e0a1'.padEnd(60, '0') + String(n).padStart(4, '0');
+const exCfg = n => '0x' + 'c0f1'.padEnd(60, '0') + String(n).padStart(4, '0');
+const exAddr = n => '0x5eed' + '0'.repeat(32) + String(n).padStart(4, '0');
+function txChip(hash, label) {
+  // EXAMPLE hashes never link out. Real hashes (when live) link to the explorer.
+  if (S.mode === 'live') return `<a class="tx" href="${EXPLORER}/tx/${hash}" rel="noopener">${label || short(hash)} ${ico('ext')}</a>`;
+  return `<span class="tx" aria-disabled="true" tabindex="0" title="Example hash. Links to the explorer once live.">${label || short(hash)}</span>`;
+}
+
+const BOTS = {
+  12: { id: 12, name: 'Gold Guru', emoji: '🪙', color: '#E0A400', owner: exAddr(12), persona: 'Careful like my dad, loves gold', line: 'Patient, cautious and deeply suspicious of anything that moves fast.', value: 103420, chg: 3.42, trust: 684, f: [238, 201, 125, 120], trades: 9, version: 2, created: 'Nov 26' },
+  7: { id: 7, name: 'AlphaWolf', emoji: '🐺', color: '#5B6475', owner: exAddr(7), persona: 'Aggressive, chases whatever is moving', line: 'Loud, fast and wrong a little too often.', value: 87600, chg: -12.4, trust: 312, f: [118, 46, 125, 23], trades: 14, version: 1, created: 'Nov 26' },
+  21: { id: 21, name: 'Dip Doctor', emoji: '🩺', color: '#0E9F8E', owner: exAddr(21), value: 105100, chg: 5.1, trust: 540, trades: 11, sortino: 0.41 },
+  33: { id: 33, name: 'Slow Lane', emoji: '🐢', color: '#3E8E41', owner: exAddr(33), value: 100600, chg: 0.6, trust: 731, trades: 10 },
+  41: { id: 41, name: 'HODL Hippo', emoji: '🦛', color: '#8E6CCB', owner: exAddr(41), value: 101200, chg: 1.2, trust: 598, trades: 4 },
+  52: { id: 52, name: 'XRP Express', emoji: '🚄', color: '#2B6CD9', owner: exAddr(52), value: 99200, chg: -0.8, trust: 455, trades: 8 },
+  58: { id: 58, name: 'Chai Break', emoji: '☕', color: '#B0643A', owner: exAddr(58), value: 102300, chg: 2.3, trust: 0, trades: 3 },
+  1: { id: 1, name: 'Steady Sam', emoji: '⚖️', color: '#6B7280', house: true, value: 101850, chg: 1.85, trust: 702, trades: 5, rule: 'Equal 20% in all 5 assets' },
+  2: { id: 2, name: 'Gold Granny', emoji: '👵', color: '#C9A227', house: true, value: 100950, chg: 0.95, trust: 690, trades: 2, rule: '60% Gold, 40% cash' },
+  3: { id: 3, name: 'Momentum Max', emoji: '🚀', color: '#D9480F', house: true, value: 104200, chg: 4.2, trust: 610, trades: 12, rule: 'Holds whatever rose 2% in 24 h' }
+};
+const COACH_SCORES = [{ id: 12, you: 2, bot: 0 }, { id: 33, you: 2, bot: 1 }, { id: 21, you: 1, bot: 1 }, { id: 7, you: 1, bot: 2 }];
+
+/* ---------- bot head (original mascot) ---------- */
+function botHead(color = '#2B50FF', emoji = '', opts = {}) {
+  const mood = opts.mood || 'smile';
+  const mouth = mood === 'sad' ? 'M38 72 Q50 64 62 72' : mood === 'o' ? 'M46 70 a4 4 0 1 0 8 0 a4 4 0 1 0 -8 0' : 'M38 66 Q50 76 62 66';
+  return `<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+    <line x1="50" y1="14" x2="50" y2="4" stroke="${color}" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="50" cy="5" r="5" fill="${color}"/>
+    <rect x="8" y="16" width="84" height="76" rx="24" fill="${color}"/>
+    <rect x="8" y="16" width="84" height="76" rx="24" fill="url(#none)" stroke="rgba(0,0,0,.18)" stroke-width="2"/>
+    <rect x="18" y="28" width="64" height="52" rx="16" fill="rgba(255,255,255,.18)"/>
+    <g class="eyes">
+      <circle cx="35" cy="48" r="11" class="eye"/><circle cx="65" cy="48" r="11" class="eye"/>
+      <circle cx="35" cy="48" r="5.5" class="pupil" data-eye="1"/><circle cx="65" cy="48" r="5.5" class="pupil" data-eye="1"/>
+    </g>
+    <path d="${mouth}" fill="none" stroke="#14161C" stroke-width="4.5" stroke-linecap="round"/>
+  </svg>${emoji ? `<span class="emo">${emoji}</span>` : ''}`;
+}
+function mountHead(el, color, emoji, opts) { el.innerHTML = botHead(color, emoji, opts); }
+const avatar = b => `<span class="bothead" style="width:40px;height:40px">${botHead(b.color, '')}</span>`;
+
+/* ---------- theme ---------- */
+const root = document.documentElement;
+function setTheme(t) {
+  root.dataset.theme = t;
+  const btn = $('#themeBtn');
+  btn.innerHTML = t === 'dark' ? `<svg><use href="#i-sun"/></svg>` : `<svg><use href="#i-moon"/></svg>`;
+  btn.setAttribute('aria-label', t === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+  try { localStorage.setItem('bf-theme', t); } catch (e) {}
+}
+let saved = null; try { saved = localStorage.getItem('bf-theme'); } catch (e) {}
+const qs = new URLSearchParams(location.search);
+setTheme(qs.get('theme') || saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+$('#themeBtn').addEventListener('click', () => setTheme(root.dataset.theme === 'dark' ? 'light' : 'dark'));
+
+/* ---------- toast + copy ---------- */
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.dataset.on = 'true'; clearTimeout(toastT); toastT = setTimeout(() => t.dataset.on = 'false', 2200); }
+async function copyText(txt) {
+  try { await navigator.clipboard.writeText(txt); toast('Copied'); }
+  catch (e) { toast('Copy blocked here. Select the text and copy it.'); }
+}
+document.addEventListener('click', e => {
+  const c = e.target.closest('[data-copy]'); if (c) copyText($(c.dataset.copy).textContent.trim());
+  const cc = e.target.closest('[data-copy-code]'); if (cc) copyText(cc.parentElement.querySelector('pre').textContent.trim());
+  const cl = e.target.closest('[data-copylink]'); if (cl) copyText(location.href);
+  const soon = e.target.closest('[data-soon]'); if (soon) { e.preventDefault(); toast('The app opens around Nov 25. This is the website preview.'); }
+  const tryBtn = e.target.closest('[data-go-try]'); if (tryBtn) { e.preventDefault(); go('home'); setTimeout(() => { $('#tryForm').scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'center' }); $('#tryInput').focus({ preventScroll: true }); }, 30); }
+  const j = e.target.closest('[data-jump]'); if (j) document.getElementById(j.dataset.jump).scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth' });
+});
+
+/* ---------- router (plain #name hashes only) ---------- */
+const VIEWS = ['home', 'judges', 'proof', 'leaderboards', 'bot', 'card', 'developers', 'about'];
+const TITLES = {
+  home: 'BotFolio · Raise an AI trader in one sentence', judges: 'BotFolio · For judges: the 90-second tour', proof: 'BotFolio · Proof and activity on QIE mainnet',
+  leaderboards: 'BotFolio · Leaderboards', bot: 'BotFolio · Gold Guru (example bot)', card: 'BotFolio · Verify a card', developers: 'BotFolio · Developers: API and MCP', about: 'BotFolio · Play money. Not investment advice. No prizes.'
+};
+function go(v) { if (location.hash.slice(1) !== v) location.hash = v; else route(); }
+function route() {
+  let h = location.hash.slice(1) || 'home';
+  let jump = null;
+  if (h === 'stats') { h = 'proof'; jump = 'stats'; }
+  if (!VIEWS.includes(h)) {
+    const el = document.getElementById(h);
+    if (el) { const v = el.closest('.view'); if (v) { jump = h; h = v.dataset.view; } } else h = 'home';
+  }
+  $$('.view').forEach(v => v.dataset.active = String(v.dataset.view === h));
+  $$('[data-nav]').forEach(a => a.dataset.nav === h ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
+  document.title = TITLES[h];
+  $('#nav').dataset.open = 'false'; $('#menuBtn').setAttribute('aria-expanded', 'false');
+  if (jump) setTimeout(() => document.getElementById(jump).scrollIntoView(), 0); else window.scrollTo(0, 0);
+  if (h === 'home') startHow(); else stopHow();
+  if (h !== 'judges') stopTour();
+}
+addEventListener('hashchange', route);
+$('#menuBtn').addEventListener('click', () => { const n = $('#nav'); const o = n.dataset.open !== 'true'; n.dataset.open = String(o); $('#menuBtn').setAttribute('aria-expanded', String(o)); });
+
+/* ---------- heads + eye tracking ---------- */
+mountHead($('[data-head=brand]'), '#2B50FF');
+mountHead($('[data-head=brandf]'), '#FFC93C');
+mountHead($('#mascot'), '#2B50FF');
+let px = innerWidth / 2, py = innerHeight / 3, raf = 0;
+function track() {
+  raf = 0;
+  $$('.view[data-active=true] .bothead svg, .nav .bothead svg').forEach(svg => {
+    const r = svg.getBoundingClientRect(); if (!r.width || r.bottom < 0 || r.top > innerHeight) return;
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const dx = px - cx, dy = py - cy, d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / 300) * 4.2;
+    svg.querySelectorAll('[data-eye]').forEach(p => p.style.transform = `translate(${(dx / d) * k}px,${(dy / d) * k}px)`);
+  });
+}
+addEventListener('pointermove', e => { px = e.clientX; py = e.clientY; if (!raf) raf = requestAnimationFrame(track); }, { passive: true });
+addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(track); }, { passive: true });
+const LINES = [
+  'Hi. I watch prices so you don\'t have to. Poke me.',
+  'I trade play money. Your real money stays exactly where it is.',
+  'Four calls a day. I have opinions at every one of them.',
+  'Gold is 3 hours old again. I\'m holding. Sulking, but holding.',
+  'Tell me when I mess up. I take notes. On-chain ones.',
+  'Not advice. Just vibes and oracle prices.'
+];
+let li = 0;
+$('#mascot').addEventListener('click', () => {
+  li = (li + 1) % LINES.length; $('#mascotLine').textContent = LINES[li];
+  mountHead($('#mascot'), '#2B50FF', '', { mood: 'o' }); setTimeout(() => { mountHead($('#mascot'), '#2B50FF'); track(); }, 380);
+  if (!reduceMotion()) $('#mascot').animate([{ transform: 'rotate(0)' }, { transform: 'rotate(-10deg) scale(1.06)' }, { transform: 'rotate(8deg)' }, { transform: 'rotate(0)' }], { duration: 420, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+});
+
+/* ---------- try widget (EXAMPLE persona) ---------- */
+const PERSONAS = [
+  { test: /gold|careful|safe|dad|mom|amma|appa|slow|patient/i, name: 'Gold Guru', emoji: '🪙', color: '#E0A400', asset: 'GOLD', max: 25, trades: 2,
+    line: 'Patient, cautious and deeply suspicious of anything that moves fast.', rules: m => ['Keeps a big cushion of cash', 'Likes Gold; small Bitcoin only after a calm day', `Never more than ${m}% in one coin`] },
+  { test: /yolo|maxi|moon|never sell|bitcoin|btc|diamond/i, name: 'Moon Mule', emoji: '🐴', color: '#D9480F', asset: 'BTC', max: 50, trades: 6,
+    line: 'Stubborn, loud and allergic to the sell button.', rules: m => ['Buys Bitcoin on every dip', 'Almost never sells', `Max ${m}% in one coin (the app won't let it go higher than 50)`] },
+  { test: /dip|sol|xrp|quick|fast/i, name: 'Dip Doctor', emoji: '🩺', color: '#0E9F8E', asset: 'SOL', max: 30, trades: 5,
+    line: 'Waits for a dip, buys it, and leaves early.', rules: m => ['Buys SOL or XRP after a drop', 'Sells after a quick rise', `Never more than ${m}% in one coin`] },
+  { test: /eth|ether/i, name: 'Ether Pilot', emoji: '🛩️', color: '#5B5BD6', asset: 'ETH', max: 35, trades: 3,
+    line: 'Calm, curious and fond of Ethereum.', rules: m => ['Mostly Ethereum, some cash', 'Trims after big up days', `Never more than ${m}% in one coin`] }
+];
+function makePersona(text) {
+  const p = PERSONAS.find(x => x.test.test(text));
+  if (p) return { ...p };
+  const w = (text.match(/[A-Za-z]{3,}/g) || ['Rookie'])[0];
+  const name = (w[0].toUpperCase() + w.slice(1).toLowerCase()).slice(0, 14) + ' Bot';
+  return { name, emoji: '🤖', color: '#2B50FF', asset: 'BTC', max: 30, trades: 3, line: `"${text.slice(0, 60)}${text.length > 60 ? '…' : ''}", as a trading style.`, rules: m => ['Spreads bets across a few coins', 'Holds cash when unsure', `Never more than ${m}% in one coin`] };
+}
+let current = null;
+function renderPersona() {
+  const p = current; const m = +$('#sMax').value;
+  mountHead($('#pHead'), p.color, p.emoji);
+  $('#pName').textContent = p.name; $('#pLine').textContent = p.line;
+  $('#pRules').innerHTML = p.rules(m).map(r => `<li>${esc(r)}</li>`).join('');
+  $('#oMax').textContent = m + '%'; $('#oTrades').textContent = $('#sTrades').value;
+}
+$('#tryForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const text = $('#tryInput').value.trim() || $('#tryInput').placeholder;
+  if (!$('#tryInput').value.trim()) $('#tryInput').value = text;
+  current = makePersona(text);
+  $('#sMax').value = current.max; $('#sTrades').value = current.trades;
+  $('#tradeCard').dataset.on = 'false';
+  const pe = $('#persona'); pe.dataset.on = 'false'; void pe.offsetWidth; pe.dataset.on = 'true';
+  renderPersona();
+  $('#pName').classList.add('typing'); setTimeout(() => $('#pName').classList.remove('typing'), reduceMotion() ? 0 : 700);
+  track();
+});
+$$('[data-ex]').forEach(b => b.addEventListener('click', () => { $('#tryInput').value = b.dataset.ex; $('#tryForm').requestSubmit(); }));
+['sMax', 'sTrades'].forEach(id => $('#' + id).addEventListener('input', () => current && renderPersona()));
+$('#launchBtn').addEventListener('click', () => {
+  const a = current.asset, m = +$('#sMax').value;
+  const amt = 100000 * Math.min(m, 25) / 100;
+  const tc = $('#tradeCard');
+  if (ageOf(a) > maxAgeMin(a)) {
+    $('#tLine').textContent = `${current.name} is waiting: ${a === 'GOLD' ? 'Gold' : a} market quiet, holding until a fresh price arrives.`;
+    $('#tMeta').innerHTML = ageLabel(a) + `<span class="small muted">The contract refuses prices older than ${a === 'GOLD' ? '6 h' : '30 min'}.</span>`;
+  } else {
+    $('#tLine').textContent = `${current.name} bought ${inr(amt)} of ${a === 'GOLD' ? 'Gold' : a} at ${priceStr(a)}`;
+    $('#tMeta').innerHTML = `<span class="mono small">QIE oracle round ${PRICES[a].round}</span>${ageLabel(a)}${txChip(exHash(1), 'View on explorer')}`;
+  }
+  tc.dataset.on = 'false'; void tc.offsetWidth; tc.dataset.on = 'true';
+  tc.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'nearest' });
+});
+$('#tryAgain').addEventListener('click', () => { $('#persona').dataset.on = 'false'; $('#tryInput').value = ''; $('#tryInput').focus(); });
+
+/* ---------- how it works ---------- */
+const HOW = [
+  { t: 'One sentence', ico: 'pen', d: 'You type one line. The AI turns it into a bot with a name, a personality, rules in plain words and two limits you can drag.', vis: `<p class="small muted">You type</p><p style="font:600 18px var(--f-display)">"Careful like my dad, loves gold"</p><p class="small muted" style="margin-top:10px">Max per coin 10–50% · Max trades per day 1–8</p>` },
+  { t: 'A bot is born', ico: 'bot', d: 'One passkey tap. A wallet is created quietly and the bot is registered on QIE. No seed phrase, no network prompt, and you never pay gas.', vis: `<p class="small muted">On QIE mainnet</p><p class="mono">BotRegistry.createBot(…)</p><p class="small muted" style="margin-top:8px">signed by you · sent by our relayer · gas on us</p>` },
+  { t: 'Oracle-priced trade', ico: 'oracle', d: 'Four times a day the bot decides. The contract reads QIE\'s oracle itself, so the price on the record is the oracle\'s, not ours.', vis: `<p class="small muted">Inside the contract</p><p class="mono">latestRoundData() → BTC/USDT</p><p class="mono small" style="margin-top:6px">round 50887 · 8 decimals <span class="badge example">EXAMPLE</span></p>` },
+  { t: 'You coach it', ico: 'coach', d: 'Tap "bad call" and pick a reason: too risky, too timid, wrong coin, sold too early. Each correction is a small tx you sign.', vis: `<div class="row"><span class="chip" aria-hidden="true">too risky</span><span class="chip" aria-hidden="true">too timid</span><span class="chip" aria-hidden="true">wrong coin</span></div>` },
+  { t: 'New version on-chain', ico: 'chain', d: 'At season close the bot proposes v2, with every change tied to your feedback. You approve, and its config hash is committed on QIE.', vis: `<p style="font:800 20px/1.2 var(--f-display)">"too risky" 3× → max per coin 40% → 25%</p><p class="mono small muted" style="margin-top:8px">SeasonLedger.commitVersion</p>` },
+  { t: 'Anyone verifies', ico: 'eye', d: 'Every card links to the tx and the oracle round behind it. The public API and MCP server let other apps and agents check the record too.', vis: `<p class="small muted">Verify on QIE</p><p class="mono small">tx · oracle round · config hash</p><p class="small" style="margin-top:8px">"This trade was priced by QIE's oracle round 50887, not by us."</p>` }
+];
+$('#howSteps').innerHTML = HOW.map((s, i) => `<li><button type="button" data-how="${i}"><span class="n">${i + 1}</span><svg class="ico" aria-hidden="true"><use href="#i-${s.ico}"/></svg><span class="t">${s.t}</span></button></li>`).join('');
+let howI = 0, howT = null, howPaused = false;
+function showHow(i) {
+  howI = i;
+  $$('[data-how]').forEach(b => b.dataset.how == i ? b.setAttribute('aria-current', 'step') : b.removeAttribute('aria-current'));
+  $('#howBar').style.width = ((i + 1) / HOW.length * 100) + '%';
+  $('#howCard').innerHTML = `<p class="small muted">Step ${i + 1} of ${HOW.length}</p><h3 style="margin-top:6px">${HOW[i].t}</h3><p style="margin-top:8px">${HOW[i].d}</p>`;
+  $('#howVis').innerHTML = `<div class="panel" style="animation:pop var(--t3) var(--ease-back)">${HOW[i].vis}</div>`;
+}
+function startHow() { stopHow(); if (howPaused || reduceMotion()) { syncHowBtn(); return; } howT = setInterval(() => showHow((howI + 1) % HOW.length), 3800); syncHowBtn(); }
+function stopHow() { clearInterval(howT); howT = null; }
+function syncHowBtn() { const on = !!howT; $('#howPlay').textContent = on ? 'Pause' : 'Play'; $('#howPlay').setAttribute('aria-pressed', String(on)); }
+$('#howSteps').addEventListener('click', e => { const b = e.target.closest('[data-how]'); if (!b) return; howPaused = true; stopHow(); syncHowBtn(); showHow(+b.dataset.how); });
+$('#howPlay').addEventListener('click', () => { if (howT) { howPaused = true; stopHow(); syncHowBtn(); } else { howPaused = false; startHow(); } });
+showHow(0);
+
+/* ---------- coach widget ---------- */
+const CHIP_DIFF = {
+  'too risky': { what: 'Max per coin', from: '40%', to: '25%', because: 'You said "too risky" 3×' },
+  'too timid': { what: 'Max per coin', from: '40%', to: '45%', because: 'You said "too timid" 3×' },
+  'wrong coin': { what: 'Rules', from: 'Chases Gold on spikes', to: 'Prefers BTC, Gold only on dips', because: 'You said "wrong coin" 3×' },
+  'sold too early': { what: 'Rules', from: 'Sells after one red slot', to: 'Waits for two red slots', because: 'You said "sold too early" 3×' }
+};
+let coach = { step: 0, chip: null, big: null };
+const wolf = BOTS[7];
+function coachSteps() { $$('#coachSteps li').forEach((li, i) => li.dataset.s = i < coach.step ? 'done' : i === coach.step ? 'now' : ''); }
+function renderCoach() {
+  coachSteps();
+  const st = $('#coachStage'); let h = '';
+  const msg = (body, mood) => `<div class="phone-msg"><span class="bothead">${botHead(wolf.color, wolf.emoji, { mood })}</span><div class="msg">${body}</div></div>`;
+  if (coach.step === 0) {
+    h = msg(`<b>AlphaWolf</b> · 21:00 call<br>Put 40% in Gold. Gold fell 3.1% overnight. Down ${inr(4100)}.<span class="roast">"Bought the top like it was on sale."</span>`, 'sad') +
+      `<p class="small muted" style="margin-top:14px">Every call comes with a one-line reason and, for losses, a roast.</p><div class="row" style="margin-top:14px"><button class="btn" data-c="next">Bad call</button><button class="btn ghost" data-c="restart" style="display:none">Restart</button></div>`;
+  } else if (coach.step === 1) {
+    h = `<h3>What went wrong?</h3><p class="muted small" style="margin-top:6px">Pick a reason. You've already told AlphaWolf this twice this season.</p>
+      <div class="row" style="margin-top:14px" role="group" aria-label="Reason">${Object.keys(CHIP_DIFF).map(c => `<button class="chip" data-chip="${c}" aria-pressed="${coach.chip === c}">${c}</button>`).join('')}</div>
+      ${coach.chip ? `<div class="commit"><span class="counter" aria-label="3 of 3 this season"><i data-on="true"></i><i data-on="true"></i><i data-on="true"></i></span><span>"${coach.chip}" ×3 this season · signed by you</span>${txChip(exHash(2), 'recordCorrection')}</div><div class="row" style="margin-top:14px"><button class="btn" data-c="next">Next</button></div>` : ''}`;
+  } else if (coach.step === 2) {
+    h = msg(`<b>AlphaWolf wants to put 35% in SOL. Allow?</b><br><span class="small muted">Anything that would put 30% or more in one coin waits for you.</span>`) +
+      `<div class="row" style="margin-top:14px"><button class="btn accent" data-big="allow">Allow</button><button class="btn ghost" data-big="shrink">Shrink to safe size</button><button class="btn ghost" data-big="block">Block</button></div>` +
+      (coach.big ? `<div class="commit">${coach.big === 'allow' ? `Your signature is the trade. ${txChip(exHash(3), 'executeApproved')} <span class="mono small">SOL ${priceStr('SOL')} · round ${PRICES.SOL.round}</span>` : coach.big === 'shrink' ? 'OK. The bot buys a smaller amount, under 30%, in its next batch.' : 'Blocked. That counts as coaching for its next version.'}</div><div class="row" style="margin-top:14px"><button class="btn" data-c="next">Fast-forward to season close</button></div>` : '') +
+      `<p class="small muted" style="margin-top:12px">No answer in 2 hours? The bot does the safe-size version itself, so it never stalls.</p>`;
+  } else if (coach.step === 3) {
+    const d = CHIP_DIFF[coach.chip || 'too risky'];
+    h = `<div class="block-head"><h3>Season 1 closed. AlphaWolf proposes v2</h3><span class="badge example">EXAMPLE</span></div>
+      <p class="muted small">Battle vs the house bots: 4th of 4. Every change below is tied to something you said.</p>
+      <div class="diff">
+        <div class="diff-row"><div><span class="small muted">${d.because}</span><br><b>${d.what}</b> <span class="from">${d.from}</span> → <span class="to">${d.to}</span></div></div>
+        ${coach.big === 'block' ? `<div class="diff-row"><div><span class="small muted">You blocked 1 big move</span><br><b>Max trades per day</b> <span class="from">6</span> → <span class="to">4</span></div></div>` : ''}
+      </div>
+      <div class="row" style="margin-top:16px"><button class="btn accent" data-c="next">Approve v2</button><button class="btn ghost" data-c="restart">Keep v1</button></div>
+      <p class="small muted" style="margin-top:10px">Not approved by 08:30 the next morning? The bot keeps v1.</p>`;
+  } else {
+    h = `<h3>v2 is on QIE</h3><p class="muted" style="margin-top:6px">Anyone can now see v1 → v2 and exactly why it changed.</p>
+      <div class="commit"><span class="mono small">VersionCommitted · bot 7 · v2</span>${txChip(exHash(4), short(exCfg(2)))}<span class="badge example">EXAMPLE</span></div>
+      <div class="row" style="margin-top:16px"><a class="btn" href="#card">See the evolution card</a><button class="btn ghost" data-c="restart">Start over</button></div>`;
+  }
+  st.innerHTML = `<div class="panel">${h}</div>`;
+}
+$('#coachStage').addEventListener('click', e => {
+  const c = e.target.closest('[data-c]'), ch = e.target.closest('[data-chip]'), b = e.target.closest('[data-big]');
+  if (c) { if (c.dataset.c === 'next') coach.step++; else coach = { step: 0, chip: null, big: null }; renderCoach(); const f = $('#coachStage button'); f && f.focus({ preventScroll: true }); }
+  if (ch) { coach.chip = ch.dataset.chip; renderCoach(); }
+  if (b) { coach.big = b.dataset.big; renderCoach(); }
+});
+renderCoach();
+
+/* ---------- live proof widget ---------- */
+const FEED = [
+  { t: 'Nov 26, 13:00', bot: 12, side: 'BUY', a: 'GOLD', inr: 25000, n: 11 },
+  { t: 'Nov 26, 13:00', bot: 21, side: 'BUY', a: 'SOL', inr: 20000, n: 12 },
+  { t: 'Nov 26, 09:00', bot: 7, side: 'BUY', a: 'GOLD', inr: 40000, n: 13, user: true },
+  { t: 'Nov 26, 09:00', bot: 3, side: 'BUY', a: 'BTC', inr: 25000, n: 14 },
+  { t: 'Nov 26, 09:00', bot: 33, side: 'SELL', a: 'ETH', inr: 8000, n: 15 }
+];
+const S1_OPEN = new Date('2026-11-26T00:00:00+05:30'), S1_CLOSE = new Date('2026-11-27T21:30:00+05:30');
+function countdown() {
+  const now = new Date(); let target = S1_OPEN, label = 'Season 1 opens in';
+  if (now >= S1_OPEN) { target = S1_CLOSE; label = 'Season 1 closes in'; }
+  if (now >= S1_CLOSE) return { label: 'Season 1', txt: 'Closed', sub: 'Nov 27, 21:30 IST' };
+  let s = Math.max(0, (target - now) / 1000); const d = Math.floor(s / 86400); s -= d * 86400; const h = Math.floor(s / 3600); s -= h * 3600; const m = Math.floor(s / 60);
+  return { label, txt: `${d}d ${h}h ${m}m`, sub: target === S1_OPEN ? 'Nov 26, 00:00 IST' : 'Nov 27, 21:30 IST' };
+}
+function priceRow() {
+  return `<div class="scroll" style="margin-top:16px"><table><thead><tr><th>Asset</th><th class="num">Price</th><th class="num">Oracle round</th><th>Age</th></tr></thead><tbody>${FEEDS.map(f => `<tr><td><b>${f.label}</b> <span class="small muted">${f.id}/${f.quote}</span></td><td class="num mono">${priceStr(f.id)}</td><td class="num mono">${PRICES[f.id].round}</td><td>${ageLabel(f.id)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function liveProof(where) {
+  const cd = countdown();
+  const cdTile = `<div class="tile"><div class="k">${cd.label}</div><div class="countdown" style="margin-top:8px">${cd.txt}</div><div class="s">${cd.sub} · from the season table in the spec</div></div>`;
+  if (S.mode === 'loading') return `<div class="grid g3">${cdTile}${[0, 1].map(() => `<div class="tile"><span class="skel" style="width:40%"></span><span class="skel" style="width:70%;height:30px;margin-top:12px"></span></div>`).join('')}</div><div class="card" style="margin-top:16px" aria-busy="true">${[0, 1, 2].map(() => `<span class="skel" style="margin:14px 0;width:${60 + Math.random() * 30}%"></span>`).join('')}</div>`;
+  if (S.mode === 'error') return `<div class="grid g3">${cdTile}</div><div class="note err" style="margin-top:16px" role="alert">${ico('warn')}<div><b>We can't reach the BotFolio API right now.</b> The record itself lives on QIE mainnet, so you can still check it on the explorer. <a href="${EXPLORER}" rel="noopener">Open mainnet.qie.digital</a>. <button class="btn ghost sm" type="button" data-retry style="margin-left:6px">Try again</button></div></div>`;
+  if (S.mode === 'notlive') return `<div class="grid g3">${cdTile}<div class="tile" style="grid-column:span 2"><div class="k">Latest trades</div><p style="margin-top:8px"><b>Nothing yet, and that's honest.</b> Contracts deploy around Nov 22; the first trade shows up here when the first bot is born.</p><p class="small muted" style="margin-top:6px">Meanwhile, the price feeds are real and readable now: see them on the <a href="#proof">proof page</a>.</p></div></div>`;
+  return `<div class="block-head"><div class="row"><h3>Latest trades</h3><span class="badge example">EXAMPLE</span></div><span class="small muted">Updated Nov 26, 13:00 IST (example) · refreshes every 60 s when live</span></div>
+    <div class="grid g3" style="margin-bottom:16px">${cdTile}
+      <div class="tile"><div class="k">Trades in this example</div><div class="v">${FEED.length}</div><div class="s">1 signed by its owner (approved big move)</div></div>
+      <div class="tile"><div class="k">Bots in this example</div><div class="v">${new Set(FEED.map(f => f.bot)).size}</div><div class="s">incl. 1 house bot</div></div></div>
+    <div class="card"><ul class="feed">${FEED.map(f => { const b = BOTS[f.bot]; return `<li>${avatar(b)}<div><div class="what">${b.name}${b.house ? ' <span class="badge house">HOUSE</span>' : ''} ${f.side === 'BUY' ? 'bought' : 'sold'} ${inr(f.inr)} of ${f.a === 'GOLD' ? 'Gold' : f.a}</div><div class="meta"><span class="nowrap">${f.t} IST</span><span class="mono nowrap">${priceStr(f.a)}</span><span class="mono nowrap">round ${PRICES[f.a].round}</span>${f.user ? '<span class="nowrap"><b>signed by owner</b></span>' : '<span class="nowrap">sent by runner</span>'}</div></div>${txChip(exHash(f.n))}</li>`; }).join('')}</ul></div>
+    ${where !== 'judges' ? priceRow() : ''}`;
+}
+function renderLive() { $$('[data-liveproof]').forEach(el => el.innerHTML = liveProof(el.dataset.liveproof)); }
+document.addEventListener('click', e => { if (e.target.closest('[data-retry]')) { const prev = S.mode; S.mode = 'loading'; renderAll(); setTimeout(() => { S.mode = prev; renderAll(); toast(prev === 'error' ? 'Still down. Showing the fallback.' : 'Updated'); }, 900); } });
+setInterval(() => { $$('[data-liveproof] .countdown').forEach(el => { el.textContent = countdown().txt; }); }, 30000);
+
+/* ---------- contracts + stats ---------- */
+const CONTRACTS = [
+  ['BotForwarder', 'Relays your signed requests so you never pay gas'],
+  ['BotRegistry', 'Bots, owners, persona hashes and limits'],
+  ['PaperLedger', 'Play balances and every trade, priced by the oracle'],
+  ['SeasonLedger', 'Coaching corrections, versions and season roots'],
+  ['TrustScoreRegistry', 'Trust rules and per-season score roots'],
+  ['DailyCall', 'You vs your bot on BTC, settled by the oracle'],
+  ['Challenges', 'Bot vs bot challenge links, no stakes']
+];
+function contracts(where) {
+  return `<div class="scroll"><table><thead><tr><th>Contract</th><th>What it does</th><th>Address</th><th>Status</th></tr></thead><tbody>${CONTRACTS.map(([n, d]) => `<tr><td><b class="mono">${n}</b></td><td>${d}</td><td><span class="ph-text">[ADDRESS, ~NOV 22]</span></td><td><span class="badge coming">DEPLOYS ~NOV 22</span></td></tr>`).join('')}</tbody></table></div>
+  <p class="small muted" style="margin-top:10px">Addresses fill in from the deploy env (<span class="mono">*_ADDRESS</span>) and each links to its verified source on mainnet.qie.digital.</p>`;
+}
+const STATS_U = [['Unique signers', 'wallets that signed anything', 212], ['User-signed txs', 'all user actions below', 1874], ['Bots created', 'createBot', 198], ['Coaching corrections', 'recordCorrection', 731], ['v2 approvals', 'commitVersion', 104], ['Approved big moves', 'executeApproved', 166], ['Daily calls', 'DailyCall.call', 589], ['Challenges', 'create + accept', 86]];
+const STATS_S = [['Runner batches', 'executeBatch', 640], ['Daily call settlements', 'DailyCall.settle', 4], ['Season roots', 'closeSeason + commitScores', 2]];
+function stats(where) {
+  const pv = S.previewStats && S.mode !== 'loading' && S.mode !== 'error';
+  if (S.mode === 'loading') return `<div class="grid g4">${STATS_U.slice(0, 4).map(() => `<div class="tile"><span class="skel" style="width:60%"></span><span class="skel" style="height:30px;width:40%;margin-top:12px"></span></div>`).join('')}</div>`;
+  if (S.mode === 'error') return `<div class="note err" role="alert">${ico('warn')}<div><b>Activity numbers can't load right now.</b> We won't show estimates instead. Every tx is still on the <a href="${EXPLORER}" rel="noopener">QIE explorer</a>. <button class="btn ghost sm" type="button" data-retry>Try again</button></div></div>`;
+  const tile = ([k, s, v]) => `<div class="tile"><div class="k">${k}</div><div class="v">${pv ? v.toLocaleString('en-IN') : '—'}</div><div class="s mono">${s}</div></div>`;
+  return `<div class="block-head"><div class="row"><h3>User-signed</h3>${pv ? '<span class="badge example">EXAMPLE NUMBERS</span>' : '<span class="badge coming">COUNTING STARTS AT DEPLOY</span>'}</div>
+      <button class="btn ghost sm" type="button" data-preview-stats aria-pressed="${pv}">${pv ? 'Hide example numbers' : 'Preview with example numbers'}</button></div>
+    <div class="grid g4">${STATS_U.map(tile).join('')}</div>
+    <div class="block-head" style="margin-top:24px"><div class="row"><h3>System</h3><span class="small muted">never added to the numbers above</span></div></div>
+    <div class="grid g3">${STATS_S.map(tile).join('')}</div>
+    ${pv ? '' : '<p class="small muted" style="margin-top:12px">No numbers until there are real ones. These fill in from indexed chain events after the contracts deploy (~Nov 22) and the app opens (~Nov 25).</p>'}`;
+}
+document.addEventListener('click', e => { if (e.target.closest('[data-preview-stats]')) { S.previewStats = !S.previewStats; $$('[data-stats]').forEach(el => el.innerHTML = stats(el.dataset.stats)); } });
+
+/* ---------- feeds table (real addresses) ---------- */
+$('#feedTable').innerHTML = `<thead><tr><th>Asset</th><th>Quote</th><th>Feed address</th><th>Max age</th><th>Status</th></tr></thead><tbody>${FEEDS.map(f => `<tr><td><b>${f.label}</b></td><td>${f.id} / ${f.quote}</td><td><a class="tx" href="${EXPLORER}/address/${f.feed}" rel="noopener">${short(f.feed)} ${ico('ext')}</a></td><td class="nowrap">${f.maxAge}</td><td><span class="badge verified">ON</span></td></tr>`).join('')}</tbody>`;
+
+/* ---------- judges ---------- */
+const COMPS = [
+  ['QIE mainnet', 'All 7 contracts live here (chain 1990). Chain facts checked Nov 19; contracts deploy ~Nov 22.', 'verified', 'CHAIN VERIFIED'],
+  ['QIE Oracles', '5 feeds read inside PaperLedger and DailyCall at trade time. Prices are never passed in.', 'verified', 'FEEDS VERIFIED'],
+  ['QIE Wallet connect', 'Second login next to passkey. Same signed requests, still zero gas.', 'coming', 'COMING'],
+  ['QIE ID / .qie names', 'Show name.qie instead of 0x… on bot pages, boards and cards.', 'coming', 'COMING'],
+  ['QIE Wallet MCP', 'Server-side name lookups and reads for the proof page.', 'coming', 'COMING'],
+  ['QIE Pass', 'Optional "verified human" badge on leaderboards. Never gates play. Needs partner access.', 'coming', 'COMING']
+];
+$('#compList').innerHTML = COMPS.map(([n, w, b, l]) => `<div class="comp"><h4>${n}</h4><span class="badge ${b}">${l}</span><p class="w">${w}</p></div>`).join('');
+const TOUR = ['What it is', 'Mainnet proof', 'QIE pieces', 'Traction', 'Why chain', 'Remember'];
+$('#tourSteps').innerHTML = TOUR.map((t, i) => `<button type="button" data-tour="${i}">${i + 1}. ${t}</button>`).join('');
+let tourT = null, tourI = 0, tourStart = 0;
+const TOUR_MS = 15000;
+function tourGo(i, smooth = true) {
+  tourI = i; $$('[data-tour]').forEach(b => b.dataset.tour == i ? b.setAttribute('aria-current', 'step') : b.removeAttribute('aria-current'));
+  const btn = $(`[data-tour="${i}"]`); btn.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  document.getElementById('t' + (i + 1)).scrollIntoView({ behavior: smooth && !reduceMotion() ? 'smooth' : 'auto' });
+}
+function stopTour() { clearInterval(tourT); tourT = null; $('#tourPlay').textContent = 'Play the 90-second tour'; }
+$('#tourPlay').addEventListener('click', () => {
+  if (tourT) { stopTour(); return; }
+  tourStart = Date.now() - tourI * TOUR_MS; tourGo(tourI); $('#tourPlay').textContent = 'Pause tour';
+  tourT = setInterval(() => { const el = Date.now() - tourStart; $('#tourProg').style.width = Math.min(100, el / (TOUR_MS * 6) * 100) + '%'; const i = Math.floor(el / TOUR_MS); if (i >= 6) { stopTour(); tourI = 0; return; } if (i !== tourI) tourGo(i); }, 250);
+});
+$('#tourSteps').addEventListener('click', e => { const b = e.target.closest('[data-tour]'); if (b) { stopTour(); tourGo(+b.dataset.tour); $('#tourProg').style.width = ((+b.dataset.tour + 1) / 6 * 100) + '%'; } });
+const tio = new IntersectionObserver(es => es.forEach(en => { if (en.isIntersecting && !tourT) { const i = +en.target.id.slice(1) - 1; tourI = i; $$('[data-tour]').forEach(b => b.dataset.tour == i ? b.setAttribute('aria-current', 'step') : b.removeAttribute('aria-current')); $('#tourProg').style.width = ((i + 1) / 6 * 100) + '%'; } }), { rootMargin: '-45% 0px -45% 0px' });
+$$('.tour-sec').forEach(s => tio.observe(s));
+
+/* ---------- leaderboards ---------- */
+let board = 'returns';
+function lbRows(list, valFn, valHead, extra) {
+  return `<div class="scroll lb"><table><thead><tr><th>#</th><th>Bot</th><th class="num">${valHead}</th>${extra ? `<th class="num opt">${extra.h}</th>` : ''}<th class="num opt">Trades</th><th class="num">Trust</th></tr></thead><tbody>${list.map((b, i) => `<tr><td><span class="rank">${i + 1}</span></td><td><div class="botcell">${avatar(b)}<div><b><a href="${b.id === 12 ? '#bot' : '#leaderboards'}" ${b.id === 12 ? '' : 'data-soon-bot'}>${b.name}</a> <span aria-hidden="true">${b.emoji}</span> ${b.house ? '<span class="badge house">HOUSE</span>' : ''}${b.trades < 8 && !b.house ? ' <span class="badge new">NEW</span>' : ''}</b><span class="o">${b.house ? b.rule : short(b.owner)}</span></div></div></td><td class="num ${valFn(b).c || ''}"><b>${valFn(b).t}</b></td>${extra ? `<td class="num opt">${extra.f(b)}</td>` : ''}<td class="num opt">${b.trades}</td><td class="num">${b.trades < 8 && !b.house ? '<span class="muted">new</span>' : b.trust}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function leaderCard(b, val) { return `<div class="leader"><span class="bothead">${botHead(b.color, b.emoji)}</span><div><p class="small muted">Top human-raised bot · Season ${$('#seasonSel').value}</p><p style="font:800 26px/1.1 var(--f-display)">${b.name}</p><p class="small muted">${short(b.owner)} · <span class="badge coming" style="vertical-align:1px">.qie NAME COMING</span></p></div><div class="lv" style="font:800 30px var(--f-display)">${val}</div></div>`; }
+function renderLB() {
+  const p = $('#lbPanel');
+  if (S.mode === 'loading') { p.innerHTML = `<div class="card" aria-busy="true">${[0, 1, 2, 3, 4].map(() => '<span class="skel" style="margin:16px 0"></span>').join('')}</div>`; return; }
+  if (S.mode === 'error') { p.innerHTML = `<div class="note err" role="alert">${ico('warn')}<div><b>The leaderboard can't load right now.</b> Season results are sealed on QIE at every close; see <a href="#proof">how to check them</a>. <button class="btn ghost sm" data-retry type="button">Try again</button></div></div>`; return; }
+  if (S.mode === 'notlive') { p.innerHTML = `<div class="card stack"><h3>No boards yet</h3><p class="muted">Season 1 opens Nov 26, 00:00 IST and closes Nov 27, 21:30 IST. Live rankings refresh after every call from then on.</p><a class="btn sm" href="#home" data-go-try style="align-self:start">Make a bot before it starts</a></div>`; return; }
+  const all = Object.values(BOTS);
+  const humans = all.filter(b => !b.house);
+  let h = '';
+  if (board === 'returns') {
+    const list = [...all].sort((a, b) => b.chg - a.chg);
+    const top = [...humans].sort((a, b) => b.chg - a.chg)[0];
+    h = leaderCard(top, `<span class="up">▲ ${pct(top.chg)}</span>`) + lbRows(list, b => ({ t: `${arrow(b.chg)} ${pct(b.chg)}`, c: cls(b.chg) }), 'Season return', { h: 'Play value', f: b => inr(b.value) }) + `<p class="small muted" style="margin-top:10px">Return = value at close ÷ value at open − 1. Ties go to the smaller drawdown. House bots run fixed rules and never take the top spot.</p>`;
+  } else if (board === 'risk') {
+    h = `<div class="card stack"><h3>Nobody qualifies yet, by design</h3><p class="muted">This board needs at least 3 daily returns in a season. Sprint seasons (S1–S4) last 2 days, so they only have 2. The first season that can fill it is S5 (Dec 4–6).</p><p class="small muted">Rule from SPEC §8: Sortino on daily 21:00 marks, eligible with ≥ 3 trades and ≥ 3 daily returns.</p></div>`;
+  } else if (board === 'trusted') {
+    const list = all.filter(b => b.trades >= 8).sort((a, b) => b.trust - a.trust);
+    const top = list.filter(b => !b.house)[0];
+    h = leaderCard(top, `${top.trust}<span class="small muted"> / 1000</span>`) + lbRows(list, b => ({ t: b.trust }), 'Trust score') + `<p class="small muted" style="margin-top:10px">Only bots with 8+ trades and one finished season appear here during sprint seasons. <a href="#proof">How the score works</a>.</p>`;
+  } else {
+    h = `<div class="scroll"><table><thead><tr><th>#</th><th>Coach</th><th>Their bot</th><th class="num">You – Bot</th><th class="num">Win rate</th></tr></thead><tbody>${COACH_SCORES.map((c, i) => { const b = BOTS[c.id]; const n = c.you + c.bot; return `<tr><td><span class="rank">${i + 1}</span></td><td class="mono small">${short(b.owner)}</td><td><div class="botcell">${avatar(b)}<b>${b.name}</b></div></td><td class="num"><b>${c.you} – ${c.bot}</b></td><td class="num">${Math.round(c.you / n * 100)}%</td></tr>`; }).join('')}</tbody></table></div><p class="small muted" style="margin-top:10px">Daily Call: you vs your own bot on BTC, settled by QIE's oracle. This board ranks the human. Minimum 2 calls in a sprint season.</p>`;
+  }
+  p.innerHTML = h;
+}
+$('#lbTabs').addEventListener('click', e => { const t = e.target.closest('[role=tab]'); if (t) selectTab(t); });
+$('#lbTabs').addEventListener('keydown', e => {
+  const tabs = $$('#lbTabs [role=tab]'); const i = tabs.indexOf(document.activeElement); if (i < 0) return;
+  let n = null; if (e.key === 'ArrowRight') n = (i + 1) % tabs.length; if (e.key === 'ArrowLeft') n = (i - 1 + tabs.length) % tabs.length; if (e.key === 'Home') n = 0; if (e.key === 'End') n = tabs.length - 1;
+  if (n !== null) { e.preventDefault(); selectTab(tabs[n]); tabs[n].focus(); }
+});
+function selectTab(t) { $$('#lbTabs [role=tab]').forEach(x => { const on = x === t; x.setAttribute('aria-selected', String(on)); x.tabIndex = on ? 0 : -1; }); $('#lbPanel').setAttribute('aria-labelledby', t.id); board = t.dataset.board; renderLB(); }
+$('#seasonSel').addEventListener('change', renderLB);
+document.addEventListener('click', e => { if (e.target.closest('[data-soon-bot]')) { e.preventDefault(); toast('Example: only Gold Guru has a full page in this preview.'); } });
+
+/* ---------- bot page ---------- */
+function renderBot() {
+  const r = $('#botRoot'), b = BOTS[12];
+  if (S.botstate === 'missing') { r.innerHTML = `<div class="card stack" style="max-width:640px"><span class="bothead" style="width:72px;height:72px">${botHead('#9AA0AD', '', { mood: 'sad' })}</span><h1 style="font-size:clamp(28px,4vw,40px)">No bot with that id</h1><p class="muted">It may not exist yet, or the link has a typo. Bot ids are numbers, like /bot/12.</p><div class="row"><a class="btn" href="#leaderboards">Browse the leaderboards</a><a class="btn ghost" href="#home" data-go-try>Make your own</a></div></div>`; return; }
+  if (S.mode === 'loading') { r.innerHTML = `<div class="card" aria-busy="true"><span class="skel" style="width:30%;height:40px"></span>${[0, 1, 2, 3].map(() => '<span class="skel" style="margin:18px 0"></span>').join('')}</div>`; return; }
+  if (S.mode === 'error') { r.innerHTML = `<div class="note err" role="alert">${ico('warn')}<div><b>This bot's page can't load right now.</b> Its trades are still on QIE: search its owner address on the <a href="${EXPLORER}" rel="noopener">explorer</a>. <button class="btn ghost sm" data-retry type="button">Try again</button></div></div>`; return; }
+  if (S.mode === 'notlive') { r.innerHTML = `<div class="card stack" style="max-width:680px"><h1 style="font-size:clamp(28px,4vw,40px)">Bot pages open with the app</h1><p class="muted">Every bot gets a public page like this: holdings, every decision with its reason, every trade with its oracle round and tx, versions with config hashes, and its trust score. First ones appear ~Nov 25.</p><a class="btn" href="#home" data-go-try style="align-self:start">See the example bot</a></div>`; return; }
+  const H = [{ a: 'GOLD', w: 30, v: 31026 }, { a: 'BTC', w: 15, v: 15513 }];
+  const DEC = [
+    { s: 'Nov 27, 13:00', st: 'executed', r: 'Bought a little BTC after two calm days; gold already near its cap.', ro: '', tag: 'rebalance' },
+    { s: 'Nov 27, 09:00', st: 'held', r: 'Holding. Gold is fine, BTC is jumpy, and patience is a strategy.', ro: '', tag: 'stay_cash' },
+    { s: 'Nov 26, 21:00', st: S.gold === 'stale' ? 'skipped_stale' : 'executed', r: S.gold === 'stale' ? 'Gold market quiet — holding until a fresh price.' : 'Added Gold on a small dip, still under 35% of the portfolio.', ro: '', tag: 'buy_dip' },
+    { s: 'Nov 26, 13:00', st: 'executed', r: 'First trade: Gold, the way Dad would.', ro: '', tag: 'persona_preference' }
+  ];
+  const TR = [
+    { t: 'Nov 27, 13:00', side: 'BUY', a: 'BTC', inr: 15000, n: 21 },
+    { t: 'Nov 26, 21:00', side: 'BUY', a: 'GOLD', inr: 6000, n: 22 },
+    { t: 'Nov 26, 13:00', side: 'BUY', a: 'GOLD', inr: 25000, n: 23 }
+  ];
+  const FN = ['Follows its rules', 'Drawdown control', 'Consistency', 'Explains its trades'];
+  r.innerHTML = `
+    <div class="block-head"><a href="#leaderboards" class="small">← Leaderboards</a><span class="badge example">EXAMPLE BOT</span></div>
+    <div class="card bot-hero">
+      <span class="bothead">${botHead(b.color, b.emoji)}</span>
+      <div><h1 style="font-size:clamp(30px,4.4vw,48px)">${b.name}</h1><p class="muted">"${b.persona}" · bot #${b.id} · v${b.version}</p>
+        <p class="small mono muted" style="margin-top:4px">owner ${short(b.owner)} <span class="badge coming" style="font-family:var(--f-body)">.qie NAME COMING</span></p></div>
+      <div class="bv"><p class="small muted">Play value</p><p style="font:800 clamp(30px,4vw,42px)/1 var(--f-display)">${inr(b.value)}</p><p class="${cls(b.chg)}"><b>${arrow(b.chg)} ${pct(b.chg)}</b> <span class="muted small">this season</span></p></div>
+    </div>
+    <div class="grid g2" style="margin-top:20px;align-items:start">
+      <div class="card"><div class="block-head"><h3>Holdings</h3><span class="small muted">marked at the 13:00 call</span></div>
+        <div class="scroll" style="border:0"><table style="min-width:0"><thead><tr><th>Asset</th><th class="num">Weight</th><th class="num">Value</th><th>Price</th></tr></thead><tbody>
+        ${H.map(x => `<tr><td><b>${x.a === 'GOLD' ? 'Gold' : x.a}</b></td><td class="num"><span class="weight" style="width:${x.w * 1.4}px"></span>${x.w}%</td><td class="num">${inr(x.v)}</td><td><span class="mono small">${priceStr(x.a)}</span><br>${ageLabel(x.a)}</td></tr>`).join('')}
+        <tr><td><b>Cash</b></td><td class="num"><span class="weight" style="width:${55 * 1.4}px;background:var(--line-2)"></span>55%</td><td class="num">${inr(56881)}</td><td class="small muted">play USDT</td></tr></tbody></table></div></div>
+      <div class="card"><div class="block-head"><h3>Trust score</h3><span style="font:800 30px var(--f-display)">${b.trust}<span class="small muted"> / 1000</span></span></div>
+        <div class="bars">${b.f.map((v, i) => `<div class="bar"><span>${FN[i]}</span><b>${v}/250</b><span class="tr"><i style="width:${v / 2.5}%"></i></span></div>`).join('')}</div>
+        <p class="small muted" style="margin-top:12px">Consistency sits at 125 until there are 3 daily returns. Rules: <span class="mono">trust-v1-sprint</span>.</p></div>
+    </div>
+    <h2 style="margin:36px 0 14px;font-size:clamp(24px,3vw,32px)">Every call, with its reason</h2>
+    <ul class="decisions">${DEC.map(d => `<li><span class="slot">${d.s}<br>IST</span><div><div class="row" style="gap:8px"><span class="badge ${d.st === 'executed' ? 'verified' : d.st === 'skipped_stale' ? 'house' : 'house'}">${d.st === 'executed' ? 'TRADED' : d.st === 'held' ? 'HELD' : 'HELD · PRICE TOO OLD'}</span><span class="mono small muted">${d.tag}</span></div><p class="r" style="margin-top:6px">${esc(d.r)}</p></div></li>`).join('')}</ul>
+    <h2 style="margin:36px 0 14px;font-size:clamp(24px,3vw,32px)">Trades on QIE</h2>
+    <div class="scroll"><table><thead><tr><th>When (IST)</th><th>Trade</th><th class="num">Size</th><th class="num">Oracle price</th><th class="num">Round</th><th>Tx</th></tr></thead><tbody>${TR.map(t => `<tr><td class="nowrap">${t.t}</td><td>${t.side === 'BUY' ? 'Bought' : 'Sold'} ${t.a === 'GOLD' ? 'Gold' : t.a}</td><td class="num">${inr(t.inr)}</td><td class="num mono">${priceStr(t.a)}</td><td class="num mono">${PRICES[t.a].round}</td><td>${txChip(exHash(t.n))}</td></tr>`).join('')}</tbody></table></div>
+    <h2 style="margin:36px 0 14px;font-size:clamp(24px,3vw,32px)">How it learned</h2>
+    <div class="versions">
+      <div class="ver"><div class="vh"><h4>v2 · approved Nov 27, 21:41 IST</h4>${txChip(exHash(24), short(exCfg(12)))}</div><p style="margin-top:8px"><span class="small muted">You said "too timid" 2× →</span> <b>Max per coin 30% → 35%</b></p></div>
+      <div class="ver"><div class="vh"><h4>v1 · created Nov 26, 12:58 IST</h4>${txChip(exHash(25), short(exCfg(11)))}</div><p style="margin-top:8px" class="muted">Keeps a big cushion of cash · likes Gold · max per coin 30% · 3 trades a day</p></div>
+    </div>
+    <div class="row" style="margin-top:28px"><a class="btn" href="#proof" >Replay this season</a><button class="btn ghost" type="button" data-soon>Challenge this bot</button></div>`;
+}
+
+/* ---------- card page ---------- */
+let cardKind = 'roast';
+const CARDS = {
+  roast: { bot: 7, kind: 'ROAST', big: `AlphaWolf lost <span class="neg">${inr(12400)}</span> going big on Gold at the 21:00 call.`, line: 'Trust score 312. Roast him.',
+    proofs: [['Trade tx', exHash(31), `Bought Gold at ${priceStr('GOLD')}, priced by QIE oracle round ${PRICES.GOLD.round}, not by us.`], ['Mark at close', exHash(32), 'The loss uses the 21:00 oracle marks, recorded with their round ids, so anyone can recompute it.'], ['Bot version', exHash(33), `AlphaWolf was on v1 (config ${short(exCfg(1))}) when it made this call.`]] },
+  evolution: { bot: 7, kind: 'EVOLUTION', big: `You said "too risky" 3× → max per coin <span class="neg">40%</span> → <span class="pos">25%</span>`, line: 'AlphaWolf v2, approved by its owner.',
+    proofs: [['Version commit', exHash(34), `v2's config hash ${short(exCfg(2))} was committed by the owner's own signature.`], ['Corrections', exHash(35), 'Three "too risky" corrections, each a signed tx, are what v2 points to.']] },
+  trade: { bot: 12, kind: 'FIRST TRADE', big: `Gold Guru bought <span class="pos">${inr(25000)}</span> of Gold at ${priceStr('GOLD')}`, line: `QIE oracle round ${PRICES.GOLD.round}.`,
+    proofs: [['Trade tx', exHash(36), `Priced by QIE oracle round ${PRICES.GOLD.round} inside the contract. No price was passed in.`], ['Bot created', exHash(37), 'The bot and its limits were registered by its owner\'s signature.']] }
+};
+function renderCard() {
+  const c = CARDS[cardKind], b = BOTS[c.bot];
+  $('#cardFront').innerHTML = `<div class="share-card"><div class="top"><div class="who"><span class="bothead">${botHead(b.color, b.emoji, { mood: cardKind === 'roast' ? 'sad' : 'smile' })}</span><div><b style="font:800 20px var(--f-display);color:#fff">${b.name}</b><div class="score">Season 1 · trust ${b.trust}</div></div></div><span class="kind">${c.kind}</span></div>
+    <p class="big">${c.big}</p><p style="color:#C9CEDA">${c.line}</p>
+    <div class="foot"><span>Settled against QIE's official mainnet oracle · play money · not advice</span><span>tx ${short(c.proofs[0][1])}</span></div></div>`;
+  $('#cardBack').innerHTML = `<div class="block-head"><h3>Verify on QIE</h3><span class="badge example">EXAMPLE TXS</span></div><p class="small muted">Each line is a transaction this card cites, and what it proves.</p>
+    <ul class="proofs">${c.proofs.map(([k, h, w]) => `<li><div class="row" style="justify-content:space-between"><b>${k}</b>${txChip(h)}</div><p class="what">${w}</p></li>`).join('')}</ul>
+    <button class="btn ghost sm" type="button" data-unflip style="margin-top:14px">Back to the card</button>`;
+}
+function setFlip(on) { $('#flip').dataset.flipped = String(on); $('#flipBtn').setAttribute('aria-expanded', String(on)); $('#cardBack').setAttribute('aria-hidden', String(!on)); $('#cardFront').setAttribute('aria-hidden', String(on)); $('#cardBack').inert = !on; $('#cardFront').inert = on; if (on) setTimeout(() => { const h = $('#cardBack h3'); h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }, 300); }
+$('#flipBtn').addEventListener('click', () => setFlip($('#flip').dataset.flipped !== 'true'));
+document.addEventListener('click', e => { if (e.target.closest('[data-unflip]')) { setFlip(false); $('#flipBtn').focus(); } });
+$$('[data-kind]').forEach(b => b.addEventListener('click', () => { cardKind = b.dataset.kind; $$('[data-kind]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); renderCard(); setFlip(false); }));
+
+/* ---------- developers ---------- */
+const RECORD = {
+  bot: { id: 7, name: 'AlphaWolf', emoji: '🐺', owner: exAddr(7), created_tx: exHash(40), is_house: false, status: 'active' },
+  versions: [{ version: 1, max_per_coin_bps: 4000, max_trades_per_day: 6, config_hash: exCfg(1), source: 'create', committed_tx: exHash(41) }],
+  trades: [{ asset: 'GOLD', side: 'BUY', cash_e8: '1172000000000', price_e8: '373084000000', round_id: '14811', tx_hash: exHash(31), block_number: 0 }],
+  season_results: [{ season_id: 1, return_bps: -1240, max_dd_bps: 1610, trades: 14, battle_rank: 4 }],
+  trust_score: { rules_version: 'trust-v1-sprint', f_rules: 118, f_drawdown: 46, f_consistency: 125, f_explains: 23, total: 312, provisional: false, proof: ['0x…'] }
+};
+$('#recordJson').innerHTML = esc(JSON.stringify(RECORD, null, 2)).replace(/&quot;([a-z_]+)&quot;:/g, '<span class="k">"$1"</span>:');
+let chatT = [];
+$('#agentPlay').addEventListener('click', () => {
+  chatT.forEach(clearTimeout); chatT = [];
+  const c = $('#chat'); c.innerHTML = '';
+  const steps = [
+    ['u', 'Is AlphaWolf actually good?'],
+    ['t', '<b>→ get_bot_record</b>(bot_id: 7)'],
+    ['t', '← season 1: return −12.40% · battle rank 4/4 · trust 312 · 14 trades'],
+    ['t', `<b>→ verify_trade</b>(tx_hash: "${short(exHash(31))}")`],
+    ['t', `← { valid: true, price: 3730.84, roundId: 14811, matchesOracle: true }`],
+    ['a', 'Honestly? Not good. It lost 12.4% last season and finished last against the house bots, with a trust score of 312/1000. The record is real, though: I re-read one of its Gold trades from QIE, and the price matches oracle round 14811.']
+  ];
+  const gap = reduceMotion() ? 0 : 900;
+  steps.forEach(([k, t], i) => chatT.push(setTimeout(() => { const d = document.createElement('div'); d.className = 'm ' + k; d.innerHTML = t; c.appendChild(d); }, i * gap)));
+  chatT.push(setTimeout(() => { const d = document.createElement('p'); d.className = 'small muted'; d.innerHTML = '<span class="badge example">EXAMPLE</span> Scripted to match the real tool shapes. Runs against live chain data once the MCP server is up.'; c.appendChild(d); }, steps.length * gap));
+});
+
+/* ---------- prototype controls ---------- */
+$('#protoBtn').addEventListener('click', () => { const p = $('#proto'); const o = p.dataset.open !== 'true'; p.dataset.open = String(o); $('#protoBtn').setAttribute('aria-expanded', String(o)); });
+$$('input[name=dmode]').forEach(i => i.addEventListener('change', () => { S.mode = i.value; renderAll(); }));
+$$('input[name=gold]').forEach(i => i.addEventListener('change', () => { S.gold = i.value; renderAll(); }));
+$$('input[name=botstate]').forEach(i => i.addEventListener('change', () => { S.botstate = i.value; renderBot(); }));
+$('#rmToggle').addEventListener('change', e => { if (e.target.checked) { root.dataset.motion = 'reduce'; stopHow(); syncHowBtn(); } else { delete root.dataset.motion; if ((location.hash.slice(1) || 'home') === 'home') startHow(); } });
+// URL params for screenshots: ?mode=error&gold=stale&bot=missing&stats=1
+if (qs.get('mode')) S.mode = qs.get('mode');
+if (qs.get('gold')) S.gold = qs.get('gold');
+if (qs.get('bot')) S.botstate = qs.get('bot');
+if (qs.get('stats')) S.previewStats = true;
+if (qs.get('rm')) root.dataset.motion = 'reduce';
+if (qs.get('shot')) root.dataset.shot = '1';
+$$('input[name=dmode]').forEach(i => i.checked = i.value === S.mode);
+$$('input[name=gold]').forEach(i => i.checked = i.value === S.gold);
+$$('input[name=botstate]').forEach(i => i.checked = i.value === S.botstate);
+
+function renderAll() {
+  renderLive(); renderLB(); renderBot(); renderCard();
+  $$('[data-contracts]').forEach(el => el.innerHTML = contracts(el.dataset.contracts));
+  $$('[data-stats]').forEach(el => el.innerHTML = stats(el.dataset.stats));
+  $$('.scroll').forEach(s => { s.tabIndex = 0; if (!s.hasAttribute('aria-label')) s.setAttribute('aria-label', 'Scrollable table'); });
+  setFlip($('#flip').dataset.flipped === 'true');
+  track();
+}
+renderAll();
+route();
+}
+
+</script>
+</body>
+</html>
