@@ -14,7 +14,9 @@ fs_permissions = [{ access = "read-write", path = "./abi" }]
 [rpc_endpoints]
 # rpc1/rpc2 drop TLS sometimes (SPEC §0.1); rpc3 is the default fork RPC. CI falls back to rpc4/rpc5.
 qie = "https://rpc3mainnet.qie.digital"
-qie_testnet = "https://rpc1testnet.qie.digital"
+# Local mainnet-fork staging (docs/anvil-fork.md). Testnet staging was dropped Nov 20
+# (docs/decisions.md). Nothing in the repo referenced qie_testnet, so that endpoint is gone.
+anvil = "http://127.0.0.1:8545"
 
 [fmt]
 line_length = 110

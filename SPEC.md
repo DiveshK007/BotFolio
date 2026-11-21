@@ -19,6 +19,9 @@
 | 7 | **Build plan replaced** with a 4-workstream team plan and Claude Code conventions | §12, §16 | Team build, not solo |
 | 8 | **Review fixes (Nov 20, before interface freeze):** per-order replay key `orderId`; runner-signed Daily Call bot view; `setLimits` bounded like `createBot`; relay auth via Privy **or** SIWE JWT; Daily Call settle retries to 23:50 + next 09:00; bot-view fallback for late bots; 8 card kinds in schema; S6 shows all 4 boards; contract-derived challenge codes; users 18+; fork tests on rpc3 | §3, §4.2–§4.8, §6.4–§6.4.1, §11, §14, §16.3 | External review found these before contracts were frozen (#194) |
 | 9 | **Same review, leftovers:** §6.1 Daily Call settle cron matches the 10-min retry through 23:50 IST plus the next 09:00, and skips instead of reverting; owners filled from `CLAUDE.md`; §10 env lists the browser-visible addresses plus relay JWT config; short challenge links resolve to the full code via the DB/indexer | §2.5, §4.3, §4.8, §6.1, §10, §11, §12.1, §15 | Those spots still described the pre-fix behaviour |
+| 10 | **`users.terms_accepted_at`:** `timestamptz not null`, written at the one-line 18+ and Terms confirmation | §3, §11 | §11 required the confirmation; the users table had no column for it |
+| 11 | **Local mainnet-fork staging** in `docs/anvil-fork.md`. `foundry.toml` adds an `anvil` endpoint at `http://127.0.0.1:8545` and drops `qie_testnet` (nothing referenced it) | §0.1, §4.10, §12.1, §12.3, §16 | Testnet staging was dropped Nov 20 (`docs/decisions.md`); the repo still listed a testnet RPC and had no fork runbook |
+| 12 | **§0.6 re-checked Nov 20 2026:** QIE Wallet connect live; `.qie` names live via id.qie.digital; Wallet MCP live, free, and read-only; QIE Pass still UNVERIFIED (partner portal). `signTypedData` stays open in #189, so components that depend on it stay COMING | §0.6, §2.6, §10, §14 | The section header still said every component was UNVERIFIED |
 
 ---
 
@@ -39,6 +42,8 @@
 | Block gas limit | `0xffffffff` | latest block |
 | Client string | "Version dev, Go 1.22.2" (geth/cosmos-style; exact stack UNVERIFIED) | `web3_clientVersion` |
 | Testnet | chain 1983, `https://rpc1testnet.qie.digital`, explorer `testnet.qie.digital`, faucet `qie.digital/faucet` | hackathon quickstart |
+
+**Staging** is a local mainnet fork: [`docs/anvil-fork.md`](docs/anvil-fork.md) (decision Nov 20, `docs/decisions.md`). The testnet row is a verified fact about QIE. BotFolio staging uses the fork.
 
 **Hard consequence for the build:** compile every contract with `evmVersion = "shanghai"` and solc 0.8.24. Do **not** rely on EIP-7702 or ERC-4337 smart-account modes from wallet SDKs (no Cancun/Prague, no QIE bundler or paymaster live).
 
@@ -93,16 +98,16 @@ See §13 for the checklist. Key wording, quoted:
 - AI use (FAQ): *"Yes, AI-assisted development is encouraged. Teams must fully understand and maintain their code and be able to explain architecture to judges."* Disqualifiers include forked/recycled code, copied projects, simple clones, AI-generated projects with minimal developer contribution, no working demo.
 - Terms: 18+, **must have a valid QIE wallet address**, one submission per team, original work created during the hackathon period, prizes paid in QIE tokens.
 
-### 0.6 Extra QIE components (added v1.1 — all **UNVERIFIED**, check on Day 1)
+### 0.6 Extra QIE components (added v1.1 — re-checked Nov 20 2026)
 
-From Nov 18 research; not yet re-checked against live endpoints. Workstream D (§16) verifies each on Day 1 and marks it here.
+Checked Nov 20 2026. QIE Wallet `signTypedData` on chain 1990 is still to be tested in #189. Components that depend on that signature stay **COMING** until then. WS D copies these results into `docs/qie-components.md` when #189 is done.
 
-| Component | What we use it for | Source / claim to check | Fallback if it fails |
-|---|---|---|---|
-| **QIE Wallet** (browser extension / mobile) | Second login option: "Connect QIE Wallet". User signs the same EIP-712 forwarder requests; relayer still pays gas | [QIE wallet integration guide](https://docs.qie.digital/qie-wallet-integration-guide-for-websites). Check: injected provider name, `signTypedData_v4` support on 1990 | Generic injected-wallet (EIP-1193) connect; still label "QIE Wallet" only if it actually is |
-| **QIE ID / `.qie` names** | Show `name.qie` instead of `0x…` on bot pages, leaderboards and cards | QIE Wallet MCP reportedly exposes "QIE ID resolve" and "reverse lookup" tools | Show short address; hide the name slot |
-| **QIE Wallet MCP** | Server-side reverse lookups and balance/tx-status reads for the `/proof` page | Reportedly live at `mcp.qie.digital/mcp`, six read-only tools (balances, tx status, tokens, network info, QIE ID resolve, reverse lookup) | Direct RPC + explorer API reads |
-| **QIE Pass** | Optional "verified human" badge on leaderboards (anti-sybil). Never gates the core loop | Partner REST API with HMAC auth; user approves request in QIE Wallet; claim within 24 h. Users need a purchased QIE ID to finish KYC. **Needs partner credentials — apply Day 1** | Ship without the badge; mention as roadmap in the deck |
+| Component | Status (Nov 20 2026) | What we use it for | Source | Fallback if it fails |
+|---|---|---|---|---|
+| **QIE Wallet** (browser extension / mobile) | Connect is **LIVE**. Signing the EIP-712 forwarder requests needs `signTypedData` on chain 1990, still open in #189, so that path stays **COMING** | Second login option: "Connect QIE Wallet". User signs the same EIP-712 forwarder requests; relayer still pays gas | [QIE wallet integration guide](https://docs.qie.digital/qie-wallet-integration-guide-for-websites). Connect checked Nov 20 2026. `signTypedData_v4` on 1990: still to test (#189) | Generic injected-wallet (EIP-1193) connect; still label "QIE Wallet" only if it actually is |
+| **QIE ID / `.qie` names** | **LIVE** at [id.qie.digital](https://id.qie.digital). Showing a name does not need `signTypedData` | Show `name.qie` instead of `0x…` on bot pages, leaderboards and cards | https://id.qie.digital (checked Nov 20 2026) | Show short address; hide the name slot |
+| **QIE Wallet MCP** | **LIVE**, free, read-only at https://mcp.qie.digital/mcp | Server-side reverse lookups and balance/tx-status reads for the `/proof` page | https://mcp.qie.digital/mcp (checked Nov 20 2026): read-only tools for balances, tx status, tokens, network info, QIE ID resolve, reverse lookup | Direct RPC + explorer API reads |
+| **QIE Pass** | **UNVERIFIED** for us. Requires a partner portal; partner access is not confirmed | Optional "verified human" badge on leaderboards (anti-sybil). Never gates the core loop | Partner REST API with HMAC auth; user approves request in QIE Wallet; claim within 24 h. Users need a purchased QIE ID to finish KYC | Ship without the badge; mention as roadmap in the deck |
 
 ---
 
@@ -211,7 +216,7 @@ Stopwatch target ≤ 30 s total; measured on Nov 27 with 20 people (§12).
 
 ### 2.6 Login options (v1.1)
 - **Passkey (default)** — Privy embedded wallet (§0.4).
-- **Connect QIE Wallet** — for users who already have it (§0.6). Same EIP-712 forwarder requests, same relayer, zero gas for the user.
+- **Connect QIE Wallet** — for users who already have it (§0.6). Connect is live (Nov 20 2026). The EIP-712 signature path stays **COMING** until `signTypedData` is tested on chain 1990 (#189). Relayer still pays gas.
 - Profile shows `name.qie` where reverse lookup returns one; otherwise a short address.
 
 ---
@@ -255,9 +260,11 @@ daily_calls(id pk, bot_id, user_wallet, day int, asset, user_up bool, bot_up boo
 challenges(code text pk, season_id, challenger_bot, opponent_bot null, create_tx text, accept_tx text,
      status enum(open,accepted,settled,expired), winner_bot null)
 qie_names(wallet_address text pk, qie_name text null, checked_at)   -- cache of reverse lookups (24 h TTL)
-users: + login_method enum(passkey,qie_wallet), + pass_verified bool default false, + pass_verified_at
+users: + login_method enum(passkey,qie_wallet), + pass_verified bool default false, + pass_verified_at, + terms_accepted_at timestamptz not null
 ```
 **Order IDs (v1.1 fix):** one decision can hold up to 3 actions, so replay protection is per order, not per decision: `orderId = keccak256(abi.encode(decisionId, actionIndex))`, where `actionIndex` is the action's position in the decision's `actions` array (0-based).
+
+**18+ / Terms (v1.1):** `users.terms_accepted_at timestamptz not null` is set at sign-up, when the user confirms they are 18+ and accept the Terms (§11). Every user row carries that timestamp.
 
 **Public read surface:** the web reads only Postgres *views* (defined in `schema.sql`, anon-readable under RLS). Base tables — especially `users`, `relay_log`, `big_moves.runner_sig`, `daily_calls.bot_up_sig` — are never anon-readable (§11).
 
@@ -362,6 +369,7 @@ Functions (all via forwarder, owner-only for the bot named):
 
 ### 4.10 Gas estimate approach
 - Measure with `forge test --gas-report` on a mainnet fork (`--fork-url https://rpc3mainnet.qie.digital`, falling back to rpc4/rpc5) against the real feeds; then confirm with `eth_estimateGas` on mainnet before launch.
+- Local staging (deploy the contracts onto a fork and point the apps at it): [`docs/anvil-fork.md`](docs/anvil-fork.md).
 - Cost model: `cost_QIE = gasUsed × (baseFee 1 gwei + tip ~0.125 gwei)`. Reference point measured: forwarder deploy 899,309 gas ≈ 0.001 QIE.
 - Budget formula for the relayer + runner float: `daily_gas ≈ bots × (4 slots × avg_orders × gas_per_order + corrections × gas_corr) + users_new × gas_create`. Per-order and per-call gas numbers come from the gas report (not estimated here). Keep ≥ 10 QIE float in each hot wallet (sizing UNVERIFIED until gas report); alert < 2 QIE.
 
@@ -522,7 +530,7 @@ Computed at each season close (and refreshed after every slot for "live" view). 
 | DB / storage | Supabase Postgres + Storage (replay files, public bucket) |
 | LLM | Grok via xAI API (default), provider-agnostic `LlmClient` (§6.6); swap to OpenAI/Anthropic by env |
 | Monitoring | Render health check on `/healthz`, Render logs, low-balance + LLM-budget alerts to Telegram/email, Supabase logs |
-| QIE extras (v1.1) | QIE Wallet connect (EIP-1193) next to passkey; QIE Wallet MCP client in the Render service for `.qie` reverse lookups (cached 24 h in `qie_names`); QIE Pass partner API client (HMAC) behind a feature flag `PASS_ENABLED` |
+| QIE extras (v1.1) | QIE Wallet connect (EIP-1193) next to passkey — connect live, signed requests **COMING** until #189 (§0.6); QIE Wallet MCP client in the Render service for `.qie` reverse lookups (cached 24 h in `qie_names`; MCP live Nov 20 2026); QIE Pass partner API client (HMAC) behind a feature flag `PASS_ENABLED` (Pass still UNVERIFIED) |
 | Public read layer (v1.1) | `GET /api/v1/bots/:id/record` on Vercel (JSON: bot, versions + config hashes, trades with tx hashes + roundIds, season results, trust score + Merkle proof) and a read-only **BotFolio MCP server** (§10.1) |
 
 ### 10.1 BotFolio MCP server (v1.1)
@@ -545,6 +553,7 @@ Computed at each season close (and refreshed after every slot for "live" view). 
 ```text
 # chain
 QIE_CHAIN_ID=1990
+# local mainnet-fork staging: QIE_RPC_URLS=http://127.0.0.1:8545 (docs/anvil-fork.md). Chain id stays 1990.
 QIE_RPC_URLS=https://rpc1mainnet.qie.digital,https://rpc2mainnet.qie.digital,https://rpc3mainnet.qie.digital,https://rpc4mainnet.qie.digital,https://rpc5mainnet.qie.digital
 QIE_EXPLORER_URL=https://mainnet.qie.digital
 FEED_BTC=0x9E596d809a20A272c788726f592c0d1629755440
@@ -596,7 +605,7 @@ CRON_TZ=UTC
 INTERNAL_CRON_SECRET=        # protects POST /internal/slot
 # v1.1 contracts + QIE extras
 DAILY_CALL_ADDRESS= CHALLENGES_ADDRESS=
-QIE_WALLET_MCP_URL=https://mcp.qie.digital/mcp   # UNVERIFIED, check Day 1
+QIE_WALLET_MCP_URL=https://mcp.qie.digital/mcp   # live, free, read-only (checked Nov 20 2026, §0.6)
 PASS_ENABLED=false QIE_PASS_API_URL= QIE_PASS_API_KEY= QIE_PASS_HMAC_SECRET=
 BIG_MOVE_BUY_WEIGHT_BPS=3000 BIG_MOVE_SELL_BPS=5000 BIG_MOVE_TTL_MIN=120
 PROVISIONAL_MIN_TRADES_SPRINT=8 PROVISIONAL_MIN_TRADES_WEEKLY=20
@@ -619,7 +628,7 @@ APP_URL=
 - **LLM safety:** prompt injection via persona text can only affect that bot's play trades (gate caps everything); content filter on persona/reason/roast; persona length cap; no URLs in persona.
 - **Sybil/metrics honesty:** report unique `_msgSender` signers and weekly active coaches; never present relayer/runner tx counts as user activity.
 - **User-signed tx metric (v1.1):** the public `/stats` page splits on-chain activity into **user-signed** (createBot, corrections, v2 approvals, approved big moves, daily calls, challenges — counted by `_msgSender`) and **system** (runner batches, settlements, season roots). Lead with user-signed numbers in the deck; show system numbers separately. Optional "verified human" count from QIE Pass when enabled.
-- **Legal / India gaming law:** no entry fees, no stakes, no prizes or rewards, no token, no cash-out, no real-asset purchase links. Copy on every page footer: "Play money. Not investment advice. No prizes." Recognition-only season shoutouts. Users must be 18+ (stated in the Terms of use and at sign-up as a one-line confirmation, decided Nov 20); the team also meets the hackathon 18+ rule.
+- **Legal / India gaming law:** no entry fees, no stakes, no prizes or rewards, no token, no cash-out, no real-asset purchase links. Copy on every page footer: "Play money. Not investment advice. No prizes." Recognition-only season shoutouts. Users must be 18+ (stated in the Terms of use and at sign-up as a one-line confirmation, decided Nov 20). That confirmation is stored as `users.terms_accepted_at timestamptz not null` (§3). The team also meets the hackathon 18+ rule.
 - **Privacy:** store wallet address and Privy DID only; no phone/email unless the user opts into Privy email login.
 
 ---
@@ -632,7 +641,7 @@ Four workstreams run in parallel using Claude Code (§16). Until Sunday Nov 22 n
 
 | WS | Owner | Scope | Main sections |
 |---|---|---|---|
-| **A — Chain** | Gokul (GitHub: Gokul-social) — until Sun Nov 22 | 7 contracts, Foundry tests on mainnet fork, deploy + verify, ABI package, gas report | §4, §5, §0.1–0.3 |
+| **A — Chain** | Gokul (GitHub: Gokul-social) — until Sun Nov 22 | 7 contracts, Foundry tests on mainnet fork, deploy + verify, ABI package, gas report. Local fork staging: [`docs/anvil-fork.md`](docs/anvil-fork.md) | §4, §5, §0.1–0.3 |
 | **B — Runner** | Gokul (GitHub: Gokul-social) — until Sun Nov 22 | Render service: relayer + allowlist, LLM client, decision runner, gate + big-move split, scheduler, indexer, season close, DailyCall settle, trust/leaderboards, replay script, BotFolio MCP server | §6, §7, §8, §10, §10.1, §11 |
 | **C — App** | Gokul (GitHub: Gokul-social) — until Sun Nov 22 | Next.js PWA: all screens S1–S11, Privy passkey + QIE Wallet connect, `.qie` display, ₹ display rule, price-age labels, `/proof`, `/stats` | §2, §3 (reads), §5.7 |
 | **D — Growth & ecosystem** | Divesh (GitHub: DiveshK007) for registration, wallets, QIE checks, launch; Gokul for code | Share cards + Verify-on-QIE panel, public API, QIE Wallet MCP + Pass checks (§0.6), domain, launch content, soft launch + public launch, demo video, deck, README/docs | §0.6, §9, §13, traction |
@@ -649,7 +658,7 @@ Four workstreams run in parallel using Claude Code (§16). Until Sunday Nov 22 n
 | Day | A — Chain | B — Runner | C — App | D — Growth & ecosystem | Gate (must be true to move on) |
 |---|---|---|---|---|---|
 | **Fri Nov 20** | Repo scaffold (monorepo §16.1); interfaces; contracts written | DB schema; Render + xAI + Supabase accounts; `LlmClient` | Next.js scaffold; **passkey spike on 2 phones (iOS Safari + Android Chrome) → EIP-712 sig on 1990** | Register team on hackathon.qie.digital + QIE wallet address; fund deployer/relayer/runner wallets; apply for QIE Pass partner creds; check QIE Wallet + Wallet MCP (§0.6) | Interfaces frozen; passkey sig on 1990 works on both phones (else switch to thirdweb) |
-| **Sat Nov 21** | Fork tests green (stale, limits, cap, batch-skip, forwarder `_msgSender`, `executeApproved` sig + replay guard, DailyCall, Challenges); gas report | Relayer + allowlist + rate limits against fork; persona + decision calls with strict schema; gate incl. big-move split | S1 landing + S2 create (mocked relay); ₹ display; price-age component | Card renderer for trade/roast/recap with mock data; domain bought | All tests green with `evm_version=shanghai`; gas per call known |
+| **Sat Nov 21** | Fork tests green (stale, limits, cap, batch-skip, forwarder `_msgSender`, `executeApproved` sig + replay guard, DailyCall, Challenges); gas report | Relayer + allowlist + rate limits against the local fork ([`docs/anvil-fork.md`](docs/anvil-fork.md)); persona + decision calls with strict schema; gate incl. big-move split | S1 landing + S2 create (mocked relay); ₹ display; price-age component | Card renderer for trade/roast/recap with mock data; domain bought | All tests green with `evm_version=shanghai`; gas per call known |
 | **Sun Nov 22** | **Mainnet deploy + verify all 7**; addresses into env; seed 3 house bots | Indexer → Postgres; 4-slot scheduler; debut trade; executeBatch on mainnet | Real passkey → createBot → first trade on mainnet; S3 `/me`; S4 public bot page | `.qie` reverse lookup working or fallback; Verify-on-QIE panel | **End-to-end on mainnet: landing → first trade ≤ 30 s on a phone** |
 | **Mon Nov 23** | Support B/C; admin scripts (open/close season, publish rules) | Corrections, big-move flow + expiry fallback, DailyCall settle, season open/close checks | Correct-a-call, Approve Big Move sheet, Daily Call sheet (S11) | Public API `/api/v1/bots/:id/record`; `/stats` user-signed vs system split | A real big move approved by a user executes on mainnet with the user as signer |
 | **Tue Nov 24** | Replay script checks on-chain events | v2 proposal + Approve → `commitVersion`; season data root; trust score + `commitScores`; leaderboards (4 boards). **S0 test season opens** | S5 season close + v2 diff; S6 leaderboards; S10 challenge page; QIE Wallet connect | Battle/season/evolution/challenge/call cards; WhatsApp + X unfurl tests | All flows work in S0 |
@@ -721,7 +730,7 @@ Four workstreams run in parallel using Claude Code (§16). Until Sunday Nov 22 n
 | 5 | LLM flakiness/cost and the "AI-generated project" rule | xAI strict structured outputs + deterministic gate; budget cap with hold fallback; provider swappable by env; original architecture documented; Divesh can explain every contract |
 | 6 | Looks like gambling or financial advice | Play money, no prizes/tokens/fees, not-advice copy, no real-asset buy links |
 | 7 | **Name clash:** botsfolio.com (AI paper-trading bots) is a near-identical name | Differentiate everywhere by personality bots raised in one sentence, season-by-season coaching with on-chain version history, and provable QIE records; always write "BotFolio" with capital F and the tagline |
-| 8 | (v1.1) QIE Wallet MCP, `.qie` lookup or QIE Pass API not available / no partner creds in time | Each has a fallback in §0.6; Pass is behind `PASS_ENABLED`; never block the core loop on them |
+| 8 | (v1.1) QIE Pass partner access stays unconfirmed, or QIE Wallet `signTypedData` fails on chain 1990 | Pass stays behind `PASS_ENABLED` and off the core loop. The signed QIE Wallet path stays COMING until #189. `.qie` names and Wallet MCP were live on Nov 20 2026, with the fallbacks in §0.6 if they drop |
 | 9 | (v1.1) Users ignore Approve Big Move prompts | Expiry fallback executes a clipped order after 2 h (§6.4 step 10), so the bot never stalls; prompt is also a push/feed item |
 | 10 | (v1.1) Double execution of a big move (user approves + runner fallback) | `usedOrder[orderId]` (per action, §3) in `PaperLedger` for both paths; fork test covers a 3-action decision with one big move |
 | 11 | (v1.1) Interface churn between 4 parallel workstreams | Interfaces frozen Day 1 (§12.2); changes only via one announced PR |
@@ -750,7 +759,7 @@ botfolio/
   CLAUDE.md                 # rules every Claude Code session reads first (mirrors §16.2)
   SPEC.md                   # this file — the source of truth
   packages/
-    contracts/              # WS A — Foundry: src/, test/ (mainnet fork), script/, abi/, events.md
+    contracts/              # WS A — Foundry: src/, test/ (mainnet fork), script/, abi/, events.md. Local staging: docs/anvil-fork.md
     shared/                 # frozen interfaces: relay.ts, eip712.ts, cards.ts, chain.ts (defineChain 1990), assets.ts
     db/                     # WS B — schema.sql, migrations/
     llm/                    # WS B — LlmClient + XaiClient/OpenAiClient/AnthropicClient
@@ -759,7 +768,7 @@ botfolio/
     worker/                 # WS B — Render service: relay, runner, scheduler, indexer, seasons, mcp
   scripts/
     replay/                 # npx botfolio-replay
-  docs/                     # architecture.md, trust-rules.md, replay.md, oracle-caveat.md
+  docs/                     # architecture.md, trust-rules.md, replay.md, oracle-caveat.md, anvil-fork.md
 ```
 
 ### 16.2 Rules for every Claude Code session
@@ -768,7 +777,7 @@ botfolio/
 3. **Chain rules are hard rules:** solc 0.8.24, `evm_version = "shanghai"`, `@openzeppelin/contracts@5.0.2` pinned exactly, no `mcopy`/`tstore`, no EIP-7702 / ERC-4337 modes, chain ID 1990, all 5 RPCs with failover.
 4. **No secrets in code or in `NEXT_PUBLIC_*`.** Keys only in Render/Vercel env. Never paste private keys into a Claude Code session.
 5. **Small commits, real messages, one logical change each**, made by the person who owns the work. No giant "initial commit" dumps. Commit at least every hour of active work.
-6. **Tests before "done":** contracts → `forge test` on a mainnet fork; worker → unit tests for `gate()`, big-move split, season close, trust score; web → the 30 s path checked on a real phone.
+6. **Tests before "done":** contracts → `forge test` on a mainnet fork; worker → unit tests for `gate()`, big-move split, season close, trust score; web → the 30 s path checked on a real phone. Local mainnet-fork staging (Anvil, deploy, app RPC): [`docs/anvil-fork.md`](docs/anvil-fork.md).
 7. **Honest wording everywhere:** "settled against QIE's official mainnet oracle", never "trustless" or "decentralised". Play money, not advice, no prizes.
 8. **Mark anything unverified** in code comments and docs as `UNVERIFIED` — same rule as this spec.
 9. **You must be able to explain every line you commit.** If Claude wrote something you don't understand, ask it to explain, or simplify it, before committing.

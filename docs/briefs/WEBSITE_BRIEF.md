@@ -35,7 +35,7 @@ A product website that makes people feel BotFolio, not read a spec: the product'
   - Never present relayer/runner transactions as user activity; user-signed numbers are shown separately (SPEC §11).
   - ₹ amounts are play-money display values converted from the oracle's USD prices (SPEC §3 display rule); every price shows its age (SPEC §5).
 - Label everything: LIVE (read from the API/chain at load), EXAMPLE (illustrative mockup), REAL FOOTAGE. Never invent users, bots, testimonials, logos or metrics. A missing fact becomes a visible [PLACEHOLDER].
-- Anything marked UNVERIFIED in SPEC §0.6 (QIE Wallet connect, `.qie` names, QIE Wallet MCP, QIE Pass) is shown only once the team confirms it works; otherwise label it "coming" or leave it out.
+- QIE component status comes from SPEC §0.6. Show a component as live only when §0.6 says so. QIE Wallet pieces that depend on `signTypedData` stay "coming" until #189. QIE Pass stays "coming" while §0.6 marks it UNVERIFIED.
 - Include an honest "what works / what's next" section.
 
 ## Phase 1 · Discover

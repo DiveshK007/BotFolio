@@ -6,7 +6,7 @@ Format: date — decision — why — who.
 - Nov 19 — Gas sponsored via own ERC-2771 forwarder + relayer — QIE has no paymaster/bundler — team
 - Nov 19 — LLM: Grok via xAI behind a swappable `LlmClient`; hosting: Render (worker+relayer) + Vercel (web) + Supabase — team
 - Nov 20 — Spec v1.1: sprint seasons, user-signed actions (Approve Big Move, Daily Call, Challenges), QIE components in core, team plan — team
-- Nov 20 — Replay protection per order: `orderId = keccak256(decisionId, actionIndex)` — a decision can hold up to 3 actions; a per-decision key blocked actions 2 and 3 — Divesh
+- Nov 20 — Replay protection per order: `orderId = keccak256(abi.encode(decisionId, actionIndex))` — a decision can hold up to 3 actions; a per-decision key blocked actions 2 and 3 — Divesh
 - Nov 20 — Daily Call bot view must carry a runner EIP-712 signature — otherwise the user's own tx chooses the bot's answer — Divesh
 - Nov 20 — `setLimits` enforces the same bounds as `createBot` (10–50 % per coin, 1–8 trades/day) — keeps leaderboards fair — Divesh
 - Nov 20 — Relay accepts a Privy token or a SIWE-style JWT — QIE Wallet users have no Privy session — Divesh
