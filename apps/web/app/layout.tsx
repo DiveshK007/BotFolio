@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, Inter, JetBrains_Mono } from "next/font/google";
+import { PlayMoneyFooter } from "@/components/ui/PlayMoneyFooter";
 import "./globals.css";
 
 // Same fonts and variable names as the Claude Design export (#95 merges its layout into this one).
@@ -36,7 +37,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="min-h-dvh antialiased">{children}</body>
+      <body className="flex min-h-dvh flex-col antialiased">
+        <div className="flex-1">{children}</div>
+        <PlayMoneyFooter />
+      </body>
     </html>
   );
 }
