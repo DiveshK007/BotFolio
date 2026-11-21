@@ -1,0 +1,101 @@
+# Contracts CI (issue #126, SPEC §16.2).
+# forge fmt --check, forge build, forge test on a QIE mainnet fork.
+# Needs no secrets: the QIE RPCs are public.
+name: contracts
+
+on:
+  pull_request:
+    paths:
+      - "packages/contracts/**"
+      - ".gitmodules"
+      - ".github/workflows/contracts.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packages/contracts/**"
+      - ".gitmodules"
+      - ".github/workflows/contracts.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contracts-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned so a Foundry release can't change CI under us mid-hackathon.
+  # Bump on purpose, in its own PR.
+  FOUNDRY_VERSION: v1.9.0
+  FOUNDRY_PROFILE: default
+
+defaults:
+  run:
+    working-directory: packages/contracts
+
+jobs:
+  forge:
+    name: forge fmt / build / fork tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # OZ 5.0.2 and forge-std are git submodules under packages/contracts/lib.
+          submodules: recursive
+
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+
+      - name: Show versions
+        run: |
+          forge --version
+          git -C lib/openzeppelin-contracts describe --tags --exact-match 2>/dev/null || git -C lib/openzeppelin-contracts rev-parse HEAD
+
+      - name: Check OpenZeppelin is still v5.0.2
+        # SPEC §0.3: 5.6.x uses mcopy, which QIE (Shanghai) doesn't have.
+        run: |
+          want=dbb6104ce834628e473d2173bbc9d47f81a9eec3
+          have=$(git -C lib/openzeppelin-contracts rev-parse HEAD)
+          if [ "$have" != "$want" ]; then
+            echo "::error::lib/openzeppelin-contracts is at $have, expected v5.0.2 ($want). OZ is pinned for QIE/Shanghai (SPEC §0.3)."
+            exit 1
+          fi
+
+      - name: forge fmt --check
+        run: forge fmt --check
+
+      - name: forge build
+        run: forge build --sizes
+
+      - name: Pick a QIE mainnet RPC (rpc3 -> rpc4 -> rpc5)
+        id: rpc
+        # rpc1/rpc2 drop TLS sometimes (SPEC §0.1), so CI starts at rpc3.
+        # Each candidate must answer eth_chainId with 0x7c6 (1990).
+        run: |
+          for n in 3 4 5; do
+            url="https://rpc${n}mainnet.qie.digital"
+            for attempt in 1 2; do
+              resp=$(curl -sS --max-time 10 -X POST -H 'content-type: application/json' \
+                --data '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}' "$url" || true)
+              if printf '%s' "$resp" | grep -q '"result":"0x7c6"'; then
+                echo "Using $url"
+                echo "url=$url" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              echo "::warning::$url attempt $attempt failed: ${resp:-no response}"
+              sleep 2
+            done
+          done
+          echo "::error::No QIE mainnet RPC (rpc3/rpc4/rpc5) answered eth_chainId = 0x7c6"
+          exit 1
+
+      - name: forge test (mainnet fork)
+        env:
+          # ETH_RPC_URL is forge's --fork-url, so every test runs on the QIE fork.
+          # QIE_RPC_URL is for tests that call vm.createSelectFork(vm.envString("QIE_RPC_URL")).
+          ETH_RPC_URL: ${{ steps.rpc.outputs.url }}
+          QIE_RPC_URL: ${{ steps.rpc.outputs.url }}
+        run: forge test -vvv
