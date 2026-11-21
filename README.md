@@ -15,6 +15,7 @@ Built for **QIE Hackathon 3.0 (Mainnet Edition)** · AI + Autonomous Agents trac
 - [`SPEC.md`](SPEC.md) — full product and technical spec (source of truth)
 - [`CLAUDE.md`](CLAUDE.md) — rules for contributors and Claude Code sessions
 - [`docs/decisions.md`](docs/decisions.md) — decision log
+- [`docs/anvil-fork.md`](docs/anvil-fork.md) — local mainnet-fork staging (Anvil)
 - [`docs/briefs/`](docs/briefs) — website and video briefs
 
 ## Repo layout
