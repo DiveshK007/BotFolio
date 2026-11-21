@@ -99,3 +99,33 @@ jobs:
           ETH_RPC_URL: ${{ steps.rpc.outputs.url }}
           QIE_RPC_URL: ${{ steps.rpc.outputs.url }}
         run: forge test -vvv
+
+  slither:
+    # Issue #153, SPEC §4. Fails the PR on any High finding in our own code.
+    # lib/ (OZ, forge-std), test/ and script/ are excluded from findings.
+    name: slither (fail on high)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+
+      # Build with our pinned Foundry (solc 0.8.24, evm shanghai from foundry.toml)
+      # so Slither analyses the same artifacts the tests use.
+      - name: forge build --build-info
+        run: forge build --build-info
+
+      - uses: crytic/slither-action@v0.4.2
+        with:
+          target: packages/contracts
+          slither-version: "0.11.6"
+          # Only used if Slither ever compiles on its own; forge already built with 0.8.24.
+          solc-version: "0.8.24"
+          ignore-compile: true
+          fail-on: high
+          slither-args: --filter-paths "lib/,test/,script/" --exclude-dependencies
