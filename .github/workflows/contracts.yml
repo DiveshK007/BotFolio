@@ -111,21 +111,14 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: ${{ env.FOUNDRY_VERSION }}
-
-      # Build with our pinned Foundry (solc 0.8.24, evm shanghai from foundry.toml)
-      # so Slither analyses the same artifacts the tests use.
-      - name: forge build --build-info
-        run: forge build --build-info
-
+      # The action runs in its own Docker image. It installs Foundry stable there
+      # and compiles via foundry.toml (solc 0.8.24, evm shanghai). Pre-building on
+      # the runner with ignore-compile doesn't work: crytic-compile still calls
+      # `forge config` inside the container, where our pinned forge isn't on PATH.
       - uses: crytic/slither-action@v0.4.2
         with:
           target: packages/contracts
           slither-version: "0.11.6"
-          # Only used if Slither ever compiles on its own; forge already built with 0.8.24.
           solc-version: "0.8.24"
-          ignore-compile: true
           fail-on: high
           slither-args: --filter-paths "lib/,test/,script/" --exclude-dependencies
