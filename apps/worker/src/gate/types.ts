@@ -1,7 +1,8 @@
 import type { AssetId } from "@botfolio/shared";
 import type { Hex } from "viem";
+import type { BigMoveConfig } from "../config";
 import type { DecisionOutput } from "../decision/schema";
-import type { LedgerOrder, SkipReason } from "../interfaces";
+import type { ApprovedOrder, LedgerOrder, SkipReason } from "../interfaces";
 
 export interface Portfolio {
   cashE8: bigint;
@@ -18,6 +19,8 @@ export interface Price {
 export interface GateBot {
   botId: bigint;
   active: boolean;
+  /** House bots never produce big moves (SPEC §6.4 step 9). */
+  isHouse: boolean;
   maxPerCoinBps: number;
   maxTradesPerDay: number;
   /** For the current IST day. Get it with `tradesTodayFrom()`; the raw on-chain counter can be from an older day. */
@@ -30,6 +33,10 @@ export interface GateInput {
   bot: GateBot;
   portfolio: Portfolio;
   prices: Readonly<Record<AssetId, Price>>;
+  /** Decision time. Only used for big-move deadlines; passed in so the gate stays pure. */
+  nowSeconds: number;
+  /** From env via `loadBigMoveConfig()`. Logged with the input so a replay uses the same thresholds. */
+  bigMove: BigMoveConfig;
 }
 
 export type DropReason =
@@ -76,6 +83,14 @@ export interface GateOrder extends LedgerOrder {
   orderId: Hex;
 }
 
+/** An order pulled out of the batch for the owner to allow (SPEC §6.4 step 9). Becomes a `big_moves` row. */
+export interface BigMove {
+  order: ApprovedOrder;
+  orderId: Hex;
+  /** Weight the asset would have after this trade, for "wants to put 35 % in Gold. Allow?". */
+  postWeightBps: number;
+}
+
 export type DecisionStatus = "executed" | "held" | "skipped_stale" | "invalid";
 
 export interface GateResult {
@@ -83,6 +98,8 @@ export interface GateResult {
   status: DecisionStatus;
   /** In execution order, ready for `executeBatch`. */
   orders: GateOrder[];
+  /** Not in `orders`, so not in `executeBatch`. The runner signs each one and asks the owner. */
+  bigMoves: BigMove[];
   events: GateEvent[];
   /** BUY and SELL actions the bot proposed (HOLD is not a proposal). */
   proposedActions: number;

@@ -1,5 +1,6 @@
 import type { AssetId } from "@botfolio/shared";
 import { ASSETS } from "@botfolio/shared";
+import type { BigMoveConfig } from "../../src/config";
 import type { GateBot, GateInput, Portfolio, Price } from "../../src/gate/types";
 import type { DecisionAction, DecisionOutput } from "../../src/decision/schema";
 import { classifyRound } from "../../src/oracle";
@@ -8,6 +9,9 @@ export const E8 = 100_000_000n;
 export const DECISION_ID = `0x${"ab".repeat(32)}` as const;
 /** 2026-11-22 13:13 IST, when the stale snapshot below was seen live. */
 export const NOW = Date.parse("2026-11-22T13:13:00+05:30") / 1000;
+
+/** Out of reach, so tests of steps 1–8 see plain batch orders. Big-move tests pass real thresholds. */
+const NO_BIG_MOVES: BigMoveConfig = { buyWeightBps: 10_001, sellBps: 10_001, ttlMs: 0 };
 
 export const PRICE_E8: Record<AssetId, bigint> = {
   BTC: 60_000n * E8,
@@ -65,8 +69,10 @@ export function gateInput(
     decisionId: DECISION_ID,
     portfolio: portfolio(),
     prices: prices(),
+    nowSeconds: NOW,
+    bigMove: NO_BIG_MOVES,
     ...over,
-    bot: { botId: 7n, active: true, maxPerCoinBps: 5000, maxTradesPerDay: 8, tradesToday: 0, ...over.bot },
+    bot: { botId: 7n, active: true, isHouse: false, maxPerCoinBps: 5000, maxTradesPerDay: 8, tradesToday: 0, ...over.bot },
   };
 }
 

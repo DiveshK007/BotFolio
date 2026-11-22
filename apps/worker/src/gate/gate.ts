@@ -1,9 +1,10 @@
 import { validateJson } from "@botfolio/llm";
 import { DECISION_OUTPUT_SCHEMA, type DecisionOutput } from "../decision/schema";
 import { ASSET_INDEX, orderIdOf } from "../interfaces";
+import { isBigMove, toBigMove } from "./big-move";
 import { checkTrade, type CheckResult } from "./check";
 import { applyTrade, type Trade } from "./ledger-math";
-import type { DropReason, GateEvent, GateInput, GateOrder, GateResult } from "./types";
+import type { BigMove, DropReason, GateEvent, GateInput, GateOrder, GateResult } from "./types";
 
 /** A BUY or SELL with its position in the decision's actions array. */
 export interface Proposal extends Trade {
@@ -17,6 +18,11 @@ export interface Proposal extends Trade {
  * `executeBatch` runs them: the second BUY spends a share of the cash the first one left.
  * `actionIndex` stays the position in the original array, HOLDs included (SPEC §3).
  *
+ * Big moves (step 9) are not in the batch, so they don't change that simulated portfolio. The owner
+ * approves one after the batch has run, so each is checked again against the portfolio the batch
+ * leaves behind. Example: BUY Gold 40 % (big) then BUY Gold 20 % (batch) needs the big one clipped
+ * to the room left next to the 20 %, or `executeApproved` would revert on the per-coin cap.
+ *
  * Step 1's "one retry" happens in the LLM client; by the time output gets here it is final.
  */
 export function gate(input: GateInput, output: unknown, rulesVersion: string): GateResult {
@@ -27,6 +33,7 @@ export function gate(input: GateInput, output: unknown, rulesVersion: string): G
       rulesVersion,
       status: "invalid",
       orders: [],
+      bigMoves: [],
       events: [],
       proposedActions: 0,
       output: null,
@@ -43,21 +50,37 @@ export function gate(input: GateInput, output: unknown, rulesVersion: string): G
   const orders: GateOrder[] = [];
   let portfolio = input.portfolio;
   let tradesLeft = input.bot.maxTradesPerDay - input.bot.tradesToday;
+  const needApproval: Proposal[] = [];
 
   for (const proposal of proposals) {
     const result = checkTrade(input, portfolio, proposal, tradesLeft);
     events.push(...eventsFor(proposal, result));
     if (!result.ok) continue;
 
+    // An approved big move also counts toward tradesToday (SPEC §4.3), so it uses up a trade here.
     tradesLeft--;
+    // Step 9.
+    if (!input.bot.isHouse && isBigMove(input, portfolio, result.trade)) {
+      needApproval.push({ ...result.trade, actionIndex: proposal.actionIndex });
+      continue;
+    }
     portfolio = applyTrade(portfolio, input.prices, result.trade);
     orders.push(toOrder(input, result.trade, proposal.actionIndex));
+  }
+
+  const bigMoves: BigMove[] = [];
+  for (const proposal of needApproval) {
+    // Its trade was reserved above, hence 1 left.
+    const result = checkTrade(input, portfolio, proposal, 1);
+    events.push(...eventsFor(proposal, result));
+    if (result.ok) bigMoves.push(toBigMove(input, portfolio, result.trade, proposal.actionIndex));
   }
 
   return {
     rulesVersion,
     status: statusOf(proposals.length, orders.length, events),
     orders,
+    bigMoves,
     events,
     proposedActions: proposals.length,
     output: decision,
@@ -96,7 +119,10 @@ export function toOrder(input: Pick<GateInput, "bot" | "decisionId">, trade: Tra
   };
 }
 
-/** `skipped_stale` only when stale prices are the sole reason nothing trades (SPEC §5 rule 4). */
+/**
+ * Describes this slot's batch. `skipped_stale` only when stale prices are the sole reason nothing trades
+ * (SPEC §5 rule 4). A decision with nothing but a pending big move is `held` until its trade executes.
+ */
 function statusOf(proposed: number, accepted: number, events: GateEvent[]): GateResult["status"] {
   if (accepted > 0) return "executed";
   const staleDrops = events.filter((e) => e.kind === "drop" && e.reason === "stale").length;

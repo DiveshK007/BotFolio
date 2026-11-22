@@ -43,3 +43,16 @@ Pure functions the scheduler and the replay script share. Importing this entry p
 | `low_cash`, `min_order` | none: the 1 % rules exist only in the gate (with no cash at all the ledger says `ZERO`) |
 
 `USED` is never a gate drop: the gate doesn't know chain history.
+
+### Big moves (SPEC §6.4 steps 9–10)
+- BUY to ≥ `BIG_MOVE_BUY_WEIGHT_BPS` of the portfolio, or SELL of ≥ `BIG_MOVE_SELL_BPS` of a holding, lands in `bigMoves`, outside the batch. House bots never do.
+- `signApprovedOrder()` signs it. The deadline is decision time + `BIG_MOVE_TTL_MIN`.
+- `shrinkBigMove()` is the fallback when the batch is built after the deadline, or at once when the owner taps Shrink. The order keeps its decisionId + actionIndex, so the same orderId.
+
+| `shrinkBigMove` outcome | `big_moves.status` the runner writes |
+|---|---|
+| `execute` | `shrunk` |
+| `already_executed` | `approved` |
+| `drop` | `expired` |
+| `stale` | leave `pending`, retry at +5/+10/+15 min, then `expired` |
+| `not_due` | leave `pending` |

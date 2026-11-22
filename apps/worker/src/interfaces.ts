@@ -1,7 +1,7 @@
 import { ASSETS, type AssetId } from "@botfolio/shared";
 import type { Hex } from "viem";
 
-export { istDay, orderIdOf } from "@botfolio/shared";
+export { APPROVED_ORDER_TYPES, istDay, orderIdOf, paperLedgerDomain, type ApprovedOrder } from "@botfolio/shared";
 
 /** `IPaperLedger.Order`, the struct `executeBatch` takes. Runner-only, so it isn't in relay.ts. */
 export interface LedgerOrder {
