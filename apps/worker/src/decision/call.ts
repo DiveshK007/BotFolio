@@ -11,6 +11,8 @@ export function wantsDailyCall(slot: { kind: "scheduled" | "debut"; time: Date }
   return slot.kind === "debut" || isNineAmSlot(slot.time);
 }
 
+const DAILY_CALL_SCHEMA_NAME = "decision_v1_daily_call";
+
 /** Logged as the model when the budget is used up and no LLM was called. */
 export const BUDGET_HOLD_MODEL = "budget-hold";
 
@@ -28,6 +30,11 @@ export interface DecisionLog {
   /** Parsed output; the raw text if that wasn't JSON; null if nothing came back. */
   // TODO(#49): Postgres jsonb refuses NUL characters and lone surrogates; escape them when writing the row.
   rawOutputJson: unknown;
+  /**
+   * With a Daily Call view, this and `rawOutputJson` are secret until the user picks (SPEC §6.4.1): the
+   * rest of the output is public, so the hash gives btc_up away to anyone who can guess `why`.
+   */
+  // TODO(#49): site_decisions publishes output_hash, so don't write it for these decisions before the pick.
   outputHash: Hex | null;
   error: string | null;
 }
@@ -61,7 +68,7 @@ export async function runDecisionCall(opts: DecisionCallOptions): Promise<Decisi
 async function decide({ llm, config, input, slot, budget }: DecisionCallOptions): Promise<DecisionCallResult> {
   const prompt = decisionPrompt(config.promptVersion);
   const withDailyCall = wantsDailyCall(slot);
-  const schemaName = withDailyCall ? "decision_v1_daily_call" : "decision_v1";
+  const schemaName = withDailyCall ? DAILY_CALL_SCHEMA_NAME : "decision_v1";
   const base: DecisionLog = {
     promptVersion: prompt.version,
     promptHash: prompt.hash,
@@ -143,7 +150,13 @@ function logRaw(raw: string | undefined): { rawOutputJson: unknown; outputHash: 
   }
 }
 
+/**
+ * The server log line. When the request asked for a Daily Call view, nothing computed from the model's
+ * output goes in it: no hash, no output token count, and only the kind of an error (messages quote keys
+ * the model wrote).
+ */
 function summary({ status, log }: DecisionCallResult): string {
+  const secret = log.schemaName === DAILY_CALL_SCHEMA_NAME;
   return JSON.stringify({
     event: "llm.decision",
     status,
@@ -153,9 +166,9 @@ function summary({ status, log }: DecisionCallResult): string {
     model: log.model,
     temperature: log.temperature ?? null,
     attempts: log.attempts,
-    usage: log.usage,
+    usage: secret && log.usage ? { inTok: log.usage.inTok } : log.usage,
     inputHash: log.inputHash,
-    outputHash: log.outputHash,
-    error: log.error,
+    outputHash: secret ? null : log.outputHash,
+    error: secret && log.error ? log.error.split(":")[0] : log.error,
   });
 }
