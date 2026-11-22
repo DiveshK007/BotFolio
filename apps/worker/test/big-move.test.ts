@@ -159,8 +159,9 @@ describe("gate() SPEC §6.4 step 9: house bots", () => {
   it.each([
     ["BUY to 50 %", {}, buy("GOLD", 50)],
     ["full SELL", { portfolio: portfolio({ GOLD: 40 }) }, sell("GOLD", 100)],
-  ])("%s executes directly, never a big move", (_name, over, action) => {
-    const r = run(input({ ...over, bot: { isHouse: true } }), action);
+  ])("%s executes directly, never a big move", (_name, over, { asset, action, pct }) => {
+    const output = { ...decision(), actions: [{ asset, action, bps: pct * 100 }] };
+    const r = gate(input({ ...over, bot: { isHouse: true } }), output, "gate-test");
     expect(r.bigMoves).toEqual([]);
     expect(r.orders).toHaveLength(1);
   });
