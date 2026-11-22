@@ -21,9 +21,9 @@ import type { HDAccount } from "viem/accounts";
 import { RELAYER } from "./fakes";
 
 const WORKER = fileURLToPath(new URL("../../..", import.meta.url));
-const CONTRACTS = resolve(WORKER, "../../packages/contracts");
+export const CONTRACTS = resolve(WORKER, "../../packages/contracts");
 const OZ = join(CONTRACTS, "lib/openzeppelin-contracts/contracts");
-const FOUNDRY_BIN = process.env.FOUNDRY_BIN ?? join(homedir(), ".foundry/bin");
+export const FOUNDRY_BIN = process.env.FOUNDRY_BIN ?? join(homedir(), ".foundry/bin");
 // rpc1/rpc2 drop TLS sometimes (SPEC §0.1). Only read from: every tx goes to the local fork.
 const FORK_RPCS = [4, 5, 3].map((n) => `https://rpc${n}mainnet.qie.digital`);
 

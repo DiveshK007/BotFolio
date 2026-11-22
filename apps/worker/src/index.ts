@@ -8,6 +8,7 @@ import { consoleLog } from "./auth/log";
 import { authRoutes } from "./auth/routes";
 import { setUpAuth } from "./auth/setup";
 import { relayRoutes } from "./relay/route";
+import { setUpRelayer } from "./relay/setup";
 
 /** Render web service entry point (SPEC §10). Keys stay in Render env; nothing secret is logged. */
 async function main(): Promise<void> {
@@ -20,10 +21,12 @@ async function main(): Promise<void> {
   const clientIp = createClientIp(process.env);
   const auth = setUpAuth(process.env);
   if (auth.problems.length) consoleLog("auth.not_configured", { env: auth.problems.join(",") });
+  const relayer = setUpRelayer({ env: process.env, auth, rpcUrls: cfg.rpcUrls, log: consoleLog });
+  if (!relayer.relay) consoleLog("relay.disabled", { env: relayer.problems.join(",") });
+  relayer.start();
   const routes = {
     ...authRoutes({ origins, clientIp, log: consoleLog, siwe: auth.siwe }),
-    // Off (503 RELAY_DISABLED) until limits and the nonce manager are wired in: #39, #40.
-    ...relayRoutes({ relay: null, origins, clientIp }),
+    ...relayRoutes({ relay: relayer.relay, origins, clientIp }),
   };
   const server = createWorkerServer({ health, routes });
   server.listen(cfg.port, () => {
@@ -34,7 +37,11 @@ async function main(): Promise<void> {
   const shutdown = (signal: string) => {
     console.log(`[worker] ${signal} — shutting down`);
     stopOracle();
-    server.close(() => process.exit(0));
+    // Let a broadcast in progress finish, then close.
+    void relayer
+      .stop()
+      .catch(() => undefined)
+      .finally(() => server.close(() => process.exit(0)));
     setTimeout(() => process.exit(1), 10_000).unref();
   };
   process.on("SIGTERM", () => shutdown("SIGTERM"));
