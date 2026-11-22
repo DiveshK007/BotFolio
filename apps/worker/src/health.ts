@@ -72,12 +72,16 @@ export class HealthState {
     this.oracleCheckedAt = at;
   }
 
-  // TODO(#32): month-to-date spend should be summed from logged decision usage in Postgres, so it
-  // survives restarts. Until the schema lands this is in-memory only.
+  // Between two refreshes from the decisions log (src/budget/spend.ts), which is what survives a restart.
   recordLlmUsage(model: string, usage: LlmUsage, at: Date = new Date()): void {
     const month = monthKey(at);
     if (this.spend.month !== month) this.spend = { month, usd: 0 };
     this.spend.usd += estimateCostUsd(model, usage);
+  }
+
+  /** The month's spend as the decisions log has it (src/budget). Calls after this add to it. */
+  setLlmSpend(usd: number, at: Date = new Date()): void {
+    this.spend = { month: monthKey(at), usd };
   }
 
   budget(at: Date = new Date()): BudgetState {
