@@ -12,4 +12,4 @@
 
 ## Applying
 - Supabase: paste the migration into the SQL editor, or `psql "$DATABASE_URL" -f migrations/0001_init.sql`.
-- Grants for `anon` on the `site_*` views and RLS on base tables are #154. Until then, keep the anon key out of any client.
+- `0001_init.sql` turns RLS on for every table and leaves `anon` / `authenticated` with SELECT on the `site_*` views only. A migration that adds a table or view must do the same for it. Testing with a real Supabase anon key is still open (#154).
