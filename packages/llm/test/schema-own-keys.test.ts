@@ -16,7 +16,7 @@ describe("validateJson only trusts own properties", () => {
   });
 
   it("an inherited name doesn't satisfy `required`", () => {
-    const s: JsonSchema = { ...schema, required: ["toString"], properties: { toString: { type: "string" } } };
+    const s: JsonSchema = { ...schema, required: ["toString"], properties: {} };
     expect(validateJson(s, {})).toEqual([{ path: "$.toString", message: "is required" }]);
   });
 });
