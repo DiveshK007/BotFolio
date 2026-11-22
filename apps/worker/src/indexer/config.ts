@@ -78,7 +78,9 @@ function databaseConfig(value: string): DatabaseConfig | string {
   if (url.searchParams.has("host") || url.searchParams.has("ssl")) return "must not set host or ssl as parameters";
   if (LOCAL_HOSTS.has(url.hostname)) return { connectionString: value };
 
-  const mode = url.searchParams.get("sslmode");
-  if (mode === null) return { connectionString: value, ssl: true };
+  const modes = url.searchParams.getAll("sslmode");
+  if (modes.length > 1) return "must set sslmode once"; // pg would use the last one, and we'd have checked the first
+  const mode = modes[0];
+  if (mode === undefined) return { connectionString: value, ssl: true };
   return TLS_MODES.has(mode) ? { connectionString: value } : "must use TLS for a remote server";
 }
