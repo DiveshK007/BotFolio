@@ -35,9 +35,11 @@ export function startScheduler(options: StartSchedulerOptions): { stop(): Promis
     log,
   });
   scheduler.start();
+  const services = sets.flatMap((set) => set.service ?? []);
+  for (const service of services) service.start();
   return {
     async stop() {
-      await scheduler.stop();
+      await Promise.all([scheduler.stop(), ...services.map((service) => service.stop())]);
       await db.close();
     },
   };

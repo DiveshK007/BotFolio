@@ -39,7 +39,8 @@ export function createPgDb(database: DatabaseConfig, log: Log, newPool = (config
     return pool;
   };
   const queries = open(5);
-  const locks = open(3);
+  // One per job that can run at once: the six crons and the debut watcher, plus one spare.
+  const locks = open(8);
 
   const queryable = (on: Pool | PoolClient): Queryable => ({
     async query<Row extends object>(text: string, params?: unknown[]) {

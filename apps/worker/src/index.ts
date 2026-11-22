@@ -4,6 +4,7 @@ import { HealthState, startOracleMonitor } from "./health";
 import { startIndexer } from "./indexer";
 import { startScheduler } from "./scheduler";
 import { seasonJobs } from "./seasons";
+import { runnerJobs } from "./slot";
 import { createWorkerServer } from "./server";
 import { loadAllowedOrigins } from "./auth/cors";
 import { createClientIp } from "./auth/client-ip";
@@ -22,7 +23,10 @@ async function main(): Promise<void> {
   const indexer = startIndexer({ rpcUrls: cfg.rpcUrls });
   const scheduler = startScheduler({
     health,
-    jobs: [({ db, log }) => seasonJobs({ db, log, env: process.env, client, rpcUrls: cfg.rpcUrls })],
+    jobs: [
+      ({ db, log }) => seasonJobs({ db, log, env: process.env, client, rpcUrls: cfg.rpcUrls }),
+      ({ db, log }) => runnerJobs({ db, log, env: process.env, cfg, client, health }),
+    ],
   });
 
   const origins = loadAllowedOrigins(process.env);
