@@ -1,0 +1,27 @@
+/**
+ * Carries the bot sentence from S1 to S2 inside this tab.
+ *
+ * It is deliberately not a query param: free text from users would land in server logs and referrers, and
+ * anyone could send a link that pre-loads a prompt of their choice into someone else's bot (#159).
+ */
+const KEY = "bf-draft-sentence";
+
+// Backup for browsers that block storage. It survives client-side navigation, not a reload.
+let inMemory = "";
+
+export function saveDraft(sentence: string): void {
+  inMemory = sentence;
+  try {
+    sessionStorage.setItem(KEY, sentence);
+  } catch {
+    // Storage blocked: the in-memory copy is enough for S1 → S2.
+  }
+}
+
+export function readDraft(): string {
+  try {
+    return sessionStorage.getItem(KEY) ?? inMemory;
+  } catch {
+    return inMemory;
+  }
+}

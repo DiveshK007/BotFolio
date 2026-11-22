@@ -1,0 +1,2 @@
+# forge script writes these on every simulation; only real broadcasts are worth committing.
+broadcast/**/dry-run/
