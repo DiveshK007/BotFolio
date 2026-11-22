@@ -5,11 +5,14 @@
 export { loadBigMoveConfig, type BigMoveConfig } from "./config";
 export { gate } from "./gate/gate";
 export { shrinkBigMove, type ShrinkInput, type ShrinkResult } from "./gate/shrink";
-export { signApprovedOrder } from "./signing";
+export { signApprovedOrder, signDailyCallView } from "./signing";
 export { applyTrade, portfolioValueE8, tradesTodayFrom } from "./gate/ledger-math";
 export { canonicalJson, hashJson } from "./canonical";
 export { clampLimits, createPersona, type BotLimits, type Persona, type PersonaResult } from "./persona/persona";
 export { PERSONA_SCHEMA } from "./persona/schema";
 export * from "./gate/types";
+export { runDecisionCall, wantsDailyCall, type DecisionCallResult, type DecisionLog } from "./decision/call";
+export { buildDecisionInput, type DecisionContext, type DecisionInput } from "./decision/input";
+export { decisionPrompt } from "./decision/prompt";
 export { DECISION_OUTPUT_SCHEMA, DECISION_SCHEMA, type DecisionOutput } from "./decision/schema";
 export { orderIdOf, SKIP_REASONS, type ApprovedOrder, type LedgerOrder, type SkipReason } from "./interfaces";

@@ -70,3 +70,17 @@ export const DECISION_OUTPUT_SCHEMA = {
   ...DECISION_SCHEMA,
   properties: { ...DECISION_SCHEMA.properties, daily_call: DAILY_CALL_SCHEMA },
 } satisfies JsonSchema;
+
+const DECISION_WITH_DAILY_CALL_SCHEMA = {
+  ...DECISION_OUTPUT_SCHEMA,
+  required: [...DECISION_SCHEMA.required, "daily_call"],
+} satisfies JsonSchema;
+
+/**
+ * What we ask the model for. `daily_call` is optional across decisions but never within one request:
+ * strict structured output wants every property required (UNVERIFIED for xAI), so the 09:00 and debut
+ * requests require it and every other slot sends §6.3 as it is.
+ */
+export function decisionSchemaFor(withDailyCall: boolean): JsonSchema {
+  return withDailyCall ? DECISION_WITH_DAILY_CALL_SCHEMA : DECISION_SCHEMA;
+}
