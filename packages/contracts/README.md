@@ -17,6 +17,30 @@ forge test --fork-url qie -vv
 - Oracle feed addresses and max ages are fixed at deploy, no setters (SPEC §4.6). Addresses in `packages/shared/src/assets.ts`.
 - After any interface change: export ABIs to `abi/` and update `events.md`, in one announced PR (frozen interface).
 
+## Deploy
+`script/Deploy.s.sol` deploys the 7 contracts in this order and wires them: Forwarder, PaperLedger, BotRegistry, SeasonLedger, TrustScoreRegistry, DailyCall, Challenges. It refuses any chain but 1990 and never reads a private key.
+
+| Env | What |
+|---|---|
+| `ADMIN_ADDRESS` | cold key. Gets `DEFAULT_ADMIN_ROLE` on every contract. If the deployer is a different address, the deployer renounces at the end |
+| `RUNNER_ADDRESS` | `RUNNER_ROLE` on PaperLedger and DailyCall |
+| `COMMITTER_ADDRESS` | `COMMITTER_ROLE` on SeasonLedger, TrustScoreRegistry, DailyCall and Challenges |
+| `RELAYER_ADDRESS` | gets **no** role. Passed so the script can prove it |
+| `START_CASH_E8` | optional, default `107800000000` |
+
+The four addresses must differ, and the deployer can't be one of the three hot wallets.
+
+```bash
+# simulate: no key, nothing sent
+ADMIN_ADDRESS=0x... RUNNER_ADDRESS=0x... COMMITTER_ADDRESS=0x... RELAYER_ADDRESS=0x... \
+  forge script script/Deploy.s.sol --fork-url qie
+```
+A real deploy is issue #25, run by a person with the signer on the command line.
+
+Contract-to-contract roles: PaperLedger grants `REGISTRY_ROLE` to BotRegistry, and BotRegistry grants `SEASON_LEDGER_ROLE` to SeasonLedger. The two contracts know each other through immutables. The ledger is given the registry's CREATE address before the registry exists, and the script checks that it matched.
+
+**Start cash:** 1,078 play USDT per bot, about INR 1,00,000. USD/INR was 92.68 (frankfurter.dev, Nov 20 2026) and 92.89 (open.er-api.com, Nov 22 2026). Recheck on deploy day; it can't change after the deploy. The display is a ratio (SPEC §3), so it shows exactly INR 1,00,000 at the start either way.
+
 ## ABIs
 `abi/<Contract>.json` is generated from `src/interfaces/I<Contract>.sol` (the frozen surface), never edited by hand:
 ```bash

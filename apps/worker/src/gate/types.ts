@@ -105,8 +105,12 @@ export interface GateResult {
   events: GateEvent[];
   /** BUY and SELL actions the bot proposed (HOLD is not a proposal). */
   proposedActions: number;
-  /** The validated output after the content filter (step 8). Show and store text from here, not from the raw output. */
-  output: DecisionOutput | HouseOutput | null;
+  /**
+   * The validated output after the content filter (step 8). Show and store text from here, not from the raw output.
+   * Never has `daily_call`: this whole object is stored as the public `gate_result`. Sign and serve the view from
+   * the decision output, through `filterOutput()`, and only after the user picks (SPEC §6.4.1).
+   */
+  output: Omit<DecisionOutput, "daily_call"> | Omit<HouseOutput, "daily_call"> | null;
   /** What the content filter replaced. Not a clip: no F1 penalty. */
   textFlags: TextFlag[];
   /** Why the output failed the schema. Empty unless status is `invalid`. */

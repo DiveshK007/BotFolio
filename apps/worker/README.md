@@ -45,7 +45,7 @@ Pure functions the scheduler and the replay script share. Importing this entry p
 `USED` is never a gate drop: the gate doesn't know chain history.
 
 ### Text (SPEC §6.4 step 8)
-Take `reason`, `roast` and `daily_call.why` from `GateResult.output`, never from the raw model output. Banned text (slurs, real-money advice, URLs) is replaced there and listed in `textFlags`. `gate_result` is public through `site_decisions`.
+Take `reason` and `roast` from `GateResult.output`, never from the raw model output. `daily_call` is never in the gate result, because the bot's answer is secret until the user picks (§6.4.1): take it from the decision output through `filterOutput()`. Banned text (slurs, real-money advice, URLs) is replaced there and listed in `textFlags`. `gate_result` is public through `site_decisions`.
 
 ### Big moves (SPEC §6.4 steps 9–10)
 - BUY to ≥ `BIG_MOVE_BUY_WEIGHT_BPS` of the portfolio, or SELL of ≥ `BIG_MOVE_SELL_BPS` of a holding, lands in `bigMoves`, outside the batch. House bots never do.
