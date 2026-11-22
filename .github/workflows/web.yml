@@ -1,5 +1,5 @@
 # Web CI (issue #127, SPEC §16.2).
-# install, typecheck, lint, build for apps/web (Next.js 15).
+# install, typecheck, lint, unit tests, build for apps/web (Next.js 15).
 # Until apps/web has a package.json the filter matches nothing and each step exits 0.
 name: web
 
@@ -68,6 +68,9 @@ jobs:
 
       - name: Lint
         run: pnpm -r --if-present --filter ./apps/web lint
+
+      - name: Unit tests
+        run: pnpm -r --if-present --filter ./apps/web test
 
       # Next's build cache makes repeat builds much faster.
       - uses: actions/cache@v6
