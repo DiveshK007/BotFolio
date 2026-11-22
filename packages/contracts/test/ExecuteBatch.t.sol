@@ -6,7 +6,7 @@ import {IAggregatorV3} from "../src/interfaces/IAggregatorV3.sol";
 import {IPaperLedger} from "../src/interfaces/IPaperLedger.sol";
 import {PaperLedger} from "../src/PaperLedger.sol";
 import {Roles} from "../src/lib/Roles.sol";
-import {LedgerFixture, LedgerUnderTest} from "./utils/LedgerFixture.sol";
+import {LedgerFixture} from "./utils/LedgerFixture.sol";
 
 /// Issues #10 and #19: executeBatch, limits, the per-coin cap, and a batch that never reverts.
 contract ExecuteBatchTest is LedgerFixture {
@@ -58,10 +58,10 @@ contract ExecuteBatchTest is LedgerFixture {
 
     function test_constructorRejectsBadStartCash() public {
         vm.expectRevert(abi.encodeWithSelector(PaperLedger.InvalidStartCash.selector, 0));
-        new LedgerUnderTest(address(fwd), admin, address(reg), 0);
+        new PaperLedger(address(fwd), admin, address(reg), 0);
         uint256 tooBig = uint256(type(uint128).max) + 1;
         vm.expectRevert(abi.encodeWithSelector(PaperLedger.InvalidStartCash.selector, tooBig));
-        new LedgerUnderTest(address(fwd), admin, address(reg), tooBig);
+        new PaperLedger(address(fwd), admin, address(reg), tooBig);
     }
 
     function test_runnerOnly() public {
