@@ -110,10 +110,7 @@ export interface GateResult {
    * the decision output, through `filterOutput()`, and only after the user picks (SPEC §6.4.1).
    */
   output: Omit<DecisionOutput, "daily_call"> | null;
-  /**
-   * What the content filter replaced in `reason` and `roast`. Not a clip: no F1 penalty. Flags on
-   * `daily_call.why` are secret like the view: `filterOutput()` returns them to whoever serves it.
-   */
+  /** What the content filter replaced. Not a clip: no F1 penalty. */
   textFlags: TextFlag[];
   /** Why the output failed the schema. Empty unless status is `invalid`. */
   errors: string[];
