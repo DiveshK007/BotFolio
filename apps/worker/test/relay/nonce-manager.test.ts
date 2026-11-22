@@ -18,7 +18,13 @@ import { fakeNode } from "./helpers/http";
 
 type ChainOptions = NonNullable<Parameters<typeof fakeChain>[0]>;
 
-async function setup(options: ChainOptions & { openRelays?: () => Promise<OpenRelay[]>; extraUrls?: string[] } = {}) {
+interface Options extends ChainOptions {
+  openRelays?: () => Promise<OpenRelay[]>;
+  assertStore?: () => Promise<void>;
+  extraUrls?: string[];
+}
+
+async function setup(options: Options = {}) {
   const chain = await fakeChain(options);
   let time = NOW_S * 1000;
   const log = vi.fn();
@@ -28,6 +34,7 @@ async function setup(options: ChainOptions & { openRelays?: () => Promise<OpenRe
     log,
     now: () => time,
     openRelays: options.openRelays,
+    assertStore: options.assertStore,
   });
 
   let n = 0;
@@ -356,6 +363,29 @@ describe("nonce manager: watcher (#40)", () => {
     await t.manager.tick();
     await t.manager.tick();
     expect(openRelays).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([REBROADCAST_AFTER_MS, CANCEL_AFTER_MS])("broadcasts nothing after %i ms while the DB is down", async (ms) => {
+    const t = await setup({ assertStore: () => Promise.reject(new Error("db down")) });
+    t.chain.state.behaviours.push("drop");
+    await t.job().send();
+    const sent = t.chain.state.sent.length;
+    await t.manager.tick();
+    t.advance(ms);
+    await t.manager.tick();
+    expect(t.chain.state.sent).toHaveLength(sent);
+  });
+
+  it("gets through a backlog of old open rows without starving any", async () => {
+    const rows = Array.from({ length: 40 }, (_, i) => ({
+      txHash: `0x${(i + 1).toString(16).padStart(64, "0")}` as Hex,
+      reservation: fakeReservation(String(i)),
+    }));
+    const t = await setup({ openRelays: async () => rows });
+    const last = rows[39]!;
+    t.chain.state.receipts.set(last.txHash, { status: "0x1", gasUsed: "0x1e240" });
+    for (let i = 0; i < 3; i++) await t.manager.tick();
+    expect(last.reservation.recordOutcome).toHaveBeenCalledExactlyOnceWith("confirmed", 123_456n, last.txHash);
   });
 
   it("goes quiet when nothing is pending", async () => {

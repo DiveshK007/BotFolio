@@ -35,6 +35,8 @@ export interface NonceManagerOptions {
   log: Log;
   /** Rows a previous process left `submitted` (relay_log). */
   openRelays?: () => Promise<OpenRelay[]>;
+  /** Throws while relay_log is unreachable. DB down = nothing is broadcast, rebroadcasts and cancels included. */
+  assertStore?: () => Promise<void>;
   now?: () => number;
 }
 
@@ -49,6 +51,8 @@ const CANCEL_RETRY_MS = 30_000;
 const OUTCOME_GIVE_UP_MS = 10 * 60_000;
 const RESTART_LOOKBACK_MS = 60 * 60_000;
 const REBROADCAST_BATCH = 16;
+/** Per tick, so a backlog from before a restart can't hold up the nonce watcher. */
+const INHERITED_BATCH = 16;
 const CANCEL_GAS = 21_000n;
 
 /**
@@ -61,7 +65,8 @@ const CANCEL_GAS = 21_000n;
  *   under another nonce, so it can't execute twice.
  * - If the lowest open nonce won't mine, the same bytes go out again after 10 s. After 60 s a 0-value self-send
  *   at that nonce with higher fees competes with it. One of the two lands and the queue moves.
- * - The hash is stored before broadcast, so if the DB is down nothing is sent.
+ * - The hash is stored before broadcast, and the watcher checks the DB before it re-sends or cancels, so if the
+ *   DB is down nothing is sent.
  */
 export class NonceManager implements RelaySender {
   private readonly rpc: RelayRpc;
@@ -70,6 +75,7 @@ export class NonceManager implements RelaySender {
   private readonly log: Log;
   private readonly now: () => number;
   private readonly fees: FeeSource;
+  private readonly assertStore: () => Promise<void>;
 
   private lock: Promise<unknown> = Promise.resolve();
   private waiting = 0;
@@ -93,6 +99,7 @@ export class NonceManager implements RelaySender {
     this.now = opts.now ?? Date.now;
     this.fees = new FeeSource(opts.rpc, this.now);
     this.loadOpenRelays = opts.openRelays;
+    this.assertStore = opts.assertStore ?? (async () => {});
   }
 
   start(): void {
@@ -232,14 +239,14 @@ export class NonceManager implements RelaySender {
   }
 
   private async settleInherited(): Promise<void> {
-    for (const open of [...this.inherited]) {
+    // Take from the front and put the unresolved ones back at the end, so every row gets its turn.
+    for (const open of this.inherited.slice(0, INHERITED_BATCH)) {
       const receipt = await this.receipt(open.txHash);
-      if (receipt) {
-        if (!(await this.saveOutcome(open.reservation, receipt.outcome, receipt.gasUsed, open.txHash))) continue;
-      } else if (this.now() - open.since < RESTART_LOOKBACK_MS) {
-        continue;
-      }
       this.inherited.splice(this.inherited.indexOf(open), 1);
+      const done = receipt
+        ? await this.saveOutcome(open.reservation, receipt.outcome, receipt.gasUsed, open.txHash)
+        : this.now() - open.since >= RESTART_LOOKBACK_MS;
+      if (!done) this.inherited.push(open);
     }
   }
 
@@ -281,12 +288,15 @@ export class NonceManager implements RelaySender {
       this.stuck = { nonce: head, since: now, resentAt: now, cancelledAt: 0 };
       return;
     }
-    if (now - this.stuck.since >= CANCEL_AFTER_MS && now - this.stuck.cancelledAt >= CANCEL_RETRY_MS) {
+    const cancelDue = now - this.stuck.since >= CANCEL_AFTER_MS && now - this.stuck.cancelledAt >= CANCEL_RETRY_MS;
+    if (!cancelDue && now - this.stuck.resentAt < REBROADCAST_AFTER_MS) return;
+    await this.assertStore();
+    if (cancelDue) {
       this.stuck.cancelledAt = now;
       this.stuck.resentAt = now;
       // Under the lock, so it can't race a send that has just re-read the nonce.
       await this.exclusive(() => this.cancel(head));
-    } else if (now - this.stuck.resentAt >= REBROADCAST_AFTER_MS) {
+    } else {
       this.stuck.resentAt = now;
       await this.rebroadcastFrom(head);
     }

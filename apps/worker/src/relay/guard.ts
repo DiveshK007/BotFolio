@@ -163,6 +163,11 @@ export class PgRelayGuard implements RelayGuard {
     return rows.map((row) => ({ txHash: row.tx_hash, reservation: this.reservation(row.id) }));
   }
 
+  /** Throws while Postgres is unreachable. */
+  async assertAvailable(): Promise<void> {
+    await this.db.query("select 1");
+  }
+
   private reservation(id: string, ipSlot?: { release: () => void }): Reservation {
     return {
       id,

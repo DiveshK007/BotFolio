@@ -61,7 +61,13 @@ export function setUpRelayer({ env, auth, rpcUrls, log, openDatabase = openDb }:
 
   const rpc = new RelayRpc(rpcUrls);
   const guard = new PgRelayGuard(db, limits.limits);
-  const sender = new NonceManager({ rpc, account, log, openRelays: () => guard.openRelays() });
+  const sender = new NonceManager({
+    rpc,
+    account,
+    log,
+    openRelays: () => guard.openRelays(),
+    assertStore: () => guard.assertAvailable(),
+  });
   const { forwarder, targets } = contracts.contracts;
 
   return {
