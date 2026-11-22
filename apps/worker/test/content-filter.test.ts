@@ -1,7 +1,7 @@
 import { FakeLlmClient, loadLlmConfig } from "@botfolio/llm";
 import { describe, expect, it } from "vitest";
 import { canonicalJson } from "../src/canonical";
-import { NEUTRAL_ROAST, NEUTRAL_WHY, neutralReason } from "../src/gate/filter-output";
+import { filterOutput, NEUTRAL_ROAST, NEUTRAL_WHY, neutralReason } from "../src/gate/filter-output";
 import { gate } from "../src/gate/gate";
 import { createPersona, sanitizePersona } from "../src/persona/persona";
 import { bannedRules } from "../src/text/content-filter";
@@ -100,10 +100,18 @@ describe("gate() SPEC §6.4 step 8: banned content", () => {
     expect(r.textFlags).toEqual([{ field: "roast", rule: "slur" }]);
   });
 
-  it("replaces a banned daily_call why and keeps the view", () => {
-    const r = run({ daily_call: { btc_up: false, why: "guaranteed profit" } });
-    expect(r.output?.daily_call).toEqual({ btc_up: false, why: NEUTRAL_WHY });
+  it("flags a banned daily_call why, and filterOutput() replaces it and keeps the view", () => {
+    const view = { btc_up: false, why: "guaranteed profit" };
+    expect(filterOutput({ ...decision(), daily_call: view }, []).output.daily_call).toEqual({ btc_up: false, why: NEUTRAL_WHY });
+    const r = run({ daily_call: view });
     expect(r.textFlags).toEqual([{ field: "daily_call.why", rule: "money_advice" }]);
+  });
+
+  // gate_result is public through site_decisions, and the view is secret until the user picks (§6.4.1).
+  it.each([true, false])("never puts the Daily Call view (btc_up=%s) in the gate result", (btcUp) => {
+    const r = run({ daily_call: { btc_up: btcUp, why: "Momentum" } });
+    expect(r.output).not.toHaveProperty("daily_call");
+    expect(JSON.stringify(r, (_k, v: unknown) => (typeof v === "bigint" ? v.toString() : v))).not.toMatch(/btc_up|daily_call"/);
   });
 
   it("leaves clean text as it is", () => {

@@ -4,6 +4,7 @@
  */
 export { loadBigMoveConfig, type BigMoveConfig } from "./config";
 export { gate } from "./gate/gate";
+export { filterOutput } from "./gate/filter-output";
 export { shrinkBigMove, type ShrinkInput, type ShrinkResult } from "./gate/shrink";
 export { signApprovedOrder, signDailyCallView } from "./signing";
 export { applyTrade, portfolioValueE8, tradesTodayFrom } from "./gate/ledger-math";

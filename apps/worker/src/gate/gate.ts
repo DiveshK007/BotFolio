@@ -84,6 +84,8 @@ export function gate(input: GateInput, output: unknown, rulesVersion: string): G
   // Step 8. Runs last only because the neutral reason names what ended up traded; it never changes an order.
   const traded = [...orders, ...bigMoves.map((m) => m.order)].map((o) => ASSET_IDS[o.asset]!);
   const filtered = filterOutput(decision, traded);
+  // gate_result is public (site_decisions) and the bot's view is secret until the user picks (§6.4.1).
+  const { daily_call: _secretView, ...publicOutput } = filtered.output;
 
   return {
     rulesVersion,
@@ -92,7 +94,7 @@ export function gate(input: GateInput, output: unknown, rulesVersion: string): G
     bigMoves,
     events,
     proposedActions: proposals.length,
-    output: filtered.output,
+    output: publicOutput,
     textFlags: filtered.textFlags,
     errors: [],
   };
