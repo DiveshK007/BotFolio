@@ -35,6 +35,8 @@ The four addresses must differ, and the deployer can't be one of the three hot w
 ADMIN_ADDRESS=0x... RUNNER_ADDRESS=0x... COMMITTER_ADDRESS=0x... RELAYER_ADDRESS=0x... \
   forge script script/Deploy.s.sol --fork-url qie
 ```
+Or `script/dry-run.sh`: the same simulation with throwaway addresses and RPC failover. It takes no arguments, so a `--broadcast` can't slip in.
+
 A real deploy is issue #25, run by a person with the signer on the command line.
 
 Contract-to-contract roles: PaperLedger grants `REGISTRY_ROLE` to BotRegistry, and BotRegistry grants `SEASON_LEDGER_ROLE` to SeasonLedger. The two contracts know each other through immutables. The ledger is given the registry's CREATE address before the registry exists, and the script checks that it matched.
