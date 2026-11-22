@@ -41,6 +41,31 @@ Contract-to-contract roles: PaperLedger grants `REGISTRY_ROLE` to BotRegistry, a
 
 **Start cash:** 1,078 play USDT per bot, about INR 1,00,000. USD/INR was 92.68 (frankfurter.dev, Nov 20 2026) and 92.89 (open.er-api.com, Nov 22 2026). Recheck on deploy day; it can't change after the deploy. The display is a ratio (SPEC §3), so it shows exactly INR 1,00,000 at the start either way.
 
+## Admin scripts
+`script/Admin.s.sol` has three. None reads a private key. The commands below only simulate (`--sender` stands in for the signer). A person does the real run by adding their signer and `--broadcast`.
+
+**Open a season** (committer). `SEASON` must be `SeasonLedger.nextSeason()`. Times are unix seconds. S0 is Nov 24 00:00 to Nov 25 21:00 IST (SPEC §1):
+```bash
+SEASON_LEDGER_ADDRESS=0x... SEASON=0 SEASON_START=1795458600 SEASON_END=1795620600 \
+  forge script script/Admin.s.sol:OpenSeason --fork-url qie --sender $COMMITTER_ADDRESS
+```
+
+**Close a season** (committer). This can't be undone, so the script refuses before the season's end, and refuses an empty root or URI:
+```bash
+SEASON_LEDGER_ADDRESS=0x... SEASON=0 DATA_ROOT=0x... DATA_URI=https://.../season-0.jsonl \
+  forge script script/Admin.s.sol:CloseSeason --fork-url qie --sender $COMMITTER_ADDRESS
+```
+The worker normally closes seasons. This is the manual fallback.
+
+**Publish trust rules** (admin cold key). Run once for `trust-v1-sprint` and once for `trust-v1`. A version can never be edited, so publish only the final doc:
+```bash
+# keccak256 of the exact bytes behind RULES_URI
+RULES_DOC_HASH=$(cast keccak "0x$(xxd -p trust-rules.md | tr -d '\n')")
+
+TRUST_REGISTRY_ADDRESS=0x... RULES_VERSION=trust-v1-sprint RULES_URI=https://... RULES_DOC_HASH=$RULES_DOC_HASH \
+  forge script script/Admin.s.sol:PublishRules --fork-url qie --sender $ADMIN_ADDRESS
+```
+
 ## ABIs
 `abi/<Contract>.json` is generated from `src/interfaces/I<Contract>.sol` (the frozen surface), never edited by hand:
 ```bash
