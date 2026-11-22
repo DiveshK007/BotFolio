@@ -53,6 +53,8 @@ const RESTART_LOOKBACK_MS = 60 * 60_000;
 const REBROADCAST_BATCH = 16;
 /** Per tick, so a backlog from before a restart can't hold up the nonce watcher. */
 const INHERITED_BATCH = 16;
+/** The watcher runs every 2 s. An outage shouldn't write 30 log lines a minute. */
+const FAILURE_LOG_EVERY_MS = 60_000;
 const CANCEL_GAS = 21_000n;
 
 /**
@@ -86,6 +88,7 @@ export class NonceManager implements RelaySender {
   private stopped = false;
   private timer: NodeJS.Timeout | undefined;
   private ticking = false;
+  private failureLoggedAt = -Infinity;
   private mined: number | undefined;
   private stuck: { nonce: number; since: number; resentAt: number; cancelledAt: number } | undefined;
   private loadOpenRelays: (() => Promise<OpenRelay[]>) | undefined;
@@ -220,10 +223,16 @@ export class NonceManager implements RelaySender {
       await this.settleInherited();
       await this.watchNonces();
     } catch (error) {
-      this.log("relay.watch_failed", { cause: errorLabel(error) });
+      this.logFailure("relay.watch_failed", error);
     } finally {
       this.ticking = false;
     }
+  }
+
+  private logFailure(event: string, error: unknown): void {
+    if (this.now() - this.failureLoggedAt < FAILURE_LOG_EVERY_MS) return;
+    this.failureLoggedAt = this.now();
+    this.log(event, { cause: errorLabel(error) });
   }
 
   private async adoptOpenRelays(): Promise<void> {
@@ -234,7 +243,7 @@ export class NonceManager implements RelaySender {
       const ours = new Set([...this.slots.values()].map((slot) => slot.call?.hash));
       this.inherited = open.filter((o) => !ours.has(o.txHash)).map((o) => ({ ...o, since: this.now() }));
     } catch (error) {
-      this.log("relay.open_rows_unreadable", { cause: errorLabel(error) }); // retried next tick
+      this.logFailure("relay.open_rows_unreadable", error); // retried next tick
     }
   }
 

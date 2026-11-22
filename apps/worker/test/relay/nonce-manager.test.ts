@@ -388,6 +388,16 @@ describe("nonce manager: watcher (#40)", () => {
     expect(last.reservation.recordOutcome).toHaveBeenCalledExactlyOnceWith("confirmed", 123_456n, last.txHash);
   });
 
+  it("logs a lasting RPC outage once a minute, not every tick", async () => {
+    const t = await setup();
+    t.chain.state.failing.add("eth_getTransactionCount");
+    for (let i = 0; i < 5; i++) await t.manager.tick();
+    expect(t.log).toHaveBeenCalledTimes(1);
+    t.advance(60_000);
+    await t.manager.tick();
+    expect(t.log).toHaveBeenCalledTimes(2);
+  });
+
   it("goes quiet when nothing is pending", async () => {
     const t = await setup();
     await t.manager.tick();
