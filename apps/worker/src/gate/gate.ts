@@ -1,8 +1,9 @@
 import { validateJson } from "@botfolio/llm";
 import { DECISION_OUTPUT_SCHEMA, type DecisionOutput } from "../decision/schema";
-import { ASSET_INDEX, orderIdOf } from "../interfaces";
+import { ASSET_IDS, ASSET_INDEX, orderIdOf } from "../interfaces";
 import { isBigMove, toBigMove } from "./big-move";
 import { checkTrade, type CheckResult } from "./check";
+import { filterOutput } from "./filter-output";
 import { applyTrade, type Trade } from "./ledger-math";
 import type { BigMove, DropReason, GateEvent, GateInput, GateOrder, GateResult } from "./types";
 
@@ -37,7 +38,11 @@ export function gate(input: GateInput, output: unknown, rulesVersion: string): G
       events: [],
       proposedActions: 0,
       output: null,
-      errors: schemaErrors.map((e) => `${e.path} ${e.message}`),
+      textFlags: [],
+      // An unknown key is the model's own text and gate_result is public, so don't echo it.
+      errors: schemaErrors.map((e) =>
+        e.message === "is not allowed" ? "an unknown key is not allowed" : `${e.path} ${e.message}`,
+      ),
     };
   }
 
@@ -76,6 +81,10 @@ export function gate(input: GateInput, output: unknown, rulesVersion: string): G
     if (result.ok) bigMoves.push(toBigMove(input, portfolio, result.trade, proposal.actionIndex));
   }
 
+  // Step 8. Runs last only because the neutral reason names what ended up traded; it never changes an order.
+  const traded = [...orders, ...bigMoves.map((m) => m.order)].map((o) => ASSET_IDS[o.asset]!);
+  const filtered = filterOutput(decision, traded);
+
   return {
     rulesVersion,
     status: statusOf(proposals.length, orders.length, events),
@@ -83,7 +92,8 @@ export function gate(input: GateInput, output: unknown, rulesVersion: string): G
     bigMoves,
     events,
     proposedActions: proposals.length,
-    output: decision,
+    output: filtered.output,
+    textFlags: filtered.textFlags,
     errors: [],
   };
 }

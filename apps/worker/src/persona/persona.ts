@@ -1,6 +1,7 @@
 import { LlmError, type LlmClient, type LlmConfig, type LlmUsage } from "@botfolio/llm";
 import type { Hex } from "viem";
 import { hashJson } from "../canonical";
+import { bannedRules, type BannedRule } from "../text/content-filter";
 import { containsUrl, stripUrls } from "../text/urls";
 import { PERSONA_PROMPT_HASH, PERSONA_PROMPT_VERSION, PERSONA_SYSTEM_PROMPT } from "./prompt";
 import { LIMITS, PERSONA_SCHEMA, type PersonaOutput } from "./schema";
@@ -22,7 +23,7 @@ export interface BotLimits {
 
 export interface PersonaFlag {
   field: keyof Persona;
-  rule: "url" | "not_an_emoji" | "empty";
+  rule: BannedRule | "not_an_emoji" | "empty";
 }
 
 export interface PersonaCallLog {
@@ -115,7 +116,10 @@ const NEUTRAL: Persona = {
   rules: "Trades carefully inside the limits on its card.",
 };
 
-/** The schema can't express "no URLs", "one emoji" or "not blank", so they are fixed up here and flagged. */
+/**
+ * What the schema can't express: no URLs, no banned content (SPEC §11), one emoji, not blank. URLs are cut
+ * out; a field with banned content is replaced whole. Everything changed is flagged.
+ */
 export function sanitizePersona(output: Persona): { persona: Persona; flags: PersonaFlag[] } {
   const flags: PersonaFlag[] = [];
   const persona = { ...NEUTRAL };
@@ -126,6 +130,10 @@ export function sanitizePersona(output: Persona): { persona: Persona; flags: Per
       flags.push({ field, rule: "url" });
       text = oneLine(stripUrls(text));
     }
+    const banned = bannedRules(text);
+    for (const rule of banned) flags.push({ field, rule });
+    if (banned.length > 0) continue;
+
     if (text) persona[field] = text;
     else flags.push({ field, rule: "empty" });
   }

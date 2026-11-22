@@ -8,6 +8,7 @@ export { shrinkBigMove, type ShrinkInput, type ShrinkResult } from "./gate/shrin
 export { signApprovedOrder, signDailyCallView } from "./signing";
 export { applyTrade, portfolioValueE8, tradesTodayFrom } from "./gate/ledger-math";
 export { canonicalJson, hashJson } from "./canonical";
+export { bannedRules, type BannedRule } from "./text/content-filter";
 export { clampLimits, createPersona, type BotLimits, type Persona, type PersonaResult } from "./persona/persona";
 export { PERSONA_SCHEMA } from "./persona/schema";
 export * from "./gate/types";

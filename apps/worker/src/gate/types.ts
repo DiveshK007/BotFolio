@@ -3,6 +3,7 @@ import type { Hex } from "viem";
 import type { BigMoveConfig } from "../config";
 import type { DecisionOutput } from "../decision/schema";
 import type { ApprovedOrder, LedgerOrder, SkipReason } from "../interfaces";
+import type { TextFlag } from "./filter-output";
 
 export interface Portfolio {
   cashE8: bigint;
@@ -101,7 +102,10 @@ export interface GateResult {
   events: GateEvent[];
   /** BUY and SELL actions the bot proposed (HOLD is not a proposal). */
   proposedActions: number;
+  /** The validated output after the content filter (step 8). Show and store text from here, not from the raw output. */
   output: DecisionOutput | null;
+  /** What the content filter replaced. Not a clip: no F1 penalty. */
+  textFlags: TextFlag[];
   /** Why the output failed the schema. Empty unless status is `invalid`. */
   errors: string[];
 }
