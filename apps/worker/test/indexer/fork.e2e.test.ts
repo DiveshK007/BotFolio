@@ -1,7 +1,10 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { orderIdOf, decisionIdFromUuid } from "@botfolio/shared";
+import { startIndexer } from "../../src/indexer";
+import { CONTRACT_NAMES } from "../../src/indexer/abi";
 import { createChainSource } from "../../src/indexer/chain";
-import { Indexer } from "../../src/indexer/indexer";
+import { ADDRESS_ENV } from "../../src/indexer/config";
+import { CONFIRMATIONS, Indexer } from "../../src/indexer/indexer";
 import { createTestDb, type TestDb } from "./helpers/db";
 import { ACCOUNTS, startFork, type Fork } from "./helpers/fork";
 import {
@@ -39,9 +42,11 @@ describe.skipIf(!fork)("DB rows match the chain, on an Anvil fork of QIE mainnet
 
     await seedSeasons(db);
     opened = await openAndCreateBots(f);
+    await f.confirm(CONFIRMATIONS);
     await drain(indexer);
     await seedOffChain(db, opened);
     played = await play(f, opened);
+    await f.confirm(CONFIRMATIONS);
     await drain(indexer);
   }, 300_000);
 
@@ -243,4 +248,40 @@ describe.skipIf(!fork)("DB rows match the chain, on an Anvil fork of QIE mainnet
     for (let block = f.deployBlock; block <= last; block++) await indexer.replay(block, block);
     expect(await db.snapshot()).toEqual(rows);
   }, 120_000);
+
+  it("refuses a start block one past the deploy, by reading the chain's history", async () => {
+    const { addresses, deployBlock, url } = f;
+    const sources = [createChainSource(url, addresses)];
+    const late = new Indexer({ db, sources, addresses, startBlock: deployBlock + 1n, log: memoryLog() });
+    await expect(late.tick()).rejects.toThrow(/after the deploy/);
+  });
+
+  it("a restarted worker resumes, waits for confirmations, and catches up through startIndexer", async () => {
+    await f.send(admin, "BotRegistry", "setActive", [IDS.carolBot, true]);
+    const status = async () =>
+      (await rowsOf(`select status::text as status from bots where id = ${IDS.carolBot}`))[0]!.status;
+
+    const env = {
+      ...Object.fromEntries(CONTRACT_NAMES.map((name) => [ADDRESS_ENV[name], f.addresses[name]])),
+      INDEXER_START_BLOCK: f.deployBlock.toString(),
+      DATABASE_URL: "postgres://localhost/unused",
+    };
+    const start = () => {
+      const restartLog = memoryLog();
+      const openDb = () => ({ ...db, close: async () => {} });
+      return { restartLog, worker: startIndexer({ rpcUrls: [f.url], env, log: restartLog, openDb })! };
+    };
+
+    const before = start();
+    await vi.waitFor(() => expect(before.restartLog.lines.map((l) => l.message)).toContain("resuming"), 20_000);
+    await before.worker.stop();
+    expect(await status()).toBe("banned"); // mined, but not confirmed
+    const resumed = before.restartLog.lines.find((l) => l.message === "resuming")!.fields as { nextBlock: bigint };
+    expect(resumed.nextBlock).toBeGreaterThan(f.deployBlock);
+
+    await f.confirm(CONFIRMATIONS);
+    const after = start();
+    await vi.waitFor(async () => expect(await status()).toBe("active"), 20_000);
+    await after.worker.stop();
+  }, 60_000);
 });

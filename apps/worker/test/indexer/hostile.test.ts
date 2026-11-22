@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { padHex, toHex, zeroHash, type Hex } from "viem";
 import { decisionIdFromUuid } from "@botfolio/shared";
 import type { EventArgs } from "../../src/indexer/handlers/types";
+import { CONFIRMATIONS } from "../../src/indexer/indexer";
 import { ADDRESSES } from "./helpers/fake-chain";
 import { hash, seedBot, seedDecision } from "./helpers/seed";
 import {
@@ -43,7 +44,7 @@ async function indexesPast(reason: RegExp, emitBad: (tx: ReturnType<typeof w.cha
   w.chain.emit(w.chain.tx(), "PaperLedger", "Trade", trade());
   const indexer = await w.index();
 
-  expect(indexer.nextBlock).toBe(w.chain.head + 1n);
+  expect(indexer.nextBlock).toBe(w.chain.head - CONFIRMATIONS + 1n);
   expect(await count("trades")).toBe(1);
   expect(await count("corrections where note_hash = '\\x" + hash(0x600d).slice(2) + "'")).toBe(1);
   const [problem, ...others] = w.log.problems();

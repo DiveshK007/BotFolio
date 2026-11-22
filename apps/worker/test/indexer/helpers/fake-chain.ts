@@ -105,6 +105,11 @@ export class FakeChain {
         guard("head");
         return head();
       },
+      // Deployed in the start block.
+      hasCodeAt: async (block) => {
+        guard("hasCodeAt");
+        return block >= START;
+      },
       logs: async (from, to) => {
         requests.push({ from, to });
         guard("logs");

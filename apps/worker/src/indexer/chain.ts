@@ -28,6 +28,8 @@ export interface ChainSource {
   /** Throws unless this is chain 1990 with code at every configured address. */
   check(): Promise<void>;
   head(): Promise<bigint>;
+  /** Whether any of our contracts had code at that block. Needs historical state. */
+  hasCodeAt(block: bigint): Promise<boolean>;
   /** Both ends inclusive. */
   logs(fromBlock: bigint, toBlock: bigint): Promise<RawLog[]>;
   blockTime(block: bigint): Promise<bigint>;
@@ -78,6 +80,14 @@ export function createChainSource(url: string, addresses: ContractAddresses): Ch
 
     // viem caches the block number for 4 s by default.
     head: () => call("eth_blockNumber", () => client.getBlockNumber({ cacheTime: 0 })),
+
+    hasCodeAt: (blockNumber) =>
+      call("historical eth_getCode", async () => {
+        const codes = await Promise.all(
+          Object.values(addresses).map((address) => client.getCode({ address, blockNumber })),
+        );
+        return codes.some((code) => code !== undefined && code !== "0x");
+      }),
 
     logs: (fromBlock, toBlock) =>
       call("eth_getLogs", async () => {

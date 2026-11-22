@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { ChainError } from "../../src/indexer/chain";
 import type { Db } from "../../src/indexer/db";
-import { MAX_RANGE } from "../../src/indexer/indexer";
+import { CONFIRMATIONS, MAX_RANGE, OVERLAP } from "../../src/indexer/indexer";
 import { START } from "./helpers/fake-chain";
 import { buildHistory } from "./helpers/history";
 import { seedBot, seedDecision } from "./helpers/seed";
 import { ALICE, DECISION, PERSONA, drain, trade, useWorld } from "./helpers/world";
 
 const w = useWorld();
+const confirm = () => w.chain.mine(Number(CONFIRMATIONS));
+const safeHead = () => w.chain.head - CONFIRMATIONS;
 const count = async (table: string) =>
   (await w.db.query<{ n: number }>(`select count(*)::int as n from ${table}`)).rows[0]!.n;
 
@@ -23,8 +25,9 @@ describe("idempotent", () => {
       expect(rows[table]!.length, table).toBeGreaterThan(0);
     }
 
-    for (let from = START; from <= w.chain.head; from++) {
-      for (let to = from; to <= w.chain.head; to++) {
+    const last = indexer.nextBlock - 1n;
+    for (let from = START; from <= last; from++) {
+      for (let to = from; to <= last; to++) {
         await indexer.replay(from, to);
         expect(await w.db.snapshot(), `replay ${from}..${to}`).toEqual(rows);
       }
@@ -34,7 +37,7 @@ describe("idempotent", () => {
   it("the chunk size doesn't change the rows", async () => {
     const seed = buildHistory(w.chain);
     const results = [];
-    for (const maxRange of [1n, 2n, 3n, 7n, MAX_RANGE]) {
+    for (const maxRange of [1n, 2n, 3n, 7n, 22n, MAX_RANGE]) {
       await w.db.reset();
       await seed(w.db);
       await w.index({ maxRange });
@@ -86,6 +89,7 @@ describe("the cursor only advances with the rows", () => {
         ),
     };
     const indexer = w.indexer({ db });
+    confirm();
 
     await expect(indexer.tick()).rejects.toThrow("terminating connection");
     expect(await count("trades")).toBe(0);
@@ -94,7 +98,7 @@ describe("the cursor only advances with the rows", () => {
     failing = false;
     await drain(indexer);
     expect(await count("trades")).toBe(3);
-    expect(indexer.nextBlock).toBe(w.chain.head + 1n);
+    expect(indexer.nextBlock).toBe(safeHead() + 1n);
   });
 
   it("a failed commit leaves the cursor where it was", async () => {
@@ -108,6 +112,7 @@ describe("the cursor only advances with the rows", () => {
         }),
     };
     const indexer = w.indexer({ db });
+    confirm();
     await expect(indexer.tick()).rejects.toThrow("commit failed");
     expect(indexer.nextBlock).toBe(START);
     expect(await count("bots")).toBe(0);
@@ -134,6 +139,7 @@ describe("the cursor only advances with the rows", () => {
         ),
     };
     const indexer = w.indexer({ db });
+    confirm();
     await expect(indexer.tick()).rejects.toThrow("infrastructure");
     expect(indexer.nextBlock).toBe(START);
   });
@@ -141,6 +147,7 @@ describe("the cursor only advances with the rows", () => {
   it("an RPC failure inside a handler is retried, never skipped", async () => {
     w.createBot();
     const indexer = w.indexer({ sources: [w.chain.as("rpc", { fail: (method) => method === "botState" })] });
+    confirm();
     await expect(indexer.tick()).rejects.toThrow(ChainError);
     expect(indexer.nextBlock).toBe(START);
     expect(w.log.problems()).toEqual([]);
@@ -161,7 +168,8 @@ describe("the cursor only advances with the rows", () => {
         ),
     };
     const indexer = w.indexer({ db });
-    expect(await indexer.tick()).toEqual({ status: "busy" });
+    confirm();
+    expect((await indexer.tick()).live).toEqual({ status: "busy" });
     expect(indexer.nextBlock).toBe(START);
     expect(await count("bots")).toBe(0);
   });
@@ -186,19 +194,22 @@ describe("RPC", () => {
   it("never asks a node for blocks past that node's head", async () => {
     w.chain.mine(20);
     w.createBot();
+    confirm();
     const slow = w.chain.as("rpc3", { head: () => START + 5n });
     const fast = w.chain.as("rpc4");
-    await drain(w.indexer({ sources: [slow, fast] }));
     const indexer = w.indexer({ sources: [slow, fast] });
+    // The slow node serves the first range, as far as it safely can. The next one has to fail over.
     await indexer.tick();
+    expect(indexer.nextBlock).toBe(START + 5n - CONFIRMATIONS + 1n);
     await drain(indexer);
 
-    for (const request of slow.requests) expect(request.to).toBeLessThanOrEqual(START + 5n);
-    expect(indexer.nextBlock).toBe(w.chain.head + 1n);
+    expect(slow.requests).toHaveLength(1);
+    for (const request of slow.requests) expect(request.to).toBeLessThanOrEqual(START + 5n - CONFIRMATIONS);
+    expect(indexer.nextBlock).toBe(safeHead() + 1n);
     expect(await count("bots")).toBe(1);
   });
 
-  it("asks for bounded ranges, with no gap and no overlap", async () => {
+  it("asks for bounded ranges with no gap", async () => {
     w.chain.mine(25_000);
     w.createBot();
     const source = w.chain.as();
@@ -206,11 +217,11 @@ describe("RPC", () => {
 
     let expected = START;
     for (const { from, to } of source.requests) {
-      expect(from).toBe(expected);
+      expect(from).toBe(expected === START ? START : expected - OVERLAP);
       expect(to - from + 1n).toBeLessThanOrEqual(MAX_RANGE);
       expected = to + 1n;
     }
-    expect(expected).toBe(w.chain.head + 1n);
+    expect(expected).toBe(safeHead() + 1n);
     expect(await count("bots")).toBe(1);
   });
 
@@ -220,13 +231,14 @@ describe("RPC", () => {
     const logs = source.logs;
     source.logs = async (from, to) => (await logs(from, to)).map((log) => ({ ...log, blockNumber: to + 5n }));
     const indexer = w.indexer({ sources: [source] });
+    confirm();
     await expect(indexer.tick()).rejects.toThrow(/for range/);
     expect(indexer.nextBlock).toBe(START);
   });
 
   it("is idle when there is no new block", async () => {
     const indexer = await w.index();
-    expect(await indexer.tick()).toEqual({ status: "idle" });
+    expect(await indexer.tick()).toEqual({ live: { status: "idle" }, more: false });
   });
 });
 

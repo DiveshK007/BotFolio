@@ -3,10 +3,12 @@ import type { Log } from "./log";
 
 /** SPEC §6.1: continuous, a 10 s loop in-process. */
 export const INTERVAL_MS = 10_000;
+/** QIE makes a block every 3.6 s, so a minute with nothing written is a stall. */
+export const STALL_MS = 60_000;
 
 /**
  * Runs `tick` one at a time, for ever. An error is logged and retried on the next tick, from the same cursor.
- * While behind the head it doesn't wait between ranges.
+ * While there is history to catch up on it doesn't wait between ranges.
  */
 export function runLoop(
   indexer: Pick<Indexer, "tick">,
@@ -16,17 +18,21 @@ export function runLoop(
   let stopped = false;
   let timer: NodeJS.Timeout | undefined;
   let running: Promise<void> = Promise.resolve();
+  let progressAt = Date.now();
 
   const run = async () => {
     let delay = intervalMs;
     try {
-      const result = await indexer.tick();
-      if (result.status === "written") {
-        if (result.written > 0) {
-          log.info("indexed", { from: result.from, to: result.to, written: result.written });
-        }
-        if (result.to < result.head) delay = 0;
+      const { live, more } = await indexer.tick();
+      if (live.status === "written") {
+        progressAt = Date.now();
+        if (live.written > 0) log.info("indexed", { from: live.from, to: live.to, written: live.written });
+      } else if (Date.now() - progressAt >= STALL_MS) {
+        // "idle" is also what a frozen RPC looks like.
+        log.warn("no new blocks for a minute", { status: live.status });
+        progressAt = Date.now();
       }
+      if (more) delay = 0;
     } catch (e) {
       log.warn("tick failed, retrying", { error: e instanceof Error ? e.message : String(e) });
     }

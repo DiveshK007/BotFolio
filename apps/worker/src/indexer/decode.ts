@@ -40,6 +40,7 @@ export function decodeLogs(
   const contractAt = new Map(CONTRACT_NAMES.map((name) => [addresses[name].toLowerCase(), name]));
   const events: IndexedEvent[] = [];
   const unreadable: UnreadableLog[] = [];
+  const seen = new Set<string>();
 
   for (const log of [...logs].sort(chainOrder)) {
     const contract = contractAt.get(log.address.toLowerCase());
@@ -52,7 +53,13 @@ export function decodeLogs(
     const topic = log.topics[0]?.toLowerCase();
     if (topic && ADMIN_TOPICS.has(topic)) continue;
 
-    const at = { contract, block: log.blockNumber, txHash: log.transactionHash.toLowerCase() as Hex, logIndex: log.logIndex };
+    const txHash = log.transactionHash.toLowerCase() as Hex;
+    // (tx, logIndex) is an event's identity: one the RPC sends twice is still one event.
+    const id = `${txHash}:${log.logIndex}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+
+    const at = { contract, block: log.blockNumber, txHash, logIndex: log.logIndex };
     try {
       const { eventName, args } = decodeEventLog({
         abi: CONTRACT_EVENTS[contract] as Abi,

@@ -69,6 +69,8 @@ export interface Fork {
     args: unknown[],
   ): Promise<TransactionReceipt>;
   setClock(time: bigint, move?: { btcBps: bigint }): Promise<void>;
+  /** Puts this many blocks on top of the last tx. */
+  confirm(blocks: bigint): Promise<void>;
   stop(): void;
 }
 
@@ -232,7 +234,9 @@ async function deployOnFork(bin: string, url: string, stopAnvil: () => void): Pr
     await client.mine({ blocks: 1 });
   }
 
-  return { url, client: client as unknown as PublicClient, addresses, deployBlock, rounds, read, send, relay, setClock, stop: stopAnvil };
+  const confirm = (blocks: bigint) => client.mine({ blocks: Number(blocks) });
+
+  return { url, client: client as unknown as PublicClient, addresses, deployBlock, rounds, read, send, relay, setClock, confirm, stop: stopAnvil };
 }
 
 function succeeded(receipt: TransactionReceipt): TransactionReceipt {
