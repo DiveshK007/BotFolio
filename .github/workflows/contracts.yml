@@ -99,3 +99,26 @@ jobs:
           ETH_RPC_URL: ${{ steps.rpc.outputs.url }}
           QIE_RPC_URL: ${{ steps.rpc.outputs.url }}
         run: forge test -vvv
+
+  slither:
+    # Issue #153, SPEC §4. Fails the PR on any High finding in our own code.
+    # lib/ (OZ, forge-std), test/ and script/ are excluded from findings.
+    name: slither (fail on high)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      # The action runs in its own Docker image. It installs Foundry stable there
+      # and compiles via foundry.toml (solc 0.8.24, evm shanghai). Pre-building on
+      # the runner with ignore-compile doesn't work: crytic-compile still calls
+      # `forge config` inside the container, where our pinned forge isn't on PATH.
+      - uses: crytic/slither-action@v0.4.2
+        with:
+          target: packages/contracts
+          slither-version: "0.11.6"
+          solc-version: "0.8.24"
+          fail-on: high
+          slither-args: --filter-paths "lib/,test/,script/" --exclude-dependencies
