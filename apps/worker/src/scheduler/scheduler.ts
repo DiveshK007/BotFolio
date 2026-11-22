@@ -28,9 +28,19 @@ export type JobHandlers = {
   slot?: (context: SlotContext) => Promise<{ failed: number }>;
 } & { [Name in Exclude<JobName, "slot">]?: (context: JobContext) => Promise<void> };
 
+/** A module's jobs: the ones it can run, and why for those it can't. */
+export interface JobSet {
+  handlers: JobHandlers;
+  unavailable: Partial<Record<JobName, string>>;
+}
+
+/** Safe to run whenever the worker starts: what they do follows the chain and the DB, not the clock alone. */
+const RUN_AT_START: readonly JobName[] = ["season_open", "season_close"];
+
 export interface SchedulerDeps {
   db: Db;
   handlers: JobHandlers;
+  unavailable?: JobSet["unavailable"];
   health: HealthState;
   log: Log;
   now?: () => Date;
@@ -38,7 +48,7 @@ export interface SchedulerDeps {
 
 export type RunOutcome = "ran" | "failed" | "locked" | "outside_window" | "not_running";
 
-export function createScheduler({ db, handlers, health, log, now = () => new Date() }: SchedulerDeps) {
+export function createScheduler({ db, handlers, unavailable = {}, health, log, now = () => new Date() }: SchedulerDeps) {
   const tasks: ScheduledTask[] = [];
   const running = new Set<Promise<RunOutcome>>();
   const stopping = new AbortController();
@@ -99,7 +109,14 @@ export function createScheduler({ db, handlers, health, log, now = () => new Dat
     start(): void {
       for (const { name, issue, crons } of JOBS) {
         if (!handlers[name]) {
-          health.setJob(name, "not_implemented", `#${issue}`);
+          const why = unavailable[name];
+          if (why) {
+            health.setJob(name, "not_started", why);
+            health.addStartProblem(`${name} job not started: ${why}`);
+            log.warn("scheduler.job_not_started", { job: name, why });
+          } else {
+            health.setJob(name, "not_implemented", `#${issue}`);
+          }
           continue;
         }
         health.setJob(name, "scheduled");
@@ -118,6 +135,8 @@ export function createScheduler({ db, handlers, health, log, now = () => new Dat
       log.info("scheduler.started", { jobs: JOBS.filter(({ name }) => handlers[name]).map(({ name }) => name) });
       // A deploy or a crash inside a slot's window shouldn't cost the slot.
       if (slotAt(now())) void trigger("slot");
+      // Deployed at 00:05, S0 mustn't wait a day for the next 00:00 check.
+      for (const name of RUN_AT_START) void trigger(name);
     },
 
     /** Stops the timers and waits for what is running. */

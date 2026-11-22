@@ -3,6 +3,7 @@ import { createQiePublicClient } from "./chain";
 import { HealthState, startOracleMonitor } from "./health";
 import { startIndexer } from "./indexer";
 import { startScheduler } from "./scheduler";
+import { seasonJobs } from "./seasons";
 import { createWorkerServer } from "./server";
 import { loadAllowedOrigins } from "./auth/cors";
 import { createClientIp } from "./auth/client-ip";
@@ -19,7 +20,10 @@ async function main(): Promise<void> {
   const health = new HealthState({ provider: cfg.llm.provider, capUsd: cfg.llm.monthlyBudgetUsd });
   const stopOracle = startOracleMonitor(client, cfg.feeds, health, cfg.oracleRefreshMs);
   const indexer = startIndexer({ rpcUrls: cfg.rpcUrls });
-  const scheduler = startScheduler({ health });
+  const scheduler = startScheduler({
+    health,
+    jobs: [({ db, log }) => seasonJobs({ db, log, env: process.env, client, rpcUrls: cfg.rpcUrls })],
+  });
 
   const origins = loadAllowedOrigins(process.env);
   const clientIp = createClientIp(process.env);

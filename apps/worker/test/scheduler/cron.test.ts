@@ -75,8 +75,9 @@ describe.each(["UTC", "America/New_York", "Asia/Kolkata"])("a day of cron with T
         ["00", "05", "10", "15"].map((minute, attempt) => `${hour}:${minute} slot ${hour}:00 attempt ${attempt}`),
       ),
     );
-    expect(fired.season_open).toEqual(["00:00"]);
-    expect(fired.season_close).toEqual(["21:30"]);
+    // 23:59 is the check every worker start runs (#55). After it, the crons alone.
+    expect(fired.season_open).toEqual(["23:59", "00:00"]);
+    expect(fired.season_close).toEqual(["23:59", "21:30"]);
     expect(fired.recap).toEqual(["21:35"]);
     expect(fired.big_move_sweep).toEqual(every10("00:00", "23:50"));
 
