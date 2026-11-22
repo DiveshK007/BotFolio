@@ -8,21 +8,9 @@ import {IPaperLedger} from "../../src/interfaces/IPaperLedger.sol";
 import {Roles} from "../../src/lib/Roles.sol";
 import {ForkTest} from "./ForkTest.sol";
 
-/// Stubs the parts of PaperLedger that arrive in #11 and #12.
+/// Stubs the parts of PaperLedger that arrive in #12.
 contract LedgerUnderTest is PaperLedger {
     constructor(address f, address a, address r, uint256 s) PaperLedger(f, a, r, s) {}
-
-    function APPROVED_ORDER_TYPEHASH() external pure returns (bytes32) {
-        revert("arrives in #11");
-    }
-
-    function hashApprovedOrder(ApprovedOrder calldata) external pure returns (bytes32) {
-        revert("arrives in #11");
-    }
-
-    function executeApproved(ApprovedOrder calldata, bytes calldata) external pure {
-        revert("arrives in #11");
-    }
 
     function portfolioValueE8(uint256) external pure returns (uint256) {
         revert("arrives in #12");

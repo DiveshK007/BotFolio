@@ -2,6 +2,7 @@
 pragma solidity 0.8.24;
 
 import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ForwarderAccess} from "./base/ForwarderAccess.sol";
 import {IBotRegistry} from "./interfaces/IBotRegistry.sol";
@@ -14,7 +15,7 @@ import {Roles} from "./lib/Roles.sol";
 /// @title PaperLedger
 /// @notice Play balances and the trade log (SPEC §4.3, §5), settled against QIE's official mainnet
 ///         oracle. No price is ever an input. Long or cash only. No real funds.
-/// @dev Abstract until `executeApproved` (#11) and the portfolio views (#12) land.
+/// @dev Abstract until the portfolio views (#12) land.
 abstract contract PaperLedger is IPaperLedger, ForwarderAccess, EIP712 {
     struct Portfolio {
         uint128 cashE8;
@@ -25,6 +26,9 @@ abstract contract PaperLedger is IPaperLedger, ForwarderAccess, EIP712 {
 
     bytes32 public constant RUNNER_ROLE = Roles.RUNNER;
     bytes32 public constant REGISTRY_ROLE = Roles.REGISTRY;
+    bytes32 public constant APPROVED_ORDER_TYPEHASH = keccak256(
+        "ApprovedOrder(uint256 botId,uint8 asset,bool buy,uint16 bps,bytes32 decisionId,uint8 actionIndex,uint64 deadline)"
+    );
 
     uint256 private constant BPS = 10_000;
     uint256 private constant ONE_UNIT = 1e18;
@@ -90,6 +94,51 @@ abstract contract PaperLedger is IPaperLedger, ForwarderAccess, EIP712 {
             (bool done, SkipReason reason) = _execute(o);
             if (!done) emit OrderSkipped(o.botId, o.asset, o.decisionId, o.actionIndex, uint8(reason));
         }
+    }
+
+    function hashApprovedOrder(ApprovedOrder calldata o) external view returns (bytes32) {
+        return _hashApprovedOrder(o);
+    }
+
+    /// @dev Two signatures are needed. The runner's proves the bot proposed exactly this order. The
+    ///      owner's (the forwarder request, or their own tx) approves it. Neither can trade alone here.
+    function executeApproved(ApprovedOrder calldata o, bytes calldata runnerSig) external {
+        address owner = IBotRegistry(registry).getBot(o.botId).owner;
+        address caller = _msgSender();
+        if (caller != owner) revert NotBotOwner(o.botId, caller);
+
+        (address signer, ECDSA.RecoverError err,) = ECDSA.tryRecover(_hashApprovedOrder(o), runnerSig);
+        if (err != ECDSA.RecoverError.NoError || !hasRole(RUNNER_ROLE, signer)) {
+            revert InvalidRunnerSignature(signer);
+        }
+        if (block.timestamp > o.deadline) revert ApprovalExpired(o.deadline);
+
+        (bool done, SkipReason reason) =
+            _execute(Order(o.botId, o.asset, o.buy, o.bps, o.decisionId, o.actionIndex));
+        if (!done) {
+            // The same checks as a batch order, but here the user is waiting, so say why and revert.
+            if (reason == SkipReason.STALE) revert PriceTooOld(o.asset);
+            revert OrderRejected(uint8(reason));
+        }
+        emit ApprovedTrade(o.botId, o.decisionId, o.actionIndex, owner);
+    }
+
+    /// @dev Every field is hashed, so the runner signs this exact orderId, size and deadline.
+    function _hashApprovedOrder(ApprovedOrder calldata o) internal view returns (bytes32) {
+        return _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    APPROVED_ORDER_TYPEHASH,
+                    o.botId,
+                    o.asset,
+                    o.buy,
+                    o.bps,
+                    o.decisionId,
+                    o.actionIndex,
+                    o.deadline
+                )
+            )
+        );
     }
 
     /// @dev The single code path for a trade. It checks in the order of SPEC §4.3 steps 0-4 and writes
