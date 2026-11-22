@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach } from "vitest";
 import { padHex, stringToHex, type Address } from "viem";
 import { decisionIdFromUuid } from "@botfolio/shared";
 import type { ChainSource } from "../../../src/indexer/chain";
-import { Indexer, type IndexerDeps } from "../../../src/indexer/indexer";
+import { CONFIRMATIONS, Indexer, type IndexerDeps } from "../../../src/indexer/indexer";
 import type { Log } from "../../../src/indexer/log";
 import type { Problem } from "../../../src/indexer/apply";
 import { createTestDb, type TestDb } from "./db";
@@ -36,7 +36,7 @@ export interface World {
   chain: FakeChain;
   log: ReturnType<typeof memoryLog>;
   indexer(options?: Partial<IndexerDeps> & { sources?: ChainSource[] }): Indexer;
-  /** A new indexer, run until it has nothing left to do. */
+  /** Confirms what is on the chain, then runs a new indexer until it has nothing left to do. */
   index(options?: Partial<IndexerDeps>): Promise<Indexer>;
   createBot(id?: bigint, owner?: Address, personaHash?: `0x${string}`): Tx;
 }
@@ -70,6 +70,7 @@ export function useWorld(): World {
 
   world.index = async (options = {}) => {
     const indexer = world.indexer(options);
+    world.chain.mine(Number(CONFIRMATIONS));
     await drain(indexer);
     return indexer;
   };
@@ -92,8 +93,7 @@ export function useWorld(): World {
 
 export async function drain(indexer: Indexer): Promise<void> {
   for (let i = 0; i < 1000; i++) {
-    const result = await indexer.tick();
-    if (result.status !== "written" || result.to >= result.head) return;
+    if (!(await indexer.tick()).more) return;
   }
   throw new Error("the indexer never caught up");
 }
