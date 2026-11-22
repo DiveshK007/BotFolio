@@ -15,3 +15,5 @@ Format: date — decision — why — who.
 - Nov 20 — Users must be 18+ (Terms + one-line confirmation at sign-up) — Divesh
 - Nov 20 — Testnet staging dropped; staging = local mainnet fork (Anvil) — testnet RPC unreliable and testnet feed addresses unknown — Divesh
 - Nov 20 — Reference screenshots kept out of git (GitHub Release) — ~23 MB of PNGs would bloat history for good — Divesh
+- Nov 23 — tsup 9 for builds while staying on Node 20 — it passes the build and tests on Node 20.19.5 and 20.20.2, but declares Node ≥ 22.18, so a later tsup patch may not — Gokul
+- Nov 23 — TypeScript 7 for `tsc`, with Microsoft's 6.0 API package aliased as `typescript` — TS 7.0 ships no compiler API, which Next 15, typescript-eslint and tsup need; drop the alias once they support 7 — Gokul
