@@ -65,7 +65,7 @@ async function onServer(serverUrl: string): Promise<Db> {
   const url = new URL(serverUrl);
   url.pathname = `/${name}`;
 
-  const db = createPgDb(url.toString());
+  const db = createPgDb({ connectionString: url.toString() });
   await db.query(SCHEMA);
   return {
     ...db,

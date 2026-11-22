@@ -21,7 +21,6 @@ import {
   DAY,
   DECISION,
   PERSONA,
-  RELAYER,
   RULES,
   UINT256_MAX,
   UINT80_MAX,
@@ -554,52 +553,20 @@ describe("Challenges", () => {
   });
 });
 
-describe("BotForwarder: user activity is _msgSender", () => {
-  const execute = (signer: `0x${string}`, success = true) => {
+describe("BotForwarder", () => {
+  it.each(["submitted", "rejected"])("leaves a %s relay_log row to the relayer", async (status) => {
     const tx = w.chain.tx();
-    w.chain.emit(tx, "BotForwarder", "ExecutedForwardRequest", { signer, nonce: 0n, success });
-    return tx;
-  };
-  const STATS = "select user_signed_txs::int as txs, unique_signers::int as signers from site_activity_stats";
-
-  it("confirms the signer's relay", async () => {
-    const tx = execute(ALICE);
-    await seedRelay(w.db, { wallet: ALICE, txHash: tx.hash });
+    w.chain.emit(tx, "BotForwarder", "ExecutedForwardRequest", { signer: ALICE, nonce: 0n, success: true });
+    await seedRelay(w.db, { wallet: ALICE, txHash: tx.hash, status });
     await w.index();
-
-    expect(await one("select user_wallet, status::text as status from relay_log")).toEqual({
-      user_wallet: ALICE,
-      status: "confirmed",
-    });
-    expect(await one(STATS)).toEqual({ txs: 1, signers: 1 });
+    expect(await one("select status::text as status, gas_used from relay_log")).toEqual({ status, gas_used: null });
   });
 
-  it("marks a failed request in a batch reverted", async () => {
-    const tx = execute(ALICE, false);
-    await seedRelay(w.db, { wallet: ALICE, txHash: tx.hash });
-    await w.index();
-    expect(await one("select status::text as status from relay_log")).toEqual({ status: "reverted" });
-  });
-
-  it("never confirms a row that names the relayer, or another wallet", async () => {
-    const tx = execute(ALICE);
-    await seedRelay(w.db, { wallet: RELAYER, txHash: tx.hash });
-    await seedRelay(w.db, { wallet: BOB, txHash: tx.hash });
-    await w.index();
-    expect(await one(STATS)).toEqual({ txs: 0, signers: 0 });
-  });
-
-  it("doesn't count a forward the relayer never logged", async () => {
-    execute(BOB);
+  it("can't be used to pad /stats: a forward nobody relayed adds no row", async () => {
+    w.chain.emit(w.chain.tx(), "BotForwarder", "ExecutedForwardRequest", { signer: BOB, nonce: 0n, success: true });
     await w.index();
     expect(await one("select count(*)::int as n from relay_log")).toEqual({ n: 0 });
-  });
-
-  it("doesn't turn a rejected relay into a confirmed one", async () => {
-    const tx = execute(ALICE);
-    await seedRelay(w.db, { wallet: ALICE, txHash: tx.hash, status: "rejected" });
-    await w.index();
-    expect(await one(STATS)).toEqual({ txs: 0, signers: 0 });
+    expect(await one("select unique_signers::int as n from site_activity_stats")).toEqual({ n: 0 });
   });
 });
 

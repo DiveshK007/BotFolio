@@ -15,8 +15,14 @@ export const ADDRESS_ENV: Record<ContractName, string> = {
   Challenges: "CHALLENGES_ADDRESS",
 };
 
+export interface DatabaseConfig {
+  connectionString: string;
+  /** Set when a remote URL names no sslmode: pg would send the password in plain text otherwise. */
+  ssl?: true;
+}
+
 export interface IndexerConfig {
-  databaseUrl: string;
+  database: DatabaseConfig;
   /** Lowercase. These are the only log sources the indexer accepts. */
   addresses: ContractAddresses;
   /** The block of the first deploy tx. */
@@ -46,14 +52,33 @@ export function loadIndexerConfig(
     }
   }
 
-  const databaseUrl = env.DATABASE_URL?.trim() ?? "";
-  if (!databaseUrl) problems.push("DATABASE_URL is not set");
-  else if (!/^postgres(ql)?:\/\//.test(databaseUrl)) problems.push("DATABASE_URL is not a postgres:// URL");
+  const database = databaseConfig(env.DATABASE_URL?.trim() ?? "");
+  if (typeof database === "string") problems.push(`DATABASE_URL ${database}`);
 
   const start = env.INDEXER_START_BLOCK?.trim() ?? "";
   if (!start) problems.push("INDEXER_START_BLOCK is not set (the deploy block)");
   else if (!/^\d+$/.test(start)) problems.push("INDEXER_START_BLOCK is not a block number");
 
-  if (problems.length > 0) return { ok: false, problems };
-  return { ok: true, config: { databaseUrl, addresses, startBlock: BigInt(start) } };
+  if (problems.length > 0 || typeof database === "string") return { ok: false, problems };
+  return { ok: true, config: { database, addresses, startBlock: BigInt(start) } };
+}
+
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+const TLS_MODES = new Set(["require", "verify-ca", "verify-full"]);
+
+/** The same rule as the relayer's: plain text only to this machine. A string says what's wrong with the URL. */
+function databaseConfig(value: string): DatabaseConfig | string {
+  if (!value) return "is not set";
+  if (!URL.canParse(value)) return "is not a URL";
+  const url = new URL(value);
+  if ((url.protocol !== "postgres:" && url.protocol !== "postgresql:") || !url.hostname) {
+    return "is not a postgres:// URL";
+  }
+  // pg lets these two override the host and the TLS setting checked below.
+  if (url.searchParams.has("host") || url.searchParams.has("ssl")) return "must not set host or ssl as parameters";
+  if (LOCAL_HOSTS.has(url.hostname)) return { connectionString: value };
+
+  const mode = url.searchParams.get("sslmode");
+  if (mode === null) return { connectionString: value, ssl: true };
+  return TLS_MODES.has(mode) ? { connectionString: value } : "must use TLS for a remote server";
 }

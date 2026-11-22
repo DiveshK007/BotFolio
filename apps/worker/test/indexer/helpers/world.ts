@@ -11,7 +11,6 @@ import { hash } from "./seed";
 
 export const ALICE: Address = padHex("0xa11ce", { size: 20 });
 export const BOB: Address = padHex("0xb0b", { size: 20 });
-export const RELAYER: Address = padHex("0x4e1a", { size: 20 });
 export const DECISION = "6f1c2d3e-4a5b-4c6d-8e7f-0123456789ab";
 export const BOBS_DECISION = "00000000-0000-4000-8000-000000000b0b";
 export const PERSONA = hash(0xaaaa);

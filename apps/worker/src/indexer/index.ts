@@ -1,5 +1,5 @@
 import { createChainSource } from "./chain";
-import { loadIndexerConfig } from "./config";
+import { loadIndexerConfig, type DatabaseConfig } from "./config";
 import { createPgDb, type Db } from "./db";
 import { Indexer } from "./indexer";
 import { consoleLog, type Log } from "./log";
@@ -10,7 +10,7 @@ export interface StartOptions {
   rpcUrls: string[];
   env?: Record<string, string | undefined>;
   log?: Log;
-  openDb?: (url: string) => Db;
+  openDb?: (database: DatabaseConfig) => Db;
 }
 
 /**
@@ -25,8 +25,8 @@ export function startIndexer(options: StartOptions): { stop(): Promise<void> } |
     return null;
   }
 
-  const { databaseUrl, addresses, startBlock } = loaded.config;
-  const db = openDb(databaseUrl);
+  const { database, addresses, startBlock } = loaded.config;
+  const db = openDb(database);
   const sources = rpcUrls.map((url) => createChainSource(url, addresses));
   const loop = runLoop(new Indexer({ db, sources, addresses, startBlock, log }), log);
   log.info("started", { startBlock, rpc: sources.map((source) => source.name) });

@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import type { DatabaseConfig } from "./config";
 
 export interface Queryable {
   query<Row extends object = Record<string, unknown>>(text: string, params?: unknown[]): Promise<{ rows: Row[] }>;
@@ -11,9 +12,9 @@ export interface Db extends Queryable {
   close(): Promise<void>;
 }
 
-export function createPgDb(connectionString: string): Db {
+export function createPgDb(database: DatabaseConfig): Db {
   const pool = new Pool({
-    connectionString,
+    ...database,
     max: 2, // one loop, one transaction at a time
     connectionTimeoutMillis: 10_000,
     // A dead socket must not hang the loop for good. Client side, because a pooler can refuse startup parameters.

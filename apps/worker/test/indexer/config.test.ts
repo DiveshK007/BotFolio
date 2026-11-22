@@ -17,7 +17,7 @@ describe("loadIndexerConfig", () => {
   it("reads all seven addresses, the database and the start block", () => {
     expect(loadIndexerConfig(ENV)).toEqual({
       ok: true,
-      config: { databaseUrl: ENV.DATABASE_URL, addresses: ADDRESSES, startBlock: 12_091_011n },
+      config: { database: { connectionString: ENV.DATABASE_URL }, addresses: ADDRESSES, startBlock: 12_091_011n },
     });
   });
 
@@ -41,6 +41,30 @@ describe("loadIndexerConfig", () => {
     ["DATABASE_URL", "localhost"],
   ])("refuses %s=%s", (name, value) => {
     expect(loadIndexerConfig({ ...ENV, [name]: value }).ok).toBe(false);
+  });
+});
+
+describe("DATABASE_URL: no password in plain text to another machine", () => {
+  const load = (url: string) => loadIndexerConfig({ ...ENV, DATABASE_URL: url });
+
+  it("turns on verified TLS when a remote URL names no sslmode", () => {
+    const loaded = load("postgres://u:p@db.example.com:5432/postgres");
+    expect(loaded.ok && loaded.config.database.ssl).toBe(true);
+  });
+
+  it.each(["require", "verify-ca", "verify-full"])("takes sslmode=%s as written", (mode) => {
+    const loaded = load(`postgres://u:p@db.example.com/postgres?sslmode=${mode}`);
+    expect(loaded.ok).toBe(true);
+    expect(loaded.ok && loaded.config.database.ssl).toBeUndefined();
+  });
+
+  it.each([
+    "postgres://u:p@db.example.com/postgres?sslmode=disable",
+    "postgres://u:p@db.example.com/postgres?sslmode=prefer",
+    "postgres://u:p@db.example.com/postgres?ssl=false",
+    "postgres://u:p@localhost/postgres?host=db.example.com",
+  ])("refuses %s", (url) => {
+    expect(load(url).ok).toBe(false);
   });
 });
 

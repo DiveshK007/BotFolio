@@ -1,17 +1,12 @@
-import { ignored, written, type ContractHandlers } from "./types";
+import { ignored, type ContractHandlers } from "./types";
 
 export const forwarderHandlers: ContractHandlers<"BotForwarder"> = {
   /**
-   * `signer` is _msgSender, what §11 counts. It only confirms a relay our relayer logged for that same wallet
-   * and tx. It never inserts: anyone can call the forwarder, with any target, and could pad /stats that way.
+   * relay_log is the relayer's (#39): it records the outcome with gas_used, and only over a `submitted` row, so a
+   * confirmation from here would lose the gas. Never an insert either: anyone can call the forwarder with any
+   * target and pad /stats. User rows take the _msgSender that each contract checked.
    */
-  async ExecutedForwardRequest({ signer, success }, ctx) {
-    const { rows } = await ctx.db.query(
-      `update relay_log set status = case when $3::boolean then 'confirmed' else 'reverted' end::relay_status
-       where tx_hash = $1::text and user_wallet = $2::text and status = 'submitted'
-       returning id`,
-      [ctx.txHash, signer.toLowerCase(), success],
-    );
-    return rows.length > 0 ? written : ignored("no submitted relay_log row");
+  async ExecutedForwardRequest() {
+    return ignored("relay_log belongs to the relayer");
   },
 };
