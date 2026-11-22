@@ -15,8 +15,7 @@ import {Roles} from "./lib/Roles.sol";
 /// @title PaperLedger
 /// @notice Play balances and the trade log (SPEC §4.3, §5), settled against QIE's official mainnet
 ///         oracle. No price is ever an input. Long or cash only. No real funds.
-/// @dev Abstract until the portfolio views (#12) land.
-abstract contract PaperLedger is IPaperLedger, ForwarderAccess, EIP712 {
+contract PaperLedger is IPaperLedger, ForwarderAccess, EIP712 {
     struct Portfolio {
         uint128 cashE8;
         uint16 lastDay;
@@ -78,6 +77,17 @@ abstract contract PaperLedger is IPaperLedger, ForwarderAccess, EIP712 {
 
     function orderIdOf(bytes32 decisionId, uint8 actionIndex) external pure returns (bytes32) {
         return _orderId(decisionId, actionIndex);
+    }
+
+    /// @dev The same valuation the cap check uses, so the UI and the limit can't disagree.
+    function portfolioValueE8(uint256 botId) external view returns (uint256) {
+        return _valueE8(botId);
+    }
+
+    function holdings(uint256 botId) external view returns (uint256[5] memory units) {
+        for (uint8 asset; asset < QieFeeds.COUNT; ++asset) {
+            units[asset] = unitsE18[botId][asset];
+        }
     }
 
     function initPortfolio(uint256 botId) external onlyRole(REGISTRY_ROLE) {

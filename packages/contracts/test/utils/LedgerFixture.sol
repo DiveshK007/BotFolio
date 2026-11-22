@@ -8,19 +8,6 @@ import {IPaperLedger} from "../../src/interfaces/IPaperLedger.sol";
 import {Roles} from "../../src/lib/Roles.sol";
 import {ForkTest} from "./ForkTest.sol";
 
-/// Stubs the parts of PaperLedger that arrive in #12.
-contract LedgerUnderTest is PaperLedger {
-    constructor(address f, address a, address r, uint256 s) PaperLedger(f, a, r, s) {}
-
-    function portfolioValueE8(uint256) external pure returns (uint256) {
-        revert("arrives in #12");
-    }
-
-    function holdings(uint256) external pure returns (uint256[5] memory) {
-        revert("arrives in #12");
-    }
-}
-
 /// A forwarder, the real BotRegistry and the real PaperLedger on the fork, with one bot for Alice.
 abstract contract LedgerFixture is ForkTest {
     uint256 internal constant START_CASH = 1125e8;
@@ -50,7 +37,7 @@ abstract contract LedgerFixture is ForkTest {
         address predictedLedger =
             vm.computeCreateAddress(address(this), uint256(vm.getNonce(address(this))) + 1);
         reg = new BotRegistry(address(fwd), admin, predictedLedger);
-        ledger = new LedgerUnderTest(address(fwd), admin, address(reg), START_CASH);
+        ledger = new PaperLedger(address(fwd), admin, address(reg), START_CASH);
         assertEq(address(ledger), predictedLedger);
 
         vm.startPrank(admin);
