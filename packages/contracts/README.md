@@ -5,7 +5,7 @@ Foundry project for BotFolio's 7 contracts (SPEC §4.9): `BotForwarder`, `BotReg
 ## Setup
 ```bash
 cd packages/contracts
-forge install OpenZeppelin/openzeppelin-contracts@v5.0.2 --no-commit   # pinned: 5.6.x uses mcopy (SPEC §0.3)
+git submodule update --init --recursive   # OZ pinned at v5.0.2 (5.6.x uses mcopy, SPEC §0.3) + forge-std; see foundry.lock
 forge build
 forge test --fork-url qie -vv
 ```

@@ -1,0 +1,94 @@
+# Worker + packages CI (issue #128, SPEC §16.2).
+# typecheck, unit tests and build for the WS B TypeScript packages.
+# A package that doesn't exist yet, or has no such script, is skipped
+# (`--if-present`; a filter that matches nothing exits 0).
+name: worker
+
+on:
+  pull_request:
+    paths:
+      - "apps/worker/**"
+      - "packages/db/**"
+      - "packages/llm/**"
+      - "packages/shared/**"
+      - "scripts/replay/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.base.json"
+      - ".nvmrc"
+      - ".github/workflows/worker.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/worker/**"
+      - "packages/db/**"
+      - "packages/llm/**"
+      - "packages/shared/**"
+      - "scripts/replay/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.base.json"
+      - ".nvmrc"
+      - ".github/workflows/worker.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worker-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Packages this workflow covers. packages/contracts is Foundry (contracts.yml),
+  # apps/web has its own workflow (web.yml).
+  PNPM_FILTERS: >-
+    --filter ./apps/worker
+    --filter ./packages/db
+    --filter ./packages/llm
+    --filter ./packages/shared
+    --filter ./scripts/replay
+
+jobs:
+  check:
+    name: typecheck / test / build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      # No version input: it reads "packageManager": "pnpm@9.12.0" from package.json.
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          # The pnpm cache needs a lockfile; skip caching if there isn't one yet.
+          cache: ${{ hashFiles('pnpm-lock.yaml') != '' && 'pnpm' || '' }}
+
+      - name: Install
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            echo "::warning::No pnpm-lock.yaml yet, installing without --frozen-lockfile"
+            pnpm install --no-frozen-lockfile
+          fi
+
+      # PNPM_FILTERS is unquoted on purpose: it must split into separate --filter args.
+      - name: Typecheck
+        run: |
+          # shellcheck disable=SC2086
+          pnpm -r --if-present $PNPM_FILTERS typecheck
+
+      - name: Unit tests
+        run: |
+          # shellcheck disable=SC2086
+          pnpm -r --if-present $PNPM_FILTERS test
+
+      - name: Build
+        run: |
+          # shellcheck disable=SC2086
+          pnpm -r --if-present $PNPM_FILTERS build

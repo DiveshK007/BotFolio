@@ -1,0 +1,80 @@
+name: Bug
+description: Something is broken or doesn't match SPEC.md
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never paste private keys, seed phrases, API keys or `.env` values here. Redact them.
+        Triage routine and label meanings: `.github/TRIAGE.md`.
+
+  - type: dropdown
+    id: workstream
+    attributes:
+      label: Workstream
+      options:
+        - A (Chain)
+        - B (Runner)
+        - C (App)
+        - D (Growth)
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: spec
+    attributes:
+      label: Spec
+      description: The SPEC.md section this breaks, if any.
+      placeholder: "SPEC.md §"
+
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - Local
+        - Anvil mainnet fork
+        - CI
+        - Vercel preview
+        - Production (QIE mainnet)
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: One or two sentences, plus the error message or a screenshot.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: links
+    attributes:
+      label: Links
+      description: Tx hash or explorer link (mainnet.qie.digital), commit, PR, CI run, device and browser for UI bugs.
+
+  - type: input
+    id: depends
+    attributes:
+      label: Depends on
+      description: Issue numbers, or "none".
