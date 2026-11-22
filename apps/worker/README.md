@@ -59,3 +59,15 @@ Take `reason`, `roast` and `daily_call.why` from `GateResult.output`, never from
 | `drop` | `expired` |
 | `stale` | leave `pending`, retry at +5/+10/+15 min, then `expired` |
 | `not_due` | leave `pending` |
+
+### House bots (SPEC §8)
+`houseDecision()` gives a `HouseOutput`. Log it, then pass it to `gate()` with `bot.isHouse: true`.
+
+| Bot | Rule | Trades | Limits it needs to follow the rule |
+|---|---|---|---|
+| Steady Sam | 20 % in each of the 5 assets | first 09:00 slot of each season | ≥ 2000 bps per coin, ≥ 5 trades/day |
+| Gold Granny | 60 % Gold, 40 % cash | first 09:00 slot of each season | 6000 bps, which `BotRegistry` refuses: 5000 is the maximum, so the gate clips her to 50 % |
+| Momentum Max | 24 h change > +2 %: top up to 25 %. < −2 %: sell all | every slot | ≥ 2500 bps per coin; 8 trades/day can still run out |
+
+- On a stale retry (+5/+10/+15 min) use the slot's scheduled time, the same decisionId, and pass `alreadyTraded`.
+- `actionIndex` is the asset's position in the strategy's list, so it goes up to 4. **`packages/db/schema.sql` only allows 0–2 in `trades.action_index`.** That constraint has to be widened by an announced PR before house trades can be indexed.
