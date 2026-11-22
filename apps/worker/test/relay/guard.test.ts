@@ -1,5 +1,5 @@
 import { RELAY_ALLOWLIST } from "@botfolio/shared";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import type { Address, Hex } from "viem";
 import { ipKey } from "../../src/auth/client-ip";
 import { databaseConfig, type Db } from "../../src/relay/db";
@@ -13,6 +13,9 @@ import { testDb } from "./helpers/db";
 const LIMITS: RelayRateLimits = { perWalletPerDay: 30, perHourGlobal: 2000, newBotsPerIpPerDay: 3 };
 const CREATE = RELAY_ALLOWLIST[0];
 const SET_ACTIVE = RELAY_ALLOWLIST[1];
+
+// Booting PGlite and applying schema.sql can take longer than one test's timeout on CI.
+beforeAll(async () => void (await testDb()), 60_000);
 
 const walletNo = (n: number) => `0x${(n + 1).toString(16).padStart(40, "0")}` as Address;
 const hashNo = (n: number) => `0x${(n + 1).toString(16).padStart(64, "0")}` as Hex;
@@ -330,6 +333,7 @@ describe("limits and DB from env (#39)", () => {
     "postgres://u:p@db.example/app?sslmode=disable",
     "postgres://u:p@db.example/app?sslmode=no-verify",
     "postgres://u:p@localhost/app?host=db.example",
+    "postgres://u:p@db.example/app?sslmode=require&sslmode=disable",
   ])("refuses DATABASE_URL %s", (url) => {
     expect(databaseConfig(url)).toBeNull();
   });
