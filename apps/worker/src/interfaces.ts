@@ -36,6 +36,34 @@ export function paperLedgerDomain(verifyingContract: Address) {
   return { name: "BotFolio PaperLedger", version: "1", chainId: qieMainnet.id, verifyingContract } as const;
 }
 
+/** The bot's Daily Call view, signed by the runner (`IDailyCall`). */
+export interface DailyCallBotView {
+  botId: bigint;
+  /** IST day number. */
+  day: number;
+  botUp: boolean;
+}
+
+/** On the wire: what the app passes to `DailyCall.call`. */
+export interface SignedDailyCallBotView {
+  botId: string;
+  day: number;
+  botUp: boolean;
+  botSig: Hex;
+}
+
+export const DAILY_CALL_BOT_VIEW_TYPES = {
+  BotView: [
+    { name: "botId", type: "uint256" },
+    { name: "day", type: "uint32" },
+    { name: "botUp", type: "bool" },
+  ],
+} as const;
+
+export function dailyCallDomain(verifyingContract: Address) {
+  return { name: "BotFolio DailyCall", version: "1", chainId: qieMainnet.id, verifyingContract } as const;
+}
+
 /** `IPaperLedger.SkipReason`, in the contract's enum order. */
 export const SKIP_REASONS = ["STALE", "LIMIT", "INACTIVE", "ZERO", "USED"] as const;
 export type SkipReason = (typeof SKIP_REASONS)[number];
