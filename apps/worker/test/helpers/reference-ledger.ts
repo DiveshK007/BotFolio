@@ -4,8 +4,8 @@ import type { GateBot, GateInput, Portfolio } from "../../src/gate/types";
 
 /**
  * A test-only executeBatch written from SPEC §4.3 and IPaperLedger's natspec, deliberately NOT using the
- * gate's math. There is no PaperLedger implementation on main yet, so this is what the gate is checked against.
- * UNVERIFIED against the Solidity implementation.
+ * gate's math. Follows PaperLedger's `_execute` (PRs #230-#233): cap against the
+ * pre-trade total, SELL is ZERO when the cash rounds to 0, answers above uint64 max are unusable.
  */
 export function executeBatch(
   bot: GateBot,
@@ -32,7 +32,7 @@ export function executeBatch(
       continue;
     }
     const { priceE8: answer, fresh } = prices[asset];
-    if (!fresh || answer <= 0n) {
+    if (!fresh || answer <= 0n || answer >= 2n ** 64n) {
       skip("STALE");
       continue;
     }
@@ -52,14 +52,11 @@ export function executeBatch(
         skip("ZERO");
         continue;
       }
-      let total = cash - spend;
-      let position = 0n;
+      const position = ((units[asset] + got) * answer) / 10n ** 18n;
+      let total = cash; // the pre-trade total
       for (const { id } of ASSETS) {
-        const held = id === asset ? units[id] + got : units[id];
-        const p = prices[id].priceE8 > 0n ? prices[id].priceE8 : 0n;
-        const worth = (held * p) / 10n ** 18n;
-        if (id === asset) position = worth;
-        total += worth;
+        const last = prices[id].priceE8;
+        if (last > 0n && last < 2n ** 64n) total += (units[id] * last) / 10n ** 18n;
       }
       if (position * 10_000n > total * BigInt(bot.maxPerCoinBps)) {
         skip("LIMIT");
@@ -69,7 +66,7 @@ export function executeBatch(
       units[asset] += got;
     } else {
       const out = (units[asset] * BigInt(o.bps)) / 10_000n;
-      if (out === 0n) {
+      if ((out * answer) / 10n ** 18n === 0n) {
         skip("ZERO");
         continue;
       }

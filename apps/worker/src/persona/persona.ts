@@ -6,8 +6,11 @@ import { containsUrl, stripUrls } from "../text/urls";
 import { PERSONA_PROMPT_HASH, PERSONA_PROMPT_VERSION, PERSONA_SYSTEM_PROMPT } from "./prompt";
 import { LIMITS, PERSONA_SCHEMA, type PersonaOutput } from "./schema";
 
-/** Our cap on the user's sentence (SPEC §11 asks for a length cap but gives no number). */
-export const MAX_SENTENCE_CHARS = 200;
+/**
+ * Cap on the user's sentence, the same 160 as SENTENCE_MAX in apps/web/lib/sentence.ts and counted the same
+ * way (`String.length`). UNVERIFIED as a product decision: SPEC §11 asks for a cap but gives no number.
+ */
+export const MAX_SENTENCE_CHARS = 160;
 
 export interface Persona {
   name: string;
@@ -93,7 +96,8 @@ export async function createPersona({ llm, config, sentence }: PersonaCallOption
 export function cleanSentence(sentence: string): string {
   // The slice only bounds the regex work on a hostile, huge input.
   const text = oneLine(stripUrls(sentence.slice(0, 2000)));
-  return [...text].slice(0, MAX_SENTENCE_CHARS).join("").trim();
+  // Don't leave half an emoji at the cut.
+  return text.slice(0, MAX_SENTENCE_CHARS).replace(/[\uD800-\uDBFF]$/, "").trim();
 }
 
 /** The same bounds `BotRegistry` enforces. Use it for user slider edits too. */
