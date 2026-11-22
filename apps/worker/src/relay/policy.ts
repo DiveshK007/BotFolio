@@ -15,7 +15,7 @@ export const MIN_SECONDS_LEFT = 10;
 
 /**
  * SPEC §11: only the 8 (target, selector) pairs, value 0, gas ≤ 300k, deadline ≤ 10 min.
- * 300k is the spec's starting cap. #24's gas report will tune it.
+ * docs/gas.md (#24) kept 300k: the worst relayed call, executeApproved over 5 feeds, needs 173,400.
  */
 export function checkPolicy(
   request: ForwardRequest,
