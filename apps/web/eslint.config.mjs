@@ -1,12 +1,7 @@
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { FlatCompat } from "@eslint/eslintrc";
+import coreWebVitals from "eslint-config-next/core-web-vitals";
+import typescript from "eslint-config-next/typescript";
 
-const compat = new FlatCompat({ baseDirectory: dirname(fileURLToPath(import.meta.url)) });
-
-const config = [
-  { ignores: [".next/**", "node_modules/**", "next-env.d.ts"] },
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
-];
+// eslint-config-next 16 ships flat configs, so FlatCompat is no longer needed (and can't load it).
+const config = [{ ignores: [".next/**", "node_modules/**", "next-env.d.ts"] }, ...coreWebVitals, ...typescript];
 
 export default config;
