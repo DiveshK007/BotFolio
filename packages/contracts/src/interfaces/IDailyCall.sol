@@ -27,10 +27,17 @@ interface IDailyCall is IAccessControl, IERC165, IERC5267 {
     }
 
     /// @notice The owner made today's call. `price`/`roundId` are the BTC round read in this tx.
-    event Called(uint256 indexed botId, uint32 indexed day, bool userUp, bool botUp, int256 price, uint80 roundId);
+    event Called(
+        uint256 indexed botId, uint32 indexed day, bool userUp, bool botUp, int256 price, uint80 roundId
+    );
     /// @notice A call was settled. Equal price = both false (no winner).
     event Settled(
-        uint256 indexed botId, uint32 indexed day, int256 price, uint80 roundId, bool userCorrect, bool botCorrect
+        uint256 indexed botId,
+        uint32 indexed day,
+        int256 price,
+        uint80 roundId,
+        bool userCorrect,
+        bool botCorrect
     );
 
     /// @notice Caller does not own the bot.

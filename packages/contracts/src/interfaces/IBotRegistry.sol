@@ -24,10 +24,16 @@ interface IBotRegistry is IAccessControl, IERC165 {
 
     /// @notice A bot was created (user bot or house bot; read `bots(botId).house` to tell them apart).
     event BotCreated(
-        uint256 indexed botId, address indexed owner, bytes32 personaHash, uint16 maxPerCoinBps, uint8 maxTradesPerDay
+        uint256 indexed botId,
+        address indexed owner,
+        bytes32 personaHash,
+        uint16 maxPerCoinBps,
+        uint8 maxTradesPerDay
     );
     /// @notice A new version changed the bot's limits. `version` is the bot's new version number.
-    event BotLimitsChanged(uint256 indexed botId, uint32 version, uint16 maxPerCoinBps, uint8 maxTradesPerDay);
+    event BotLimitsChanged(
+        uint256 indexed botId, uint32 version, uint16 maxPerCoinBps, uint8 maxTradesPerDay
+    );
     /// @notice The bot was paused/unpaused by its owner, or banned/unbanned by the admin.
     event BotActiveChanged(uint256 indexed botId, bool active);
 
