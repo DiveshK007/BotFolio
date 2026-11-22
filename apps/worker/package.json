@@ -17,6 +17,7 @@
     "@botfolio/llm": "workspace:*",
     "@botfolio/shared": "workspace:*",
     "jose": "^6.2.0",
+    "node-cron": "^4.6.0",
     "pg": "^8.16.0",
     "viem": "^2.21.0"
   },

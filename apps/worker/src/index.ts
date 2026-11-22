@@ -1,6 +1,12 @@
 import { loadWorkerConfig } from "./config";
 import { createQiePublicClient } from "./chain";
 import { HealthState, startOracleMonitor } from "./health";
+import { startIndexer } from "./indexer";
+import { startScheduler } from "./scheduler";
+import { seasonJobs } from "./seasons";
+import { runnerJobs } from "./slot";
+import { personaRoutes } from "./persona/route";
+import { setUpPersona } from "./persona/setup";
 import { createWorkerServer } from "./server";
 import { loadAllowedOrigins } from "./auth/cors";
 import { createClientIp } from "./auth/client-ip";
@@ -16,6 +22,14 @@ async function main(): Promise<void> {
   const client = createQiePublicClient(cfg);
   const health = new HealthState({ provider: cfg.llm.provider, capUsd: cfg.llm.monthlyBudgetUsd });
   const stopOracle = startOracleMonitor(client, cfg.feeds, health, cfg.oracleRefreshMs);
+  const indexer = startIndexer({ rpcUrls: cfg.rpcUrls });
+  const scheduler = startScheduler({
+    health,
+    jobs: [
+      ({ db, log }) => seasonJobs({ db, log, env: process.env, client, rpcUrls: cfg.rpcUrls }),
+      ({ db, log }) => runnerJobs({ db, log, env: process.env, cfg, client, health }),
+    ],
+  });
 
   const origins = loadAllowedOrigins(process.env);
   const clientIp = createClientIp(process.env);
@@ -24,9 +38,12 @@ async function main(): Promise<void> {
   const relayer = setUpRelayer({ env: process.env, auth, rpcUrls: cfg.rpcUrls, log: consoleLog });
   if (!relayer.relay) consoleLog("relay.disabled", { env: relayer.problems.join(",") });
   relayer.start();
+  const persona = setUpPersona({ env: process.env, cfg, health, log: consoleLog });
+  if (!persona.service) consoleLog("persona.disabled", { env: persona.problems.join(",") });
   const routes = {
     ...authRoutes({ origins, clientIp, log: consoleLog, siwe: auth.siwe }),
     ...relayRoutes({ relay: relayer.relay, origins, clientIp }),
+    ...personaRoutes({ origins, auth: auth.authenticator, clientIp, log: consoleLog, service: persona.service }),
   };
   const server = createWorkerServer({ health, routes });
   server.listen(cfg.port, () => {
@@ -37,11 +54,8 @@ async function main(): Promise<void> {
   const shutdown = (signal: string) => {
     console.log(`[worker] ${signal} — shutting down`);
     stopOracle();
-    // Let a broadcast in progress finish, then close.
-    void relayer
-      .stop()
-      .catch(() => undefined)
-      .finally(() => server.close(() => process.exit(0)));
+    // Let a broadcast and an indexer batch in progress finish, then close.
+    void Promise.allSettled([relayer.stop(), indexer?.stop(), scheduler?.stop(), persona.stop()]).then(() => server.close(() => process.exit(0)));
     setTimeout(() => process.exit(1), 10_000).unref();
   };
   process.on("SIGTERM", () => shutdown("SIGTERM"));

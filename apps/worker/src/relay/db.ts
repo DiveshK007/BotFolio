@@ -1,5 +1,6 @@
 import pg from "pg";
 import { errorLabel, type Log } from "../auth/log";
+import { checkDatabaseUrl } from "../database-url";
 
 export interface Queryable {
   query<Row>(sql: string, params?: unknown[]): Promise<{ rows: Row[] }>;
@@ -10,24 +11,10 @@ export interface Db extends Queryable {
   close(): Promise<void>;
 }
 
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
-const TLS_MODES = new Set(["require", "verify-ca", "verify-full"]);
-
-/**
- * The pool settings for DATABASE_URL, or null if it's unusable: missing, placeholder or a remote DB without TLS.
- * A remote URL with no sslmode gets verified TLS.
- */
+/** The pool settings for DATABASE_URL, or null if it's unusable. */
 export function databaseConfig(raw: string | undefined): pg.PoolConfig | null {
-  if (!raw || /replace[-_ ]?me/i.test(raw) || !URL.canParse(raw)) return null;
-  const url = new URL(raw);
-  if ((url.protocol !== "postgres:" && url.protocol !== "postgresql:") || !url.hostname) return null;
-  if (LOCAL_HOSTS.has(url.hostname) && !url.searchParams.has("host")) return { connectionString: raw };
-  if (url.searchParams.has("host") || url.searchParams.has("ssl")) return null;
-  const modes = url.searchParams.getAll("sslmode");
-  if (modes.length > 1) return null; // pg would use the last one, and we'd have checked the first
-  const mode = modes[0] ?? null;
-  if (mode === null) return { connectionString: raw, ssl: true };
-  return TLS_MODES.has(mode) ? { connectionString: raw } : null;
+  const checked = checkDatabaseUrl(raw);
+  return typeof checked === "string" ? null : checked;
 }
 
 /** UNVERIFIED against Supabase's pooler. Transaction mode is fine: the locks here last one transaction. */

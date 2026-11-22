@@ -10,12 +10,25 @@ export interface SlotRun {
   finishedAt: string;
 }
 
+export interface JobHealth {
+  state: "scheduled" | "not_implemented" | "not_started";
+  detail?: string;
+  lastRun?: JobRun;
+}
+
+export interface JobRun {
+  at: string;
+  /** Short and free of data: /healthz is public. */
+  problem?: string;
+}
+
 export interface HealthPayload {
   status: "ok" | "degraded";
   reasons: string[];
   startedAt: string;
   now: string;
   lastSlotRun: SlotRun | null;
+  jobs: Record<string, JobHealth>;
   oracle: { checkedAt: string | null; feeds: OracleReading[] };
   llm: { provider: string; month: string; spentUsd: number; capUsd: number | null; budget: BudgetState };
 }
@@ -27,6 +40,8 @@ export interface HealthPayload {
 export class HealthState {
   readonly startedAt = new Date();
   private lastSlotRun: SlotRun | null = null;
+  private readonly startProblems: string[] = [];
+  private readonly jobs = new Map<string, JobHealth>();
   private oracleCheckedAt: Date | null = null;
   private oracleReadings: OracleReading[] = [];
   private spend = { month: "", usd: 0 };
@@ -39,17 +54,34 @@ export class HealthState {
     this.lastSlotRun = run;
   }
 
+  /** Something that didn't start. `problem` names env variables, never their values. */
+  addStartProblem(problem: string): void {
+    this.startProblems.push(problem);
+  }
+
+  setJob(name: string, state: JobHealth["state"], detail?: string): void {
+    this.jobs.set(name, { state, detail });
+  }
+
+  recordJobRun(name: string, run: JobRun): void {
+    this.jobs.set(name, { state: "scheduled", ...this.jobs.get(name), lastRun: run });
+  }
+
   recordOracle(readings: OracleReading[], at: Date): void {
     this.oracleReadings = readings;
     this.oracleCheckedAt = at;
   }
 
-  // TODO(#32): month-to-date spend should be summed from logged decision usage in Postgres, so it
-  // survives restarts. Until the schema lands this is in-memory only.
+  // Between two refreshes from the decisions log (src/budget/spend.ts), which is what survives a restart.
   recordLlmUsage(model: string, usage: LlmUsage, at: Date = new Date()): void {
     const month = monthKey(at);
     if (this.spend.month !== month) this.spend = { month, usd: 0 };
     this.spend.usd += estimateCostUsd(model, usage);
+  }
+
+  /** The month's spend as the decisions log has it (src/budget). Calls after this add to it. */
+  setLlmSpend(usd: number, at: Date = new Date()): void {
+    this.spend = { month: monthKey(at), usd };
   }
 
   budget(at: Date = new Date()): BudgetState {
@@ -61,7 +93,10 @@ export class HealthState {
   }
 
   snapshot(now: Date = new Date()): HealthPayload {
-    const reasons: string[] = [];
+    const reasons: string[] = [...this.startProblems];
+    for (const [name, job] of this.jobs) {
+      if (job.lastRun?.problem) reasons.push(`${name} job ${job.lastRun.problem}`);
+    }
     if (!this.oracleCheckedAt) reasons.push("oracle not checked yet");
     for (const r of this.oracleReadings) {
       if (r.error) reasons.push(`${r.asset} feed unreadable`);
@@ -77,6 +112,7 @@ export class HealthState {
       startedAt: this.startedAt.toISOString(),
       now: now.toISOString(),
       lastSlotRun: this.lastSlotRun,
+      jobs: Object.fromEntries(this.jobs),
       oracle: { checkedAt: this.oracleCheckedAt?.toISOString() ?? null, feeds: this.oracleReadings },
       llm: {
         provider: this.llm.provider,
