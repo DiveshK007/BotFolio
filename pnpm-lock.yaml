@@ -68,21 +68,24 @@ importers:
       '@botfolio/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      jose:
+        specifier: ^6.2.0
+        version: 6.2.18
       pg:
-        specifier: ^8.23.1
+        specifier: ^8.16.0
         version: 8.23.1
       viem:
         specifier: ^2.21.0
         version: 2.58.2(typescript@5.9.3)
     devDependencies:
       '@electric-sql/pglite':
-        specifier: 0.5.15
-        version: 0.5.15
+        specifier: ^0.5.0
+        version: 0.5.17
       '@types/node':
         specifier: ^20.16.0
         version: 20.19.25
       '@types/pg':
-        specifier: ^8.23.1
+        specifier: ^8.15.0
         version: 8.23.1
       tsup:
         specifier: ^8.3.0
@@ -134,8 +137,8 @@ packages:
     resolution: {integrity: sha512-U4+70Pc5ZS9osnCBCE5Jha/ciHM+Yp+CNMNC/7HvYbNRk1Ldd+f7qO65W5qfhu/TCv+/ozljlXXe9Nj8419DMA==}
     engines: {node: '>=10'}
 
-  '@electric-sql/pglite@0.5.15':
-    resolution: {integrity: sha512-ERZWgaRTxueGV4cvL1tfpAOzFCWTXoUtbCBqnf2FhHDVs/so9eAKaanvrwWF9Dntx7BYsmFQujVQ0/B4S8Mmiw==}
+  '@electric-sql/pglite@0.5.17':
+    resolution: {integrity: sha512-8SvKjiUjaU+0O0dbxjOfN+jXz14TEqDWbwDkYOW1aQ11y/ph2JvFVI27ABBo5nfw+ZfSqy4hKCNlbnbB1TDE+g==}
 
   '@emnapi/core@2.0.0-beta.2':
     resolution: {integrity: sha512-MzCVoWtcg4Pm2B3je5mMvYMvj3MmBKw+fU7vbsJc9/iT8ip6/eYIHo/Dsm/mr+wsHB6SEyJDuxB09Yy6r/8+4A==}
@@ -2054,6 +2057,9 @@ packages:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
 
+  jose@6.2.18:
+    resolution: {integrity: sha512-doV4thUwgkrycJH4yLeqwTGIIZphHl+pk7CPReuMIhYhncmgzdko85MaCG4YQFTxqMFr1/oEH32tZuKKovcDEg==}
+
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
     engines: {node: '>=10'}
@@ -2931,7 +2937,7 @@ snapshots:
 
   '@alloc/quick-lru@5.3.0': {}
 
-  '@electric-sql/pglite@0.5.15': {}
+  '@electric-sql/pglite@0.5.17': {}
 
   '@emnapi/core@2.0.0-beta.2':
     dependencies:
@@ -4752,6 +4758,8 @@ snapshots:
       set-function-name: 2.0.2
 
   jiti@2.7.0: {}
+
+  jose@6.2.18: {}
 
   joycon@3.1.1: {}
 

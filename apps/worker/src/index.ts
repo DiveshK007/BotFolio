@@ -3,6 +3,13 @@ import { createQiePublicClient } from "./chain";
 import { HealthState, startOracleMonitor } from "./health";
 import { startIndexer } from "./indexer";
 import { createWorkerServer } from "./server";
+import { loadAllowedOrigins } from "./auth/cors";
+import { createClientIp } from "./auth/client-ip";
+import { consoleLog } from "./auth/log";
+import { authRoutes } from "./auth/routes";
+import { setUpAuth } from "./auth/setup";
+import { relayRoutes } from "./relay/route";
+import { setUpRelayer } from "./relay/setup";
 
 /** Render web service entry point (SPEC §10). Keys stay in Render env; nothing secret is logged. */
 async function main(): Promise<void> {
@@ -12,7 +19,18 @@ async function main(): Promise<void> {
   const stopOracle = startOracleMonitor(client, cfg.feeds, health, cfg.oracleRefreshMs);
   const indexer = startIndexer({ rpcUrls: cfg.rpcUrls });
 
-  const server = createWorkerServer({ health });
+  const origins = loadAllowedOrigins(process.env);
+  const clientIp = createClientIp(process.env);
+  const auth = setUpAuth(process.env);
+  if (auth.problems.length) consoleLog("auth.not_configured", { env: auth.problems.join(",") });
+  const relayer = setUpRelayer({ env: process.env, auth, rpcUrls: cfg.rpcUrls, log: consoleLog });
+  if (!relayer.relay) consoleLog("relay.disabled", { env: relayer.problems.join(",") });
+  relayer.start();
+  const routes = {
+    ...authRoutes({ origins, clientIp, log: consoleLog, siwe: auth.siwe }),
+    ...relayRoutes({ relay: relayer.relay, origins, clientIp }),
+  };
+  const server = createWorkerServer({ health, routes });
   server.listen(cfg.port, () => {
     const hosts = cfg.rpcUrls.map((u) => new URL(u).host).join(" → ");
     console.log(`[worker] listening on :${cfg.port} · chain ${cfg.chainId} · rpc ${hosts} · llm ${cfg.llm.provider}`);
@@ -21,8 +39,8 @@ async function main(): Promise<void> {
   const shutdown = (signal: string) => {
     console.log(`[worker] ${signal} — shutting down`);
     stopOracle();
-    const indexerStopped = indexer?.stop().catch((e) => console.error("[indexer] stop failed", e));
-    server.close(() => void Promise.resolve(indexerStopped).then(() => process.exit(0)));
+    // Let a broadcast and an indexer batch in progress finish, then close.
+    void Promise.allSettled([relayer.stop(), indexer?.stop()]).then(() => server.close(() => process.exit(0)));
     setTimeout(() => process.exit(1), 10_000).unref();
   };
   process.on("SIGTERM", () => shutdown("SIGTERM"));

@@ -100,11 +100,12 @@ describe("gate() SPEC §6.4 step 8: banned content", () => {
     expect(r.textFlags).toEqual([{ field: "roast", rule: "slur" }]);
   });
 
-  it("flags a banned daily_call why, and filterOutput() replaces it and keeps the view", () => {
+  it("filterOutput() replaces and flags a banned daily_call why, the public gate result doesn't mention it", () => {
     const view = { btc_up: false, why: "guaranteed profit" };
-    expect(filterOutput({ ...decision(), daily_call: view }, []).output.daily_call).toEqual({ btc_up: false, why: NEUTRAL_WHY });
-    const r = run({ daily_call: view });
-    expect(r.textFlags).toEqual([{ field: "daily_call.why", rule: "money_advice" }]);
+    const served = filterOutput({ ...decision(), daily_call: view }, []);
+    expect(served.output.daily_call).toEqual({ btc_up: false, why: NEUTRAL_WHY });
+    expect(served.textFlags).toEqual([{ field: "daily_call.why", rule: "money_advice" }]);
+    expect(run({ daily_call: view }).textFlags).toEqual([]);
   });
 
   // gate_result is public through site_decisions, and the view is secret until the user picks (§6.4.1).

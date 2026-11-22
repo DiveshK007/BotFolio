@@ -63,6 +63,8 @@ describe("DATABASE_URL: no password in plain text to another machine", () => {
     "postgres://u:p@db.example.com/postgres?sslmode=prefer",
     "postgres://u:p@db.example.com/postgres?ssl=false",
     "postgres://u:p@localhost/postgres?host=db.example.com",
+    // pg uses the last value, so checking only the first would let plain text through
+    "postgres://u:p@db.example.com/postgres?sslmode=require&sslmode=disable",
   ])("refuses %s", (url) => {
     expect(load(url).ok).toBe(false);
   });
