@@ -152,8 +152,9 @@ export function orderIdOf(decisionId: Hex, actionIndex: number): Hex {
 }
 
 /**
- * PROPOSAL, pending WS A agreement (see PR spec questions): the DB keys decisions by uuid (SPEC §3) while the contracts
- * take `bytes32 decisionId`. On-chain decisionId = the uuid's 16 bytes left-padded to 32. Lossless both ways.
+ * PROPOSAL, pending WS A agreement: the DB keys decisions by uuid (SPEC §3) and IPaperLedger says decisionId is the
+ * "off-chain uuid as bytes32" without giving a padding side. We left-pad the 16 bytes, same as
+ * `bytes32(uint256(uint128(x)))`. Solidity's `bytes32(bytes16(x))` would right-pad, which is a different id.
  */
 export function decisionIdFromUuid(uuid: string): Hex {
   const hex = uuid.replace(/-/g, "").toLowerCase();
@@ -181,8 +182,8 @@ export interface DailyCallBotView {
 }
 
 /**
- * Struct name `BotView` is our choice (SPEC §4.7 names only the fields). UNVERIFIED until WS A's DailyCall
- * uses the same typehash: `BotView(uint256 botId,uint32 day,bool botUp)`.
+ * Typehash `BotView(uint256 botId,uint32 day,bool botUp)`, as declared in IDailyCall.
+ * UNVERIFIED against a DailyCall implementation (none on main yet).
  */
 export const DAILY_CALL_BOT_VIEW_TYPES = {
   BotView: [
@@ -231,7 +232,10 @@ export type RelayTargetContract = "BotRegistry" | "SeasonLedger" | "PaperLedger"
 export interface RelayAllowlistEntry {
   contract: RelayTargetContract;
   fn: string;
-  /** Canonical signature from SPEC §4. UNVERIFIED until checked against packages/contracts/abi (#4). */
+  /**
+   * Canonical signature, as in packages/contracts/src/interfaces.
+   * UNVERIFIED against deployed contracts (packages/contracts/abi is still empty).
+   */
   signature: string;
   /** First 4 bytes of keccak256(signature). The unit test recomputes these. */
   selector: Hex;
@@ -340,7 +344,7 @@ export const RELAY_ERROR_CODES = [
   "RATE_LIMITED_USER", // 30 relays/wallet/day
   "RATE_LIMITED_IP", // 3 new bots per IP/day (createBot only)
   "RATE_LIMITED_GLOBAL", // 2000 relays/hour
-  "INVALID_SIGNATURE", // forwarder.verify() returned false (bad sig, wrong nonce, wrong domain)
+  "INVALID_SIGNATURE", // forwarder.verify() returned false (bad sig, wrong nonce or domain, target doesn't trust the forwarder)
   "WOULD_REVERT", // eth_call of the inner request reverted (e.g. stale price, second bot) — nothing sent
   "RPC_UNAVAILABLE", // all 5 QIE RPCs failed
   "INTERNAL",

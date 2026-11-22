@@ -13,6 +13,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import {
   APPROVED_ORDER_TYPES,
+  DAILY_CALL_BOT_VIEW_TYPES,
   RELAY_ALLOWLIST,
   approvedOrderFromJson,
   approvedOrderToJson,
@@ -122,7 +123,10 @@ describe("ApprovedOrder and DailyCall EIP-712", () => {
   it("runner-signed DailyCall bot view recovers to the runner", async () => {
     const runner = privateKeyToAccount(TEST_KEY);
     const td = dailyCallBotViewTypedData(DAILY_CALL, { botId: 42n, day: istDay(1_795_000_000), botUp: true });
-    expect(td.domain.name).toBe("BotFolio DailyCall");
+    expect(DAILY_CALL_BOT_VIEW_TYPES.BotView.map((f) => `${f.type} ${f.name}`).join(",")).toBe(
+      "uint256 botId,uint32 day,bool botUp",
+    );
+    expect(td.domain).toEqual({ name: "BotFolio DailyCall", version: "1", chainId: 1990, verifyingContract: DAILY_CALL });
     const signature = await runner.signTypedData(td);
     expect(await recoverTypedDataAddress({ ...td, signature })).toBe(runner.address);
   });
