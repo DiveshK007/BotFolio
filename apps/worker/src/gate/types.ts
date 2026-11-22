@@ -43,8 +43,10 @@ export type DropReason =
   | "min_order";
 
 /**
- * What `PaperLedger.executeBatch` would emit in `OrderSkipped.reason` if the dropped order were sent anyway.
- * null = a gate-only rule: the contract would have accepted the order (SPEC §6.4 steps 3 and 6).
+ * What `PaperLedger.executeBatch` would emit in `OrderSkipped.reason` for an order whose only problem is
+ * this one. null = a gate-only rule, the contract accepts the order (SPEC §6.4 steps 3 and 6).
+ * With several problems at once the two can name different ones: the contract checks trades/day before
+ * the holding, while §6.4 checks the holding (step 3) before trades/day (step 4).
  */
 export const LEDGER_EQUIVALENT: Readonly<Record<DropReason, SkipReason | null>> = {
   inactive: "INACTIVE",

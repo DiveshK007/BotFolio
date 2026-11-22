@@ -72,6 +72,11 @@ describe("gate() SPEC §6.4 step 2: stale assets", () => {
     expect(run(gateInput({ prices: prices(["BTC"]) }), buy("GOLD", 20), sell("BTC", 20)).status).toBe("held");
   });
 
+  it("treats an answer above uint64 as stale, like OracleReader", () => {
+    const input = gateInput({ prices: { ...prices(), BTC: { priceE8: 2n ** 64n, fresh: true } } });
+    expect(run(input, buy("BTC", 10)).events[0]).toMatchObject({ reason: "stale" });
+  });
+
   it("treats a non-positive answer as stale, like the contract", () => {
     const input = gateInput({ prices: { ...prices(), BTC: { priceE8: 0n, fresh: true } } });
     expect(run(input, buy("BTC", 10)).events[0]).toMatchObject({ reason: "stale" });
@@ -180,6 +185,14 @@ describe("gate() SPEC §6.4 step 5: max per coin", () => {
     expect(run(gateInput({ bot: { maxPerCoinBps: 2500 } }), buy("BTC", 25)).events).toEqual([]);
   });
 
+  it("only says coin_cap when the ledger would say LIMIT, down to dust", () => {
+    // Found by fuzzing against PaperLedger: 2 units of cash, so floor(V × cap) is 0, yet the dust BUY fits.
+    const input = gateInput({ portfolio: { ...portfolio(), cashE8: 2n }, bot: { maxPerCoinBps: 1500 } });
+    expect(run(input, buy("BTC", 65)).events.map((e) => e.reason)).not.toContain("coin_cap");
+    const order = { botId: 7n, asset: 0, buy: true, bps: 6500, decisionId: DECISION_ID, actionIndex: 0 };
+    expect(executeBatch(input.bot, input.portfolio, input.prices, [order]).skips).toEqual([]);
+  });
+
   it("never caps a SELL", () => {
     const input = gateInput({ portfolio: portfolio({ BTC: 80 }), bot: { maxPerCoinBps: 1000 } });
     expect(run(input, sell("BTC", 10)).orders[0]!.bps).toBe(1000);
@@ -190,6 +203,7 @@ describe("gate() SPEC §6.4 step 6: cash only, min order 1 %", () => {
   it("never spends more cash than there is", () => {
     const input = gateInput();
     const r = run(input, buy("BTC", 100), buy("ETH", 100), buy("SOL", 100));
+    // 100 % of the 500 left is exactly the 50 % cap: not a clip, though dust makes it look a unit over.
     expect(r.orders.map((o) => o.bps)).toEqual([5000, 10000]);
     expect(executeBatch(input.bot, input.portfolio, input.prices, r.orders).portfolio.cashE8).toBe(0n);
     expect(r.events.at(-1)).toMatchObject({ actionIndex: 2, reason: "low_cash" });
@@ -219,6 +233,17 @@ describe("gate() SPEC §6.4 step 6: cash only, min order 1 %", () => {
     const r = run(input, buy("BTC", 50));
     expect(r.orders).toEqual([]);
     expect(r.events.map((e) => [e.kind, e.reason])).toEqual([["clip", "coin_cap"], ["drop", "min_order"]]);
+  });
+
+  it("an order that rounds to 0 is zero (ZERO on-chain), not min_order", () => {
+    const base = portfolio({ BTC: 50 });
+    const input = gateInput({ portfolio: { ...base, unitsE18: { ...base.unitsE18, XRP: 1n } } });
+    const r = run(input, sell("XRP", 100));
+    expect(r.events[0]).toMatchObject({ reason: "zero" });
+    const order = { botId: 7n, asset: 3, buy: false, bps: 10000, decisionId: DECISION_ID, actionIndex: 0 };
+    expect(executeBatch(input.bot, input.portfolio, input.prices, [order]).skips).toEqual([
+      { actionIndex: 0, reason: LEDGER_EQUIVALENT.zero },
+    ]);
   });
 
   it("drops pct 0", () => {
