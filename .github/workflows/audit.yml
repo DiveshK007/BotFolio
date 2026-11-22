@@ -1,0 +1,75 @@
+# Dependency audit (issue #158, SPEC §11).
+# Low/moderate advisories are reported but never fail the run.
+# High/critical fail it: fix them, or ignore them in package.json
+# ("pnpm": { "auditConfig": { "ignoreCves": [...] } }) with the reason in docs/decisions.md.
+name: audit
+
+on:
+  pull_request:
+    paths:
+      - "**/package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/audit.yml"
+  push:
+    branches: [main]
+    paths:
+      - "**/package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/audit.yml"
+  schedule:
+    # Mondays 03:30 UTC, so advisories published after a merge still get seen.
+    - cron: "30 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pnpm-audit:
+    name: pnpm audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      # No version input: it reads "packageManager": "pnpm@9.12.0" from package.json.
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Check for a lockfile
+        id: lock
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No pnpm-lock.yaml yet, nothing to audit"
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # pnpm audit only reads the lockfile, so no install is needed.
+      - name: Full report (all severities, never fails)
+        if: steps.lock.outputs.present == 'true'
+        run: |
+          set +e
+          pnpm audit > audit.txt 2>&1
+          cat audit.txt
+          {
+            echo "## pnpm audit"
+            echo '```'
+            cat audit.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+
+      - name: Fail on high or critical
+        if: steps.lock.outputs.present == 'true'
+        run: pnpm audit --audit-level high

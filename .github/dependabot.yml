@@ -1,0 +1,53 @@
+# Dependabot (issue #136, SPEC §11).
+# Weekly, with minor/patch bumps grouped, so it doesn't flood PRs during build week.
+# Secret scanning and push protection are repo settings, not part of this file.
+version: 2
+
+updates:
+  # pnpm workspace: Dependabot's npm ecosystem reads pnpm-lock.yaml and the
+  # workspace packages from the root directory.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      # OZ is pinned at 5.0.2 for QIE (Shanghai): 5.6.x uses mcopy (SPEC §0.3).
+      - dependency-name: "@openzeppelin/contracts"
+      - dependency-name: "@openzeppelin/contracts-upgradeable"
+      # The stack is Next.js 15 (SPEC §10). A major bump is a team decision, not a bot PR.
+      - dependency-name: next
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Foundry libs under packages/contracts/lib are git submodules.
+  - package-ecosystem: gitsubmodule
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 2
+    ignore:
+      # Never bump OpenZeppelin: pinned at v5.0.2 because QIE has no Cancun and
+      # 5.6.x uses mcopy (SPEC §0.3, CLAUDE.md). contracts.yml also fails the
+      # build if the submodule moves off v5.0.2.
+      - dependency-name: "*openzeppelin-contracts*"
