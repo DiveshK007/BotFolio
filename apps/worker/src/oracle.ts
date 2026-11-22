@@ -40,8 +40,12 @@ export interface OracleReading {
   error?: string;
 }
 
+/** Above uint64 max the contracts treat a feed as broken (OracleReader.MAX_PRICE). */
+export const MAX_PRICE_E8 = 2n ** 64n - 1n;
+
 /**
- * SPEC §5 rule 3. Off-chain read only — for the prompt, the UI and /healthz. The contracts re-read
+ * SPEC §5 rule 3, plus the two checks the contracts add (OracleReader): a timestamp in the future and a
+ * price above MAX_PRICE_E8 are invalid. Off-chain read only — for the prompt, the UI and /healthz. The contracts re-read
  * the price at execution time; nothing here is ever passed into a trade.
  * `answeredInRound ≥ roundId` is skipped when the feed returns 0 there (UNVERIFIED feed behaviour).
  */
@@ -49,7 +53,8 @@ export function classifyRound(round: RoundData, nowSeconds: number, maxAgeSecond
   const updatedAt = Number(round.updatedAt);
   const ageSeconds = Math.max(0, nowSeconds - updatedAt);
   const answeredOk = round.answeredInRound === 0n || round.answeredInRound >= round.roundId;
-  const valid = round.answer > 0n && round.updatedAt > 0n && answeredOk;
+  const valid =
+    round.answer > 0n && round.answer <= MAX_PRICE_E8 && round.updatedAt > 0n && updatedAt <= nowSeconds && answeredOk;
   return { valid, fresh: valid && ageSeconds <= maxAgeSeconds, ageSeconds, updatedAt };
 }
 

@@ -33,6 +33,11 @@ describe("classifyRound (SPEC §5 rule 3)", () => {
     expect(classifyRound({ ...base, answer: 0n }, NOW, 1800).valid).toBe(false);
     expect(classifyRound({ ...base, updatedAt: 0n }, NOW, 1800).valid).toBe(false);
   });
+  it("rejects a future updatedAt and an answer above uint64, like OracleReader", () => {
+    expect(classifyRound({ ...base, updatedAt: BigInt(NOW + 1) }, NOW, 1800).fresh).toBe(false);
+    expect(classifyRound({ ...base, answer: 2n ** 64n }, NOW, 1800).valid).toBe(false);
+    expect(classifyRound({ ...base, updatedAt: BigInt(NOW) }, NOW, 1800).fresh).toBe(true);
+  });
   it("rejects answeredInRound < roundId but ignores answeredInRound = 0", () => {
     expect(classifyRound({ ...base, answeredInRound: 9n }, NOW, 1800).valid).toBe(false);
     expect(classifyRound({ ...base, answeredInRound: 0n }, NOW, 1800).valid).toBe(true);

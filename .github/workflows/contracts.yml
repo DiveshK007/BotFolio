@@ -100,6 +100,12 @@ jobs:
           QIE_RPC_URL: ${{ steps.rpc.outputs.url }}
         run: forge test -vvv
 
+      - name: deploy dry run (no broadcast)
+        # #133: the real deploy script on a fork. No key and no --broadcast (script/dry-run.sh).
+        env:
+          QIE_RPC_URL: ${{ steps.rpc.outputs.url }}
+        run: script/dry-run.sh
+
   slither:
     # Issue #153, SPEC §4. Fails the PR on any High finding in our own code.
     # lib/ (OZ, forge-std), test/ and script/ are excluded from findings.
