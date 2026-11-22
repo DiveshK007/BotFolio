@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { FakeLlmClient, loadLlmConfig, validateJson } from "@botfolio/llm";
 import { describe, expect, it } from "vitest";
 import { canonicalJson, hashJson, hashText } from "../src/canonical";
@@ -161,8 +162,16 @@ describe("sanitizePersona()", () => {
     expect(sanitizePersona({ ...GOOD, name: "Gold\n\nGuru" }).persona.name).toBe("Gold Guru");
   });
 
-  it("caps the sentence by code points", () => {
-    expect([...cleanSentence("🐺".repeat(500))]).toHaveLength(MAX_SENTENCE_CHARS);
+  it("caps the sentence at the web app's SENTENCE_MAX", () => {
+    const web = readFileSync(new URL("../../web/lib/sentence.ts", import.meta.url), "utf8");
+    expect(MAX_SENTENCE_CHARS).toBe(Number(/SENTENCE_MAX = (\d+)/.exec(web)![1]));
+    expect(cleanSentence("g".repeat(500))).toBe("g".repeat(MAX_SENTENCE_CHARS));
+    expect(cleanSentence("g".repeat(MAX_SENTENCE_CHARS))).toBe("g".repeat(MAX_SENTENCE_CHARS));
+  });
+
+  it("never cuts an emoji in half", () => {
+    const cut = cleanSentence(`g${"🐺".repeat(200)}`);
+    expect(cut).toBe(`g${"🐺".repeat((MAX_SENTENCE_CHARS - 2) / 2)}`);
   });
 });
 

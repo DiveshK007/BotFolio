@@ -34,13 +34,13 @@ Pure functions the scheduler and the replay script share. Importing this entry p
 - `actionIndex` is the position in the decision's `actions` array, HOLDs included. It is half of the `orderId`.
 - Every clip or drop is an event. `countsForF1: false` for stale prices and paused bots.
 
-| Drop reason | What `PaperLedger` would emit for that order |
+| Drop reason | What `PaperLedger` would emit if that were the order's only problem |
 |---|---|
 | `inactive` | `INACTIVE` |
-| `stale` (too old or non-positive answer) | `STALE` |
-| `no_holding`, `zero` | `ZERO` |
+| `stale` (too old, from the future, or unusable answer) | `STALE` |
+| `no_holding`, `zero` (bps 0 or rounds to 0) | `ZERO` |
 | `trade_limit`, `coin_cap` | `LIMIT` |
-| `low_cash`, `min_order` | none: the 1 % rules exist only in the gate |
+| `low_cash`, `min_order` | none: the 1 % rules exist only in the gate (with no cash at all the ledger says `ZERO`) |
 
 `USED` is never a gate drop: the gate doesn't know chain history.
 
