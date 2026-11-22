@@ -10,7 +10,8 @@
     "build": "tsup",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:anvil": "RELAY_ANVIL=1 vitest run anvil --testTimeout=90000"
   },
   "dependencies": {
     "@botfolio/llm": "workspace:*",

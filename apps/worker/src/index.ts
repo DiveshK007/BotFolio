@@ -2,6 +2,8 @@ import { loadWorkerConfig } from "./config";
 import { createQiePublicClient } from "./chain";
 import { HealthState, startOracleMonitor } from "./health";
 import { createWorkerServer } from "./server";
+import { loadAllowedOrigins } from "./auth/cors";
+import { relayRoutes } from "./relay/route";
 
 /** Render web service entry point (SPEC §10). Keys stay in Render env; nothing secret is logged. */
 async function main(): Promise<void> {
@@ -10,7 +12,9 @@ async function main(): Promise<void> {
   const health = new HealthState({ provider: cfg.llm.provider, capUsd: cfg.llm.monthlyBudgetUsd });
   const stopOracle = startOracleMonitor(client, cfg.feeds, health, cfg.oracleRefreshMs);
 
-  const server = createWorkerServer({ health });
+  // Off (503 RELAY_DISABLED) until auth, limits and the nonce manager are wired in: #186, #39, #40.
+  const routes = relayRoutes({ relay: null, origins: loadAllowedOrigins(process.env) });
+  const server = createWorkerServer({ health, routes });
   server.listen(cfg.port, () => {
     const hosts = cfg.rpcUrls.map((u) => new URL(u).host).join(" → ");
     console.log(`[worker] listening on :${cfg.port} · chain ${cfg.chainId} · rpc ${hosts} · llm ${cfg.llm.provider}`);

@@ -3,16 +3,20 @@ import type { HealthState } from "./health";
 
 export interface ServerDeps {
   health: HealthState;
+  /** More "METHOD /path" handlers, e.g. /relay. */
+  routes?: Routes;
 }
 
-type Handler = (req: IncomingMessage, res: ServerResponse) => void | Promise<void>;
+export type Handler = (req: IncomingMessage, res: ServerResponse) => void | Promise<void>;
+export type Routes = Record<string, Handler>;
 
 /**
- * Plain node:http server. Routes so far: GET /healthz. /relay, /auth/*, /internal/slot and /mcp
- * plug into the same table in later issues.
+ * Plain node:http server. Built in: GET /healthz. /relay and other routes are passed in;
+ * /internal/slot and /mcp plug into the same table in later issues.
  */
 export function createWorkerServer(deps: ServerDeps): Server {
-  const routes: Record<string, Handler> = {
+  const routes: Routes = {
+    ...deps.routes,
     // Always 200 while the process is up: Render restarts a service whose health check fails,
     // and a stale gold price is not a reason to restart. Degradation is reported in the body.
     "GET /healthz": (_req, res) => sendJson(res, 200, deps.health.snapshot()),
