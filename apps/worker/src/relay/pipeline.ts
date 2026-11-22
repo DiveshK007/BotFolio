@@ -1,9 +1,10 @@
 import type { IncomingHttpHeaders } from "node:http";
-import type { RelayResponse } from "@botfolio/shared";
+import type { RelayResponse, RelayTargetAddresses } from "@botfolio/shared";
 import type { Address } from "viem";
 import { errorLabel, type Log } from "../auth/log";
 import type { Authenticator } from "../auth/types";
 import { RelayRefusal } from "./errors";
+import { checkPolicy } from "./policy";
 import type { RelayAttempt, RelayChain, RelayGuard, RelaySender, Reservation } from "./ports";
 import { parseRelayBody, selectorOf } from "./request";
 
@@ -14,6 +15,9 @@ export interface RelayDeps {
   sender: RelaySender;
   /** Our own hot wallet. It can never be the user of a relay, or its txs would be counted as user activity. */
   relayer: Address;
+  targets: RelayTargetAddresses;
+  /** Unix seconds. */
+  now?: () => number;
   log: Log;
 }
 
@@ -28,6 +32,7 @@ export interface RelayInput {
  * Every failure, expected or not, is answered before broadcast and gives any reservation back.
  */
 export function createRelay(deps: RelayDeps) {
+  const now = deps.now ?? (() => Math.floor(Date.now() / 1000));
   return async function relay({ body, headers, ip }: RelayInput): Promise<{ status: number; body: RelayResponse }> {
     let attempt: RelayAttempt | undefined;
     let reservation: Reservation | undefined;
@@ -40,7 +45,8 @@ export function createRelay(deps: RelayDeps) {
         throw new RelayRefusal("SIGNER_MISMATCH");
       }
       // From here on the wallet is proven, so it may be written to relay_log.
-      attempt = { wallet: request.from, target: request.to, selector: selectorOf(request.data), ip };
+      attempt = { wallet: request.from, target: request.to, selector: selectorOf(request.data), action: null, ip };
+      attempt.action = checkPolicy(request, deps.targets, now());
 
       reservation = await deps.guard.reserve(attempt);
       const call = await deps.chain.prepare(request);
