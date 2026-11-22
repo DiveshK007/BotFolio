@@ -16,8 +16,8 @@
 --   * Indexer source of truth = chain events. `trades`, `bots`, `bot_versions.committed_tx` and
 --     `corrections.tx_hash` are written only from indexed events, plus optimistic UI rows: a row whose
 --     tx/block column is still null is pending (SPEC §3).
---   * Public reads: the web reads only the `site_*` views at the bottom (SPEC §3, §11). Grants and RLS
---     policies that make them the only anon surface are #154; base tables stay service-role only.
+--   * Public reads: the web reads only the `site_*` views (SPEC §3, §11). The access-control section at
+--     the bottom makes them the only anon surface; base tables stay service-role only.
 
 -- ---------------------------------------------------------------------------------------------------
 -- Domains
@@ -385,7 +385,7 @@ create index challenges_season_idx on challenges (season_id);
 -- Public read surface: the only things the web (anon key) may read (SPEC §3, §11)
 -- Views run with the owner's rights (no security_invoker), so anon needs SELECT on the view only.
 -- They leave out users, relay_log rows, big_moves.runner_sig, daily_calls.bot_up_sig and correction notes.
--- Grants to `anon` + RLS on the base tables: #154.
+-- Grants and RLS are in the access-control section at the end of this file.
 -- ---------------------------------------------------------------------------------------------------
 
 create view site_bots as
@@ -517,4 +517,63 @@ as $$
   left join site_trust_scores t on t.season_id = r.season_id and t.bot_id = r.bot_id
   where r.season_id = site_leaderboards.season
   order by r.return_bps desc, r.max_dd_bps asc;
+$$;
+
+-- ---------------------------------------------------------------------------------------------------
+-- Access control: deny by default (SPEC §3, §11)
+-- Supabase's default privileges give anon and authenticated ALL on every new table, view and sequence
+-- in `public`. Without this section the public key can read and write every table. The views need the
+-- revoke as well: simple views are writable and run as their owner, so they would bypass table RLS.
+-- RLS has no policies on purpose: only the service role (bypassrls) and the owner get through.
+-- Any later migration that adds a table or view must repeat both steps for it.
+-- ---------------------------------------------------------------------------------------------------
+
+alter table users enable row level security;
+alter table seasons enable row level security;
+alter table bots enable row level security;
+alter table bot_versions enable row level security;
+alter table slots enable row level security;
+alter table oracle_reads enable row level security;
+alter table decisions enable row level security;
+alter table trades enable row level security;
+alter table portfolio_marks enable row level security;
+alter table corrections enable row level security;
+alter table season_results enable row level security;
+alter table trust_scores enable row level security;
+alter table cards enable row level security;
+alter table relay_log enable row level security;
+alter table big_moves enable row level security;
+alter table daily_calls enable row level security;
+alter table challenges enable row level security;
+alter table qie_names enable row level security;
+
+do $$
+declare
+  api_role text;
+begin
+  -- The roles exist on Supabase, not on plain Postgres (local tests), hence the lookup.
+  for api_role in select rolname from pg_roles where rolname in ('anon', 'authenticated') loop
+    execute format('revoke all on
+    users, seasons, bots, bot_versions,
+    slots, oracle_reads, decisions, trades,
+    portfolio_marks, corrections, season_results, trust_scores,
+    cards, relay_log, big_moves, daily_calls,
+    challenges, qie_names,
+    site_bots, site_bot_versions, site_decisions, site_trades,
+    site_latest_trades, site_oracle_reads, site_portfolio_marks, site_corrections,
+    site_seasons, site_season_results, site_trust_scores, site_cards,
+    site_big_moves, site_daily_calls, site_challenges, site_activity_stats
+    from %I', api_role);
+    execute format('revoke all on all sequences in schema public from %I', api_role);
+    execute format('grant select on
+    site_bots, site_bot_versions, site_decisions, site_trades,
+    site_latest_trades, site_oracle_reads, site_portfolio_marks, site_corrections,
+    site_seasons, site_season_results, site_trust_scores, site_cards,
+    site_big_moves, site_daily_calls, site_challenges, site_activity_stats
+    to %I', api_role);
+    execute format('grant execute on function
+    site_challenge_by_short_code(text), site_leaderboards(int)
+    to %I', api_role);
+  end loop;
+end
 $$;
