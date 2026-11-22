@@ -1,5 +1,6 @@
 import type { AssetId } from "@botfolio/shared";
 import { ASSET_IDS, istDay } from "../interfaces";
+import { MAX_PRICE_E8 } from "../oracle";
 import type { Portfolio, Price } from "./types";
 
 /*
@@ -15,10 +16,10 @@ export const E18 = 10n ** 18n;
 
 type Prices = Readonly<Record<AssetId, Price>>;
 
-/** A missing or non-positive answer counts as 0, like `portfolioValueE8`. */
+/** An unusable answer (none, not positive, above uint64) counts as 0, like `OracleReader.latest`. */
 export function priceOf(prices: Prices, asset: AssetId): bigint {
   const p = prices[asset].priceE8;
-  return p > 0n ? p : 0n;
+  return p > 0n && p <= MAX_PRICE_E8 ? p : 0n;
 }
 
 export function positionValueE8(portfolio: Portfolio, prices: Prices, asset: AssetId): bigint {

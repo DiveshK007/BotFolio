@@ -1,0 +1,29 @@
+import { describe, expect, it } from "vitest";
+import { parseCreateConfig } from "./config";
+
+const forwarder = `0x${"11".repeat(20)}`;
+const registry = `0x${"22".repeat(20)}`;
+const parse = (relayUrl?: string) => parseCreateConfig({ relayUrl, forwarder, registry });
+
+describe("parseCreateConfig", () => {
+  it.each([
+    "https://worker.example",
+    "https://worker.example/",
+    "https://worker.example/relay",
+    "https://worker.example/relay/",
+  ])("accepts %s as the Render service", (url) => {
+    expect(parse(url)?.workerUrl).toBe("https://worker.example");
+  });
+
+  it("allows plain http only for local dev", () => {
+    expect(parse("http://localhost:10000")?.workerUrl).toBe("http://localhost:10000");
+    expect(parse("http://worker.example")).toBeNull();
+  });
+
+  it("is null, not guessed, when anything is missing", () => {
+    expect(parse()).toBeNull();
+    expect(parse("not a url")).toBeNull();
+    expect(parseCreateConfig({ relayUrl: "https://worker.example", registry })).toBeNull();
+    expect(parseCreateConfig({ relayUrl: "https://worker.example", forwarder, registry: "" })).toBeNull();
+  });
+});
