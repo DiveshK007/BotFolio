@@ -71,3 +71,10 @@ Take `reason` and `roast` from `GateResult.output`, never from the raw model out
 
 - On a stale retry (+5/+10/+15 min) use the slot's scheduled time, the same decisionId, and pass `alreadyTraded`.
 - `actionIndex` is the asset's position in the strategy's list, so it goes up to 4. **`packages/db/schema.sql` only allows 0–2 in `trades.action_index`.** That constraint has to be widened by an announced PR before house trades can be indexed.
+
+### Runner (SPEC §6.1, `src/slot`)
+- Needs `DATABASE_URL`, `BOT_REGISTRY_ADDRESS`, `PAPER_LEDGER_ADDRESS`, `DAILY_CALL_ADDRESS`, `RUNNER_PRIVATE_KEY` and the LLM provider's key. Anything missing shows in `/healthz` as `slot` `not_started`.
+- Each slot: decide (once per bot), write, then `executeBatch` whatever the chain hasn't executed. +5/+10/+15 gate the stale actions again under the same orderIds.
+- The debut watcher polls `nextBotId` every 2 s and writes a pending `bots` row until the indexer confirms it.
+- A bot's name and text come from `users.flags.personas[personaHash]` = `{name, emoji, persona, rules}`, if the owner has that draft.
+- House bots are matched by name: `Steady Sam`, `Gold Granny`, `Momentum Max` (the seed's, #134).

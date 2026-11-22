@@ -32,6 +32,8 @@ export type JobHandlers = {
 export interface JobSet {
   handlers: JobHandlers;
   unavailable: Partial<Record<JobName, string>>;
+  /** A loop that runs alongside the crons, such as the debut watcher. */
+  service?: { start(): void; stop(): Promise<void> };
 }
 
 /** Safe to run whenever the worker starts: what they do follows the chain and the DB, not the clock alone. */
