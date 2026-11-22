@@ -1,5 +1,5 @@
 import { saveOracleReads } from "../decisions/record";
-import { pgSafeText } from "../decisions/json";
+import { personaDraft } from "../persona/drafts";
 import { errorLabel } from "../scheduler/log";
 import type { Slot } from "../scheduler/slots";
 import { decideBot } from "./decide";
@@ -84,20 +84,13 @@ export class DebutWatcher {
     );
     for (const { id } of rows) {
       const bot = await chain.bot(BigInt(id));
-      const { rows: drafts } = await db.query<{ draft: Record<string, unknown> | null }>(
-        "select flags #> array['personas', $2::text] as draft from users where wallet_address = $1::text",
-        [bot.owner, bot.personaHash],
-      );
-      const field = (name: string) => {
-        const value = drafts[0]?.draft?.[name];
-        return typeof value === "string" ? pgSafeText(value) : "";
-      };
+      const draft = await personaDraft(db, bot.owner, bot.personaHash);
       await db.transaction(async (tx) => {
         await tx.query(
           `insert into bots (id, owner_wallet, name, emoji, persona_text, persona_hash, created_at, is_house)
            values ($1::bigint, $2::text, $3::text, $4::text, $5::text, decode($6::text, 'hex'), $7::timestamptz, $8::boolean)
            on conflict (id) do nothing`,
-          [id, bot.owner, field("name") || `Bot #${id}`, field("emoji"), field("persona"), bot.personaHash.slice(2), bot.createdAt.toISOString(), bot.house],
+          [id, bot.owner, draft?.name || `Bot #${id}`, draft?.emoji ?? "", draft?.persona ?? "", bot.personaHash.slice(2), bot.createdAt.toISOString(), bot.house],
         );
         await tx.query(
           `insert into bot_versions
@@ -106,7 +99,7 @@ export class DebutWatcher {
                    jsonb_build_object('max_per_coin_bps', $3::int, 'max_trades_per_day', $4::int),
                    decode($5::text, 'hex'), 'create')
            on conflict (bot_id, version) do nothing`,
-          [id, field("rules"), bot.maxPerCoinBps, bot.maxTradesPerDay, bot.personaHash.slice(2)],
+          [id, draft?.rules ?? "", bot.maxPerCoinBps, bot.maxTradesPerDay, bot.personaHash.slice(2)],
         );
       });
     }

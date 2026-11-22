@@ -1,3 +1,4 @@
+import { personaDraft } from "../../persona/drafts";
 import type { BotState } from "../chain";
 import { bytes, ignored, skipped, waiting, written, type ContractHandlers } from "./types";
 
@@ -15,42 +16,56 @@ export const registryHandlers: ContractHandlers<"BotRegistry"> = {
     // The chain hands out the id, so an optimistic row under it can be somebody else's bot. Keep its name and
     // text only if the owner and the persona hash are the ones in the event.
     const keepText = rows[0]?.same ?? false;
+    // Without a pending row (the debut watcher was down), the owner's draft is under the same two conditions.
+    const draft = keepText ? null : await personaDraft(ctx.db, wallet, personaHash);
 
     const state = await ctx.chain.botState(botId, ctx.stateBlock);
     const createdAt = (await ctx.chain.blockTime(ctx.block)).toString();
 
     await ctx.db.query(
       `insert into bots (id, owner_wallet, name, emoji, persona_text, persona_hash, created_at, created_tx, is_house, status)
-       values ($1::bigint, $2::text, $3::text, '', '', $4::bytea, to_timestamp($5::float8), $6::text, $7::boolean, $8::bot_status)
+       values ($1::bigint, $2::text, $3::text, $10::text, $11::text, $4::bytea, to_timestamp($5::float8), $6::text, $7::boolean, $8::bot_status)
        on conflict (id) do update set
          owner_wallet = excluded.owner_wallet,
          name         = case when $9::boolean then bots.name else excluded.name end,
-         emoji        = case when $9::boolean then bots.emoji else '' end,
-         persona_text = case when $9::boolean then bots.persona_text else '' end,
+         emoji        = case when $9::boolean then bots.emoji else excluded.emoji end,
+         persona_text = case when $9::boolean then bots.persona_text else excluded.persona_text end,
          persona_hash = excluded.persona_hash,
          created_at   = excluded.created_at,
          created_tx   = excluded.created_tx,
          is_house     = excluded.is_house,
          status       = excluded.status`,
-      [id, wallet, `Bot #${id}`, bytes(personaHash), createdAt, ctx.txHash, state.house, statusOf(state), keepText],
+      [
+        id,
+        wallet,
+        draft?.name || `Bot #${id}`,
+        bytes(personaHash),
+        createdAt,
+        ctx.txHash,
+        state.house,
+        statusOf(state),
+        keepText,
+        draft?.emoji ?? "",
+        draft?.persona ?? "",
+      ],
     );
 
     // ISeasonLedger.configHash: version 1's config is committed as the persona hash.
     await ctx.db.query(
       `insert into bot_versions
          (bot_id, version, rules_text, max_per_coin_bps, max_trades_per_day, config_json, config_hash, source, committed_tx)
-       values ($1::bigint, 1, '', $2::int, $3::int,
+       values ($1::bigint, 1, $7::text, $2::int, $3::int,
                jsonb_build_object('max_per_coin_bps', $2::int, 'max_trades_per_day', $3::int),
                $4::bytea, 'create', $5::text)
        on conflict (bot_id, version) do update set
-         rules_text         = case when $6::boolean then bot_versions.rules_text else '' end,
+         rules_text         = case when $6::boolean then bot_versions.rules_text else excluded.rules_text end,
          config_json        = case when $6::boolean then bot_versions.config_json else excluded.config_json end,
          max_per_coin_bps   = excluded.max_per_coin_bps,
          max_trades_per_day = excluded.max_trades_per_day,
          config_hash        = excluded.config_hash,
          source             = excluded.source,
          committed_tx       = excluded.committed_tx`,
-      [id, maxPerCoinBps, maxTradesPerDay, bytes(personaHash), ctx.txHash, keepText],
+      [id, maxPerCoinBps, maxTradesPerDay, bytes(personaHash), ctx.txHash, keepText, draft?.rules ?? ""],
     );
     return written;
   },

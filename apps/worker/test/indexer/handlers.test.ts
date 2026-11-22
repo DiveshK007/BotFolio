@@ -100,6 +100,22 @@ describe("BotRegistry", () => {
   });
 
   it.each([
+    ["the owner's", ALICE, "AlphaWolf", "Buys strength."],
+    ["somebody else's", BOB, "Bot #1", ""],
+  ])("without a pending row, %s draft for that hash gives name %s", async (_whose, wallet, name, rules) => {
+    const draft = { name: "AlphaWolf", emoji: "W", persona: "Bold.", rules: "Buys strength." };
+    await w.db.query("insert into users (wallet_address, terms_accepted_at, flags) values ($1, now(), $2::jsonb)", [
+      wallet,
+      JSON.stringify({ personas: { [PERSONA]: draft } }),
+    ]);
+    w.createBot();
+    await w.index();
+
+    expect(await one("select name from bots")).toEqual({ name });
+    expect(await one("select rules_text from bot_versions")).toEqual({ rules_text: rules });
+  });
+
+  it.each([
     ["another owner", BOB, PERSONA],
     ["another persona", ALICE, BOBS_PERSONA],
   ])("drops an optimistic row's text when the chain gave that id to %s", async (_what, owner, persona) => {
