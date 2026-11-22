@@ -9,6 +9,15 @@ export { signApprovedOrder, signDailyCallView } from "./signing";
 export { applyTrade, portfolioValueE8, tradesTodayFrom } from "./gate/ledger-math";
 export { canonicalJson, hashJson } from "./canonical";
 export { bannedRules, type BannedRule } from "./text/content-filter";
+export {
+  HOUSE_MODEL,
+  HOUSE_RULES_VERSION,
+  houseDecision,
+  isRebalanceSlot,
+  type HouseContext,
+  type HouseStrategy,
+} from "./house/strategies";
+export { HOUSE_OUTPUT_SCHEMA, type HouseOutput } from "./house/schema";
 export { clampLimits, createPersona, type BotLimits, type Persona, type PersonaResult } from "./persona/persona";
 export { PERSONA_SCHEMA } from "./persona/schema";
 export * from "./gate/types";
