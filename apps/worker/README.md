@@ -24,3 +24,22 @@ Always HTTP 200 while the process is up (a stale gold price must not make Render
 
 ## RPC
 viem `fallback` over `QIE_RPC_URLS` in the order rpc3 → rpc4 → rpc5 → rpc1 → rpc2 (rpc1/rpc2 drop TLS sometimes). A local Anvil fork URL stays first.
+
+## Runner logic (`@botfolio/worker/runner`)
+Pure functions the scheduler and the replay script share. Importing this entry point starts nothing.
+
+### `gate(input, output, rulesVersion)` (SPEC §6.4)
+- `input` = decision id, bot limits, portfolio and prices as logged for the slot. No clock, no I/O.
+- Actions run in order against a simulated ledger (same integer rounding as `PaperLedger`), so the second BUY spends a share of the cash the first one left.
+- `actionIndex` is the position in the decision's `actions` array, HOLDs included. It is half of the `orderId`.
+- Every clip or drop is an event. `countsForF1: false` for stale prices and paused bots.
+
+| Drop reason | What `PaperLedger` would emit for that order |
+|---|---|
+| `inactive` | `INACTIVE` |
+| `stale` (too old or non-positive answer) | `STALE` |
+| `no_holding`, `zero` | `ZERO` |
+| `trade_limit`, `coin_cap` | `LIMIT` |
+| `low_cash`, `min_order` | none: the 1 % rules exist only in the gate |
+
+`USED` is never a gate drop: the gate doesn't know chain history.
