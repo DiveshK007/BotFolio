@@ -65,10 +65,11 @@ export function validateJson(schema: JsonSchema, value: unknown, path = "$"): Sc
       }
       const obj = value as Record<string, unknown>;
       for (const key of schema.required ?? []) {
-        if (!(key in obj)) errors.push({ path: `${path}.${key}`, message: "is required" });
+        if (!Object.hasOwn(obj, key)) errors.push({ path: `${path}.${key}`, message: "is required" });
       }
       for (const [key, v] of Object.entries(obj)) {
-        const sub = schema.properties[key];
+        // Own properties only: a plain lookup finds Object.prototype's "constructor", "__proto__", "toString"…
+        const sub = Object.hasOwn(schema.properties, key) ? schema.properties[key] : undefined;
         if (!sub) errors.push({ path: `${path}.${key}`, message: "is not allowed" });
         else errors.push(...validateJson(sub, v, `${path}.${key}`));
       }
