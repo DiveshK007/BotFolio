@@ -1,6 +1,7 @@
 import { loadWorkerConfig } from "./config";
 import { createQiePublicClient } from "./chain";
 import { HealthState, startOracleMonitor } from "./health";
+import { startIndexer } from "./indexer";
 import { createWorkerServer } from "./server";
 import { loadAllowedOrigins } from "./auth/cors";
 import { createClientIp } from "./auth/client-ip";
@@ -16,6 +17,7 @@ async function main(): Promise<void> {
   const client = createQiePublicClient(cfg);
   const health = new HealthState({ provider: cfg.llm.provider, capUsd: cfg.llm.monthlyBudgetUsd });
   const stopOracle = startOracleMonitor(client, cfg.feeds, health, cfg.oracleRefreshMs);
+  const indexer = startIndexer({ rpcUrls: cfg.rpcUrls });
 
   const origins = loadAllowedOrigins(process.env);
   const clientIp = createClientIp(process.env);
@@ -37,11 +39,8 @@ async function main(): Promise<void> {
   const shutdown = (signal: string) => {
     console.log(`[worker] ${signal} — shutting down`);
     stopOracle();
-    // Let a broadcast in progress finish, then close.
-    void relayer
-      .stop()
-      .catch(() => undefined)
-      .finally(() => server.close(() => process.exit(0)));
+    // Let a broadcast and an indexer batch in progress finish, then close.
+    void Promise.allSettled([relayer.stop(), indexer?.stop()]).then(() => server.close(() => process.exit(0)));
     setTimeout(() => process.exit(1), 10_000).unref();
   };
   process.on("SIGTERM", () => shutdown("SIGTERM"));
