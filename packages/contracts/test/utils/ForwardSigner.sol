@@ -22,11 +22,19 @@ abstract contract ForwardSigner is Test {
     function _request(ERC2771Forwarder fwd, uint256 pk, address to, bytes memory data)
         internal
         view
+        returns (ERC2771Forwarder.ForwardRequestData memory)
+    {
+        return _requestWithGas(fwd, pk, to, data, RELAY_GAS);
+    }
+
+    function _requestWithGas(ERC2771Forwarder fwd, uint256 pk, address to, bytes memory data, uint256 gas_)
+        internal
+        view
         returns (ERC2771Forwarder.ForwardRequestData memory r)
     {
         r.from = vm.addr(pk);
         r.to = to;
-        r.gas = RELAY_GAS;
+        r.gas = gas_;
         r.deadline = uint48(block.timestamp + 10 minutes);
         r.data = data;
 
