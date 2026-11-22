@@ -10,7 +10,12 @@ evm_version = "shanghai"
 optimizer = true
 optimizer_runs = 200
 # ./out is read by test/AbiExport.t.sol, which fails CI when abi/ differs from a fresh build.
-fs_permissions = [{ access = "read-write", path = "./abi" }, { access = "read", path = "./out" }]
+# assets.ts is read by test/AssetIndex.fork.t.sol, which fails when the asset order differs.
+fs_permissions = [
+  { access = "read-write", path = "./abi" },
+  { access = "read", path = "./out" },
+  { access = "read", path = "../shared/src/assets.ts" },
+]
 
 [rpc_endpoints]
 # rpc1/rpc2 drop TLS sometimes (SPEC §0.1); rpc3 is the default fork RPC. CI falls back to rpc4/rpc5.
