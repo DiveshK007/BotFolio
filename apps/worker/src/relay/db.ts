@@ -23,7 +23,9 @@ export function databaseConfig(raw: string | undefined): pg.PoolConfig | null {
   if ((url.protocol !== "postgres:" && url.protocol !== "postgresql:") || !url.hostname) return null;
   if (LOCAL_HOSTS.has(url.hostname) && !url.searchParams.has("host")) return { connectionString: raw };
   if (url.searchParams.has("host") || url.searchParams.has("ssl")) return null;
-  const mode = url.searchParams.get("sslmode");
+  const modes = url.searchParams.getAll("sslmode");
+  if (modes.length > 1) return null; // pg would use the last one, and we'd have checked the first
+  const mode = modes[0] ?? null;
   if (mode === null) return { connectionString: raw, ssl: true };
   return TLS_MODES.has(mode) ? { connectionString: raw } : null;
 }
@@ -39,6 +41,12 @@ export function openDb(config: pg.PoolConfig, log: Log): Db {
     async transaction(run) {
       const client = await pool.connect();
       let broken = false;
+      // The pool stops listening while a client is checked out, and an unheard 'error' event kills the process.
+      const onError = (error: Error) => {
+        broken = true;
+        log("db.client_error", { cause: errorLabel(error) });
+      };
+      client.on("error", onError);
       try {
         await client.query("begin");
         const result = await run({
@@ -50,6 +58,7 @@ export function openDb(config: pg.PoolConfig, log: Log): Db {
         await client.query("rollback").catch(() => (broken = true));
         throw error;
       } finally {
+        client.off("error", onError);
         client.release(broken);
       }
     },

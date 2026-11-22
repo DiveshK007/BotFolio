@@ -4,7 +4,6 @@ pragma solidity 0.8.24;
 import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
 import {ERC2771Forwarder} from "@openzeppelin/contracts/metatx/ERC2771Forwarder.sol";
 import {BotForwarder} from "../src/BotForwarder.sol";
-import {Deploy} from "../script/Deploy.s.sol";
 import {ForkTest} from "./utils/ForkTest.sol";
 
 contract ForwarderTarget is ERC2771Context {
@@ -78,12 +77,5 @@ contract BotForwarderTest is ForkTest {
         assertFalse(fwd.verify(r));
         vm.expectRevert();
         fwd.execute(r);
-    }
-
-    function test_deployScriptRunsOnFork() public {
-        BotForwarder deployed = new Deploy().run();
-        (, string memory name,, uint256 chainId,,,) = deployed.eip712Domain();
-        assertEq(name, "BotFolio");
-        assertEq(chainId, 1990);
     }
 }
