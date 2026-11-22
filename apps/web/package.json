@@ -13,19 +13,19 @@
   "dependencies": {
     "@botfolio/shared": "workspace:*",
     "next": "15.5.29",
-    "react": "19.2.9",
-    "react-dom": "19.2.9",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "viem": "^2.21.0"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "3.3.1",
-    "@tailwindcss/postcss": "4.1.18",
+    "@eslint/eslintrc": "3.3.7",
+    "@tailwindcss/postcss": "4.3.5",
     "@types/node": "20.19.25",
-    "@types/react": "19.2.7",
-    "@types/react-dom": "19.2.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "eslint": "9.39.1",
     "eslint-config-next": "15.5.29",
-    "tailwindcss": "4.1.18",
+    "tailwindcss": "4.3.5",
     "typescript": "5.9.3",
     "vitest": "4.1.12"
   }
