@@ -1,5 +1,8 @@
 import { isAddress, zeroAddress, type Address } from "viem";
+import { checkDatabaseUrl, type DatabaseConfig } from "../database-url";
 import { CONTRACT_NAMES, type ContractName } from "./abi";
+
+export type { DatabaseConfig };
 
 type Env = Record<string, string | undefined>;
 
@@ -14,12 +17,6 @@ export const ADDRESS_ENV: Record<ContractName, string> = {
   DailyCall: "DAILY_CALL_ADDRESS",
   Challenges: "CHALLENGES_ADDRESS",
 };
-
-export interface DatabaseConfig {
-  connectionString: string;
-  /** Set when a remote URL names no sslmode: pg would send the password in plain text otherwise. */
-  ssl?: true;
-}
 
 export interface IndexerConfig {
   database: DatabaseConfig;
@@ -52,7 +49,7 @@ export function loadIndexerConfig(
     }
   }
 
-  const database = databaseConfig(env.DATABASE_URL?.trim() ?? "");
+  const database = checkDatabaseUrl(env.DATABASE_URL);
   if (typeof database === "string") problems.push(`DATABASE_URL ${database}`);
 
   const start = env.INDEXER_START_BLOCK?.trim() ?? "";
@@ -61,26 +58,4 @@ export function loadIndexerConfig(
 
   if (problems.length > 0 || typeof database === "string") return { ok: false, problems };
   return { ok: true, config: { database, addresses, startBlock: BigInt(start) } };
-}
-
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
-const TLS_MODES = new Set(["require", "verify-ca", "verify-full"]);
-
-/** The same rule as the relayer's: plain text only to this machine. A string says what's wrong with the URL. */
-function databaseConfig(value: string): DatabaseConfig | string {
-  if (!value) return "is not set";
-  if (!URL.canParse(value)) return "is not a URL";
-  const url = new URL(value);
-  if ((url.protocol !== "postgres:" && url.protocol !== "postgresql:") || !url.hostname) {
-    return "is not a postgres:// URL";
-  }
-  // pg lets these two override the host and the TLS setting checked below.
-  if (url.searchParams.has("host") || url.searchParams.has("ssl")) return "must not set host or ssl as parameters";
-  if (LOCAL_HOSTS.has(url.hostname)) return { connectionString: value };
-
-  const modes = url.searchParams.getAll("sslmode");
-  if (modes.length > 1) return "must set sslmode once"; // pg would use the last one, and we'd have checked the first
-  const mode = modes[0];
-  if (mode === undefined) return { connectionString: value, ssl: true };
-  return TLS_MODES.has(mode) ? { connectionString: value } : "must use TLS for a remote server";
 }
