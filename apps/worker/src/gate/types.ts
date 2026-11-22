@@ -2,6 +2,7 @@ import type { AssetId } from "@botfolio/shared";
 import type { Hex } from "viem";
 import type { BigMoveConfig } from "../config";
 import type { DecisionOutput } from "../decision/schema";
+import type { HouseOutput } from "../house/schema";
 import type { ApprovedOrder, LedgerOrder, SkipReason } from "../interfaces";
 import type { TextFlag } from "./filter-output";
 
@@ -20,7 +21,7 @@ export interface Price {
 export interface GateBot {
   botId: bigint;
   active: boolean;
-  /** House bots never produce big moves (SPEC §6.4 step 9). */
+  /** House bots log `HouseOutput` (bps) and never produce big moves (SPEC §6.4 step 9). */
   isHouse: boolean;
   maxPerCoinBps: number;
   maxTradesPerDay: number;
@@ -109,7 +110,7 @@ export interface GateResult {
    * Never has `daily_call`: this whole object is stored as the public `gate_result`. Sign and serve the view from
    * the decision output, through `filterOutput()`, and only after the user picks (SPEC §6.4.1).
    */
-  output: Omit<DecisionOutput, "daily_call"> | null;
+  output: Omit<DecisionOutput, "daily_call"> | Omit<HouseOutput, "daily_call"> | null;
   /** What the content filter replaced. Not a clip: no F1 penalty. */
   textFlags: TextFlag[];
   /** Why the output failed the schema. Empty unless status is `invalid`. */

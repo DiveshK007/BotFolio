@@ -17,6 +17,19 @@ forge test --fork-url qie -vv
 - Oracle feed addresses and max ages are fixed at deploy, no setters (SPEC §4.6). Addresses in `packages/shared/src/assets.ts`.
 - After any interface change: export ABIs to `abi/` and update `events.md`, in one announced PR (frozen interface).
 
+## Asset index
+The `uint8 asset` in every contract, event and order (`QieFeeds.Asset`). It is the same as `ASSETS[].index` in `packages/shared/src/assets.ts`.
+
+| Index | Asset | Feed | `description()` | Decimals | Max age |
+|---:|---|---|---|---:|---:|
+| 0 | BTC | `0x9E596d809a20A272c788726f592c0d1629755440` | BTC / USDT | 8 | 1800 s |
+| 1 | ETH | `0x4bb7012Fbc79fE4Ae9B664228977b442b385500d` | ETH / USDT | 8 | 1800 s |
+| 2 | SOL | `0xe86999c8e6C8eeF71bebd35286bCa674E0AD7b21` | SOL / USDT | 8 | 1800 s |
+| 3 | XRP | `0x804582B1f8Fea73919e7c737115009f668f97528` | XRP / USDT | 8 | 1800 s |
+| 4 | GOLD | `0x9aD0199a67588ee293187d26bA1BE61cb07A214c` | Gold / USD | 8 | 21600 s |
+
+Confirmed Nov 22 2026 with `cast call <feed> "description()(string)"` and `decimals()` on rpc3 (block 12,091,128) and rpc4 (block 12,091,130). The table in SPEC §0.2 lists XRP before SOL, but that is only its row order: the index comes from the enum in §4.3, where **SOL is 2 and XRP is 3**. `test/AssetIndex.fork.t.sol` checks the contracts, `assets.ts` and the live feeds against each other.
+
 ## Deploy
 `script/Deploy.s.sol` deploys the 7 contracts in this order and wires them: Forwarder, PaperLedger, BotRegistry, SeasonLedger, TrustScoreRegistry, DailyCall, Challenges. It refuses any chain but 1990 and never reads a private key.
 

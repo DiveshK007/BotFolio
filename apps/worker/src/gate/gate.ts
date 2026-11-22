@@ -1,5 +1,6 @@
 import { validateJson } from "@botfolio/llm";
 import { DECISION_OUTPUT_SCHEMA, type DecisionOutput } from "../decision/schema";
+import { HOUSE_OUTPUT_SCHEMA, type HouseOutput } from "../house/schema";
 import { ASSET_IDS, ASSET_INDEX, orderIdOf } from "../interfaces";
 import { isBigMove, toBigMove } from "./big-move";
 import { checkTrade, type CheckResult } from "./check";
@@ -24,11 +25,14 @@ export interface Proposal extends Trade {
  * leaves behind. Example: BUY Gold 40 % (big) then BUY Gold 20 % (batch) needs the big one clipped
  * to the room left next to the 20 %, or `executeApproved` would revert on the per-coin cap.
  *
+ * A house bot's output has its own schema (bps, up to 5 assets) and runs SELLs before BUYs, so a
+ * rebalance funds itself. The actionIndex is still the position in the logged array.
+ *
  * Step 1's "one retry" happens in the LLM client; by the time output gets here it is final.
  */
 export function gate(input: GateInput, output: unknown, rulesVersion: string): GateResult {
   // Step 1.
-  const schemaErrors = validateJson(DECISION_OUTPUT_SCHEMA, output);
+  const schemaErrors = validateJson(input.bot.isHouse ? HOUSE_OUTPUT_SCHEMA : DECISION_OUTPUT_SCHEMA, output);
   if (schemaErrors.length > 0) {
     return {
       rulesVersion,
@@ -46,10 +50,9 @@ export function gate(input: GateInput, output: unknown, rulesVersion: string): G
     };
   }
 
-  const decision = output as DecisionOutput;
-  const proposals: Proposal[] = decision.actions.flatMap(({ asset, action, pct }, actionIndex) =>
-    action === "HOLD" ? [] : [{ asset, buy: action === "BUY", bps: pct * 100, actionIndex }],
-  );
+  const decision = output as DecisionOutput | HouseOutput;
+  const proposals = toProposals(decision);
+  if (input.bot.isHouse) proposals.sort((a, b) => Number(a.buy) - Number(b.buy)); // stable: SELLs, then BUYs
 
   const events: GateEvent[] = [];
   const orders: GateOrder[] = [];
@@ -83,9 +86,10 @@ export function gate(input: GateInput, output: unknown, rulesVersion: string): G
 
   // Step 8. Runs last only because the neutral reason names what ended up traded; it never changes an order.
   const traded = [...orders, ...bigMoves.map((m) => m.order)].map((o) => ASSET_IDS[o.asset]!);
-  const filtered = filterOutput(decision, traded);
   // gate_result is public (site_decisions) and the bot's view is secret until the user picks (§6.4.1).
-  const { daily_call: _secretView, ...publicOutput } = filtered.output;
+  // Drop it before filtering, not after: a flag on daily_call.why is computed from the secret too.
+  const { daily_call: _secretView, ...publicDecision } = decision;
+  const filtered = filterOutput(publicDecision, traded);
 
   return {
     rulesVersion,
@@ -94,10 +98,20 @@ export function gate(input: GateInput, output: unknown, rulesVersion: string): G
     bigMoves,
     events,
     proposedActions: proposals.length,
-    output: publicOutput,
+    output: filtered.output,
     textFlags: filtered.textFlags,
     errors: [],
   };
+}
+
+function toProposals({ actions }: DecisionOutput | HouseOutput): Proposal[] {
+  const proposals: Proposal[] = [];
+  actions.forEach((a, actionIndex) => {
+    if (a.action === "HOLD") return;
+    const bps = "bps" in a ? a.bps : a.pct * 100;
+    proposals.push({ asset: a.asset, buy: a.action === "BUY", bps, actionIndex });
+  });
+  return proposals;
 }
 
 const NOT_THE_BOTS_FAULT: ReadonlySet<DropReason> = new Set(["stale", "inactive"]);
