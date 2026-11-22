@@ -16,3 +16,16 @@ forge test --fork-url qie -vv
 - solc 0.8.24, `evm_version = "shanghai"` (set in `foundry.toml`). No `mcopy`, `tstore`/`tload`.
 - Oracle feed addresses and max ages are fixed at deploy, no setters (SPEC §4.6). Addresses in `packages/shared/src/assets.ts`.
 - After any interface change: export ABIs to `abi/` and update `events.md`, in one announced PR (frozen interface).
+
+## ABIs
+`abi/<Contract>.json` is generated from `src/interfaces/I<Contract>.sol` (the frozen surface), never edited by hand:
+```bash
+script/export-abi.sh   # needs jq
+```
+`test/AbiExport.t.sol` runs in CI and fails if a committed file differs from a fresh build.
+
+Import from the other packages (`resolveJsonModule` is already on in `tsconfig.base.json`):
+```ts
+import BotRegistryAbi from "<path>/packages/contracts/abi/BotRegistry.json" with { type: "json" };
+// viem: abi: BotRegistryAbi as Abi
+```
