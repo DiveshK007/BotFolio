@@ -1,3 +1,4 @@
+import { forwardRequestFromJson, forwardRequestTypedData, RELAY_LIMITS, findAllowlisted, type ForwardRequestJson } from "@botfolio/shared";
 import {
   decodeFunctionData,
   encodeAbiParameters,
@@ -9,7 +10,6 @@ import {
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { confirmBot, launchBot, REGISTRY_ABI, type ChainClient, type LaunchStep } from "./create-bot";
-import { FORWARD_REQUEST_TYPES, RELAY_MAX_DEADLINE_SECONDS, type ForwardRequestJson } from "./relay-types";
 import type { WalletSession } from "./wallet";
 
 // Mocked relay and chain; the signature is real, from a key generated per run.
@@ -56,7 +56,10 @@ describe("launchBot against a mocked /relay", () => {
     const { request } = JSON.parse(init!.body as string) as { request: ForwardRequestJson };
     expect(request).toMatchObject({ from: account.address, to: registry, value: "0", gas: "300000" });
     expect(request).not.toHaveProperty("nonce");
-    expect(request.deadline - Date.now() / 1000).toBeLessThanOrEqual(RELAY_MAX_DEADLINE_SECONDS);
+    expect(request.deadline - Date.now() / 1000).toBeLessThanOrEqual(RELAY_LIMITS.maxDeadlineSeconds);
+    const other: Address = `0x${"33".repeat(20)}`;
+    const targets = { BotRegistry: registry, SeasonLedger: other, PaperLedger: other, DailyCall: other, Challenges: other };
+    expect(findAllowlisted(targets, request.to, request.data)?.fn).toBe("createBot");
 
     expect(decodeFunctionData({ abi: REGISTRY_ABI, data: request.data })).toEqual({
       functionName: "createBot",
@@ -64,20 +67,10 @@ describe("launchBot against a mocked /relay", () => {
     });
 
     // What forwarder.verify() does: rebuild the message with nonces(from) and recover the signer.
+    const { signature, ...signed } = forwardRequestFromJson(request);
     const signer = await recoverTypedDataAddress({
-      domain: { name: "BotFolio", version: "1", chainId: 1990, verifyingContract: forwarder },
-      types: FORWARD_REQUEST_TYPES,
-      primaryType: "ForwardRequest",
-      message: {
-        from: request.from,
-        to: request.to,
-        value: 0n,
-        gas: 300_000n,
-        nonce: 7n,
-        deadline: request.deadline,
-        data: request.data,
-      },
-      signature: request.signature,
+      ...forwardRequestTypedData(forwarder, { ...signed, nonce: 7n }),
+      signature,
     });
     expect(signer).toBe(account.address);
   });

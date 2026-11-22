@@ -2,7 +2,15 @@
  * createBot through BotForwarder (SPEC §2.1 step 4, §4.1, §4.2): read nonce → user signs → POST /relay → receipt.
  * Imported lazily on Launch so viem's contract code isn't in the first load of /create.
  */
-import { QIE_RPC_URLS, qieMainnet } from "@botfolio/shared";
+import {
+  forwardRequestToJson,
+  forwardRequestTypedData,
+  QIE_RPC_URLS,
+  qieMainnet,
+  RELAY_LIMITS,
+  toForwardRequest,
+  type ForwardRequestMessage,
+} from "@botfolio/shared";
 import {
   createPublicClient,
   encodeFunctionData,
@@ -18,17 +26,16 @@ import {
 import type { CreateConfig } from "./config";
 import { FlowError } from "./errors";
 import { validLimits, type BotLimits } from "./persona";
-import { FORWARD_REQUEST_TYPES, RELAY_MAX_GAS, type ForwardRequestTypedData } from "./relay-types";
 import type { WalletSession } from "./wallet";
 import { postRelay } from "./worker";
 
-// From the merged interfaces (IBotRegistry, IBotForwarder). TODO(#76): use packages/contracts/abi once exported.
+// Just the items S2 uses, as parseAbi so viem infers types. abi.test.ts checks them against packages/contracts/abi.
 export const REGISTRY_ABI = parseAbi([
   "function createBot(bytes32 personaHash, uint16 maxPerCoinBps, uint8 maxTradesPerDay) returns (uint256 botId)",
   "function botOf(address owner) view returns (uint256)",
   "event BotCreated(uint256 indexed botId, address indexed owner, bytes32 personaHash, uint16 maxPerCoinBps, uint8 maxTradesPerDay)",
 ]);
-const FORWARDER_ABI = parseAbi(["function nonces(address owner) view returns (uint256)"]);
+export const FORWARDER_ABI = parseAbi(["function nonces(address owner) view returns (uint256)"]);
 
 // Well inside the relayer's 10 min limit, so a phone clock a few minutes fast still passes.
 const DEADLINE_SECONDS = 300;
@@ -73,37 +80,31 @@ export async function launchBot({ config, client, session, personaHash, limits, 
   }
   if (existingBot !== 0n) throw new FlowError("ALREADY_HAS_BOT", `This wallet already has bot #${existingBot}. It's one bot per person.`);
 
-  const typedData: ForwardRequestTypedData = {
-    domain: { name: "BotFolio", version: "1", chainId: qieMainnet.id, verifyingContract: forwarder },
-    types: FORWARD_REQUEST_TYPES,
-    primaryType: "ForwardRequest",
-    message: {
-      from,
-      to: registry,
-      value: 0n,
-      gas: RELAY_MAX_GAS, // the relayer pays. Tune after the gas report (SPEC §11).
-      nonce,
-      deadline: Math.floor(Date.now() / 1000) + DEADLINE_SECONDS,
-      data: encodeFunctionData({
-        abi: REGISTRY_ABI,
-        functionName: "createBot",
-        args: [personaHash, limits.maxPerCoinPct * 100, limits.maxTradesPerDay],
-      }),
-    },
+  const message: ForwardRequestMessage = {
+    from,
+    to: registry,
+    value: RELAY_LIMITS.value,
+    gas: RELAY_LIMITS.maxGas, // the relayer pays. Tune after the gas report (SPEC §11).
+    nonce,
+    deadline: Math.floor(Date.now() / 1000) + DEADLINE_SECONDS,
+    data: encodeFunctionData({
+      abi: REGISTRY_ABI,
+      functionName: "createBot",
+      args: [personaHash, limits.maxPerCoinPct * 100, limits.maxTradesPerDay],
+    }),
   };
 
   onStep?.("signing");
   let signature: Hex;
   try {
-    signature = await session.signTypedData(typedData);
+    signature = await session.signTypedData(forwardRequestTypedData(forwarder, message));
   } catch (e) {
     if (e instanceof FlowError) throw e;
     throw new FlowError("SIGN_FAILED", "The signature didn't complete. Nothing was sent.");
   }
 
   onStep?.("relaying");
-  const { to, value, gas, deadline, data } = typedData.message;
-  return postRelay(workerUrl, session, { from, to, value: value.toString(), gas: gas.toString(), deadline, data, signature });
+  return postRelay(workerUrl, session, forwardRequestToJson(toForwardRequest(message, signature)));
 }
 
 interface ConfirmArgs {

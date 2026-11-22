@@ -1,6 +1,8 @@
+import type { forwardRequestTypedData, RelayAuthKind } from "@botfolio/shared";
 import type { Address, Hex } from "viem";
 import { FlowError } from "./errors";
-import type { ForwardRequestTypedData, RelayAuthKind } from "./relay-types";
+
+export type ForwardRequestTypedData = ReturnType<typeof forwardRequestTypedData>;
 
 /** A signed-in user. The only thing the app needs from Privy, thirdweb or QIE Wallet (SPEC §0.4). */
 export interface WalletSession {

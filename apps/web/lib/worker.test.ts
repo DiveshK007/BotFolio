@@ -1,6 +1,6 @@
+import type { ForwardRequestJson } from "@botfolio/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { postRelay, requestPersona } from "./worker";
-import type { ForwardRequestJson } from "./relay-types";
 
 const auth = { authKind: "privy" as const, getAuthToken: async () => "test-token" };
 const request = {} as ForwardRequestJson; // the body is opaque to this client

@@ -1,8 +1,8 @@
 /** Browser client for the Render service. No retries and no fallbacks: a failure reaches the user as a failure. */
+import { RELAY_AUTH_KIND_HEADER, RELAY_PATH, type ForwardRequestJson, type RelayRequestBody } from "@botfolio/shared";
 import type { Hex } from "viem";
 import { FlowError } from "./errors";
 import { parsePersonaDraft, type PersonaDraft } from "./persona";
-import { RELAY_AUTH_KIND_HEADER, RELAY_PATH, type ForwardRequestJson } from "./relay-types";
 import type { WalletSession } from "./wallet";
 
 /**
@@ -87,7 +87,8 @@ export async function requestPersona(
  */
 export async function postRelay(workerUrl: string, auth: Auth, request: ForwardRequestJson): Promise<Hex> {
   const noAnswer = "We couldn't confirm the launch went through. Try again: you can't end up with two bots.";
-  const json = await postJson({ url: workerUrl + RELAY_PATH, auth, body: { request }, timeoutMs: RELAY_TIMEOUT_MS, noAnswer });
+  const body: RelayRequestBody = { request };
+  const json = await postJson({ url: workerUrl + RELAY_PATH, auth, body, timeoutMs: RELAY_TIMEOUT_MS, noAnswer });
   if (typeof json.txHash !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(json.txHash)) {
     throw new FlowError("BAD_RESPONSE", noAnswer);
   }
