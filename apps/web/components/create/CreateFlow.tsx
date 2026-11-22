@@ -194,6 +194,10 @@ export function CreateFlow() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Announces launch progress. It can't sit inside the button: a status role there erases the button's name. */}
+      <p role="status" className="sr-only">
+        {launching ? STEP_TEXT[phase.step] : confirming && phase.busy ? "Waiting for QIE to confirm" : ""}
+      </p>
       <h1 className="font-display text-3xl font-extrabold tracking-tight">{draft ? "Meet your bot" : "Make your bot"}</h1>
 
       <div className="flex items-start justify-between gap-3 rounded-r2 bg-surface-2 px-3 py-1.5 text-sm">
@@ -230,11 +234,11 @@ export function CreateFlow() {
       )}
       {(phase.name === "review" || launching) && (
         <PrimaryButton disabled={launching} onClick={launch}>
-          <span role="status">{launching ? STEP_TEXT[phase.step] : "Launch"}</span>
+          {launching ? STEP_TEXT[phase.step] : "Launch"}
         </PrimaryButton>
       )}
       {confirming && (
-        <div role="status" className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3">
           {phase.busy ? (
             <p className="text-sm">Waiting for QIE to confirm…</p>
           ) : (
