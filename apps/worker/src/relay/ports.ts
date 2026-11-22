@@ -1,4 +1,4 @@
-import type { ForwardRequest } from "@botfolio/shared";
+import type { ForwardRequest, RelayAllowlisted } from "@botfolio/shared";
 import type { Address, Hex } from "viem";
 import type { PreparedCall } from "./chain";
 
@@ -7,6 +7,8 @@ export interface RelayAttempt {
   wallet: Address;
   target: Address;
   selector: Hex | null;
+  /** null until the request passed the allowlist. */
+  action: RelayAllowlisted | null;
   ip: string;
 }
 
