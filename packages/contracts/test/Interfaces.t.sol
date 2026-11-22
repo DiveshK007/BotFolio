@@ -16,7 +16,9 @@ contract InterfacesTest is Test {
         assertEq(IBotForwarder.executeBatch.selector, ERC2771Forwarder.executeBatch.selector);
         assertEq(IBotForwarder.nonces.selector, bytes4(keccak256("nonces(address)")));
         assertEq(IERC5267.eip712Domain.selector, bytes4(keccak256("eip712Domain()")));
-        assertEq(IBotForwarder.ExecutedForwardRequest.selector, ERC2771Forwarder.ExecutedForwardRequest.selector);
+        assertEq(
+            IBotForwarder.ExecutedForwardRequest.selector, ERC2771Forwarder.ExecutedForwardRequest.selector
+        );
     }
 
     /// The SkipReason order is part of the frozen interface (events.md documents 0..4).

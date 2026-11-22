@@ -19,7 +19,9 @@ interface ISeasonLedger is IAccessControl, IERC165 {
     /// @notice The owner committed a new bot version (config hash), which also updated its limits.
     event VersionCommitted(uint256 indexed botId, uint32 indexed version, bytes32 hash, uint32 season);
     /// @notice The owner corrected one of the bot's calls. The note text stays off-chain (hash only).
-    event CallCorrected(uint256 indexed botId, bytes32 indexed decisionId, bytes32 noteHash, uint8 chip, uint32 season);
+    event CallCorrected(
+        uint256 indexed botId, bytes32 indexed decisionId, bytes32 noteHash, uint8 chip, uint32 season
+    );
     /// @notice A season opened.
     event SeasonOpened(uint32 indexed n, uint64 start, uint64 end);
     /// @notice A season closed and its data root (Merkle root of the replay file) was sealed.
@@ -79,8 +81,13 @@ interface ISeasonLedger is IAccessControl, IERC165 {
     /// @param hash keccak256 of the version config JSON (off-chain).
     /// @param maxPerCoinBps New per-coin cap, 1000..5000 bps.
     /// @param maxTradesPerDay New trades per day, 1..8.
-    function commitVersion(uint256 botId, uint32 version, bytes32 hash, uint16 maxPerCoinBps, uint8 maxTradesPerDay)
-        external;
+    function commitVersion(
+        uint256 botId,
+        uint32 version,
+        bytes32 hash,
+        uint16 maxPerCoinBps,
+        uint8 maxTradesPerDay
+    ) external;
 
     /// @notice Records a coach correction. Bot owner only (via forwarder). Max 20 per bot per IST day.
     /// @param botId Bot id.

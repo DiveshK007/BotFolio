@@ -68,10 +68,16 @@ interface IPaperLedger is IAccessControl, IERC165, IERC5267 {
         uint8 actionIndex
     );
     /// @notice The trade just emitted was a big move approved by the bot owner's own signed tx.
-    event ApprovedTrade(uint256 indexed botId, bytes32 indexed decisionId, uint8 actionIndex, address indexed owner);
+    event ApprovedTrade(
+        uint256 indexed botId, bytes32 indexed decisionId, uint8 actionIndex, address indexed owner
+    );
     /// @notice An order in a batch was skipped; the rest of the batch went on. `reason` is a `SkipReason`.
     event OrderSkipped(
-        uint256 indexed botId, uint8 indexed asset, bytes32 indexed decisionId, uint8 actionIndex, uint8 reason
+        uint256 indexed botId,
+        uint8 indexed asset,
+        bytes32 indexed decisionId,
+        uint8 actionIndex,
+        uint8 reason
     );
 
     /// @notice Asset index above 4.
