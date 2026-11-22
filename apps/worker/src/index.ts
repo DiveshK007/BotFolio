@@ -5,6 +5,8 @@ import { startIndexer } from "./indexer";
 import { startScheduler } from "./scheduler";
 import { seasonJobs } from "./seasons";
 import { runnerJobs } from "./slot";
+import { personaRoutes } from "./persona/route";
+import { setUpPersona } from "./persona/setup";
 import { createWorkerServer } from "./server";
 import { loadAllowedOrigins } from "./auth/cors";
 import { createClientIp } from "./auth/client-ip";
@@ -36,9 +38,12 @@ async function main(): Promise<void> {
   const relayer = setUpRelayer({ env: process.env, auth, rpcUrls: cfg.rpcUrls, log: consoleLog });
   if (!relayer.relay) consoleLog("relay.disabled", { env: relayer.problems.join(",") });
   relayer.start();
+  const persona = setUpPersona({ env: process.env, cfg, health, log: consoleLog });
+  if (!persona.service) consoleLog("persona.disabled", { env: persona.problems.join(",") });
   const routes = {
     ...authRoutes({ origins, clientIp, log: consoleLog, siwe: auth.siwe }),
     ...relayRoutes({ relay: relayer.relay, origins, clientIp }),
+    ...personaRoutes({ origins, auth: auth.authenticator, clientIp, log: consoleLog, service: persona.service }),
   };
   const server = createWorkerServer({ health, routes });
   server.listen(cfg.port, () => {
@@ -50,7 +55,7 @@ async function main(): Promise<void> {
     console.log(`[worker] ${signal} — shutting down`);
     stopOracle();
     // Let a broadcast and an indexer batch in progress finish, then close.
-    void Promise.allSettled([relayer.stop(), indexer?.stop(), scheduler?.stop()]).then(() => server.close(() => process.exit(0)));
+    void Promise.allSettled([relayer.stop(), indexer?.stop(), scheduler?.stop(), persona.stop()]).then(() => server.close(() => process.exit(0)));
     setTimeout(() => process.exit(1), 10_000).unref();
   };
   process.on("SIGTERM", () => shutdown("SIGTERM"));
