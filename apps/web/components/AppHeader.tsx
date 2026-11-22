@@ -4,7 +4,7 @@ import { BotHead } from "./BotHead";
 export function AppHeader() {
   return (
     <header className="mx-auto flex w-full max-w-xl items-center justify-between px-4 py-3">
-      <Link href="/" className="inline-flex items-center gap-2 font-display text-lg font-extrabold tracking-tight" aria-label="BotFolio home">
+      <Link href="/" className="inline-flex min-h-11 items-center gap-2 font-display text-lg font-extrabold tracking-tight" aria-label="BotFolio home">
         <BotHead size={28} />
         BotFolio
       </Link>

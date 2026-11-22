@@ -19,7 +19,7 @@ export default function Landing() {
 
         <section aria-label="Make your bot" className="rounded-r3 border border-line bg-surface p-4 shadow-card sm:p-6">
           <SentenceForm />
-          <p className="mt-3 text-center text-xs text-muted">Sign in with a passkey. No seed phrase, no gas.</p>
+          <p className="mt-3 text-center text-xs text-muted">No seed phrase, no gas. You never pay.</p>
         </section>
 
         <ul className="grid gap-3 text-sm sm:grid-cols-3">
