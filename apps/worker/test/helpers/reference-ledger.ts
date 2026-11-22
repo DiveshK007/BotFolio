@@ -4,7 +4,7 @@ import type { GateBot, GateInput, Portfolio } from "../../src/gate/types";
 
 /**
  * A test-only executeBatch written from SPEC §4.3 and IPaperLedger's natspec, deliberately NOT using the
- * gate's math. Follows PaperLedger's `_execute` as it is in PR #230 (not on main yet): cap against the
+ * gate's math. Follows PaperLedger's `_execute` (PRs #230-#233): cap against the
  * pre-trade total, SELL is ZERO when the cash rounds to 0, answers above uint64 max are unusable.
  */
 export function executeBatch(

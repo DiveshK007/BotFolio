@@ -40,7 +40,7 @@ export interface OracleReading {
   error?: string;
 }
 
-/** Above uint64 max the contracts treat a feed as broken (OracleReader.MAX_PRICE, PR #230). */
+/** Above uint64 max the contracts treat a feed as broken (OracleReader.MAX_PRICE). */
 export const MAX_PRICE_E8 = 2n ** 64n - 1n;
 
 /**
