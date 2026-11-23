@@ -18,6 +18,9 @@ import { relayRoutes } from "./relay/route";
 import { databaseConfig, openDb } from "./relay/db";
 import { setUpRelayer } from "./relay/setup";
 import { trustRoutes } from "./trust/route";
+import { leaderboardRoutes } from "./season/route";
+import { TARGET_ABIS } from "./relay/abis";
+import { isAddress, type Address } from "viem";
 
 /** Render web service entry point (SPEC §10). Keys stay in Render env; nothing secret is logged. */
 async function main(): Promise<void> {
@@ -49,11 +52,27 @@ async function main(): Promise<void> {
   const database = databaseConfig(process.env.DATABASE_URL);
   const reads = database ? openDb({ ...database, max: 2 }, consoleLog) : null;
   if (!reads) consoleLog("trust.proofs_disabled", { env: "DATABASE_URL" });
+  const paperLedger = process.env.PAPER_LEDGER_ADDRESS?.trim().toLowerCase() ?? "";
+  let startCash: Promise<bigint> | null = null;
+  const startCashE8 = () => {
+    // Immutable on-chain, so read once; a failed read is retried next time.
+    startCash ??= client.readContract({ address: paperLedger as Address, abi: TARGET_ABIS.PaperLedger, functionName: "START_CASH_E8" }).then(
+      (value) => value as bigint,
+      (error: unknown) => {
+        startCash = null;
+        throw error;
+      },
+    );
+    return startCash;
+  };
+  const boards = reads && isAddress(paperLedger) ? { db: reads, startCashE8 } : null;
+  if (!boards) consoleLog("leaderboards.disabled", { env: "DATABASE_URL,PAPER_LEDGER_ADDRESS" });
   const routes = {
     ...authRoutes({ origins, clientIp, log: consoleLog, siwe: auth.siwe }),
     ...relayRoutes({ relay: relayer.relay, origins, clientIp }),
     ...personaRoutes({ origins, auth: auth.authenticator, clientIp, log: consoleLog, service: persona.service }),
     ...trustRoutes({ db: reads, origins, clientIp }),
+    ...leaderboardRoutes({ source: boards, origins, clientIp }),
   };
   const server = createWorkerServer({ health, routes });
   server.listen(cfg.port, () => {
