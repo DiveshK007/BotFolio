@@ -22,6 +22,8 @@ import { trustRoutes } from "./trust/route";
 import { leaderboardRoutes } from "./season/route";
 import { mcpRoutes } from "./mcp/mcp";
 import { verifyTrade } from "./mcp/verify-trade";
+import { createCardChain } from "./cards/build";
+import { cardJobs, startCardSweeper } from "./cards/jobs";
 import { TARGET_ABIS } from "./relay/abis";
 import { isAddress, type Address } from "viem";
 
@@ -43,28 +45,6 @@ async function main(): Promise<void> {
     }
   }
   const v2 = { llm: v2Llm, llmConfig: cfg.llm, resting: () => health.budget() === "resting" };
-  const scheduler = startScheduler({
-    health,
-    jobs: [
-      ({ db, log }) => seasonJobs({ db, log, env: process.env, client, rpcUrls: cfg.rpcUrls, committer, v2 }),
-      ({ db, log }) => dailyCallJobs({ db, log, env: process.env, client, feeds: cfg.feeds, committer }),
-      ({ db, log }) => runnerJobs({ db, log, env: process.env, cfg, client, health }),
-    ],
-  });
-
-  const origins = loadAllowedOrigins(process.env);
-  const clientIp = createClientIp(process.env);
-  const auth = setUpAuth(process.env);
-  if (auth.problems.length) consoleLog("auth.not_configured", { env: auth.problems.join(",") });
-  const relayer = setUpRelayer({ env: process.env, auth, rpcUrls: cfg.rpcUrls, log: consoleLog });
-  if (!relayer.relay) consoleLog("relay.disabled", { env: relayer.problems.join(",") });
-  relayer.start();
-  const persona = setUpPersona({ env: process.env, cfg, health, log: consoleLog });
-  if (!persona.service) consoleLog("persona.disabled", { env: persona.problems.join(",") });
-  // Small read-only pool for the public proof route.
-  const database = databaseConfig(process.env.DATABASE_URL);
-  const reads = database ? openDb({ ...database, max: 2 }, consoleLog) : null;
-  if (!reads) consoleLog("trust.proofs_disabled", { env: "DATABASE_URL" });
   const paperLedger = process.env.PAPER_LEDGER_ADDRESS?.trim().toLowerCase() ?? "";
   let startCash: Promise<bigint> | null = null;
   const startCashE8 = () => {
@@ -78,6 +58,32 @@ async function main(): Promise<void> {
     );
     return startCash;
   };
+  // Cards need START_CASH_E8 for the ₹ rule.
+  const cardChain = isAddress(paperLedger) ? createCardChain(client, startCashE8) : null;
+  const scheduler = startScheduler({
+    health,
+    jobs: [
+      ({ db, log }) => seasonJobs({ db, log, env: process.env, client, rpcUrls: cfg.rpcUrls, committer, v2 }),
+      ({ db, log }) => dailyCallJobs({ db, log, env: process.env, client, feeds: cfg.feeds, committer }),
+      ({ db, log }) => runnerJobs({ db, log, env: process.env, cfg, client, health }),
+      ({ db, log }) => cardJobs({ db, log, chain: cardChain }),
+    ],
+  });
+
+  const origins = loadAllowedOrigins(process.env);
+  const clientIp = createClientIp(process.env);
+  const auth = setUpAuth(process.env);
+  if (auth.problems.length) consoleLog("auth.not_configured", { env: auth.problems.join(",") });
+  const relayer = setUpRelayer({ env: process.env, auth, rpcUrls: cfg.rpcUrls, log: consoleLog });
+  if (!relayer.relay) consoleLog("relay.disabled", { env: relayer.problems.join(",") });
+  relayer.start();
+  const persona = setUpPersona({ env: process.env, cfg, health, log: consoleLog });
+  if (!persona.service) consoleLog("persona.disabled", { env: persona.problems.join(",") });
+  // Small pool for the public read routes and the card sweeper.
+  const database = databaseConfig(process.env.DATABASE_URL);
+  const reads = database ? openDb({ ...database, max: 2 }, consoleLog) : null;
+  if (!reads) consoleLog("trust.proofs_disabled", { env: "DATABASE_URL" });
+  const stopCards = reads && cardChain ? startCardSweeper({ db: reads, chain: cardChain, log: { info: consoleLog, warn: consoleLog } }) : null;
   const boards = reads && isAddress(paperLedger) ? { db: reads, startCashE8 } : null;
   if (!boards) consoleLog("leaderboards.disabled", { env: "DATABASE_URL,PAPER_LEDGER_ADDRESS" });
   const routes = {
@@ -102,7 +108,7 @@ async function main(): Promise<void> {
     console.log(`[worker] ${signal} — shutting down`);
     stopOracle();
     // Let a broadcast and an indexer batch in progress finish, then close.
-    void Promise.allSettled([relayer.stop(), indexer?.stop(), scheduler?.stop(), persona.stop(), reads?.close()]).then(() => server.close(() => process.exit(0)));
+    void Promise.allSettled([relayer.stop(), indexer?.stop(), scheduler?.stop(), persona.stop(), (stopCards?.() ?? Promise.resolve()).then(() => reads?.close())]).then(() => server.close(() => process.exit(0)));
     setTimeout(() => process.exit(1), 10_000).unref();
   };
   process.on("SIGTERM", () => shutdown("SIGTERM"));

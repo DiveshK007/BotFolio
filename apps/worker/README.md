@@ -95,6 +95,17 @@ Take `reason` and `roast` from `GateResult.output`, never from the raw model out
 - A proposal is a `bot_versions` row with `committed_tx` null and `source = 'season_v2'`. `config_json` is the whole proposal, and `config_hash = keccak256(canonical config_json)`: what the owner signs in `commitVersion(botId, version, configHash, maxPerCoinBps, maxTradesPerDay)`.
 - The runner only uses committed versions, so a proposal changes nothing until approved. `approve_by` is 08:30 IST the next morning; after that the app should stop offering it. The next season's proposal replaces an unapproved one, and a committed version is never overwritten.
 
+### Cards (SPEC §9, `src/cards`)
+- Payloads follow the frozen `packages/shared/src/cards.ts`. Each card's id comes from what it is about, so it is written once:
+  - `trade-<bot>`: the first trade;
+  - `roast-<bot>-<slot>`: a slot loss of 3 % or more;
+  - `recap-<bot>-<IST day>`: the daily recap.
+- Every tx hash in a payload must also be in `cites`, or `saveCard` refuses it.
+- A one-minute sweeper (same pool as the read routes) writes first-trade and slot-loss cards. A newcomer's first trade gets its card within a minute.
+- The `recap` job (21:35 IST) runs the same sweep, then writes one recap per active raised bot, quiet days included: the day's change, best and worst call, and rank in the season.
+- Prices are as recorded. A round or block time we didn't store is read from QIE (`getRoundData`, `getBlock`), never estimated. Needs `PAPER_LEDGER_ADDRESS` (₹ rule) and `DATABASE_URL`.
+- Battle, season, evolution, challenge and call cards come with the rest of #185.
+
 ### MCP server (SPEC §10.1, `src/mcp`)
 - `POST /mcp`: a read-only MCP server over Streamable HTTP. It is stateless (JSON-RPC in, JSON out, no session, no server-sent stream: `GET /mcp` is 405). It has three tools:
   - `get_bot_record(bot_id | name)`: versions with config hashes, the latest 50 trades with tx hashes and round ids, season results, and the trust score with its Merkle proof.
