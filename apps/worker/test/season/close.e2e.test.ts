@@ -17,16 +17,17 @@ import { DebutWatcher } from "../../src/slot/debut";
 import type { RunnerDeps } from "../../src/slot/deps";
 import { runSlot } from "../../src/slot/run";
 import { createSystemSender } from "../../src/system/sender";
+import { challengeWinner, createChallengeChain } from "../../src/season/challenges";
 import { createTrustRegistryChain } from "../../src/trust/registry";
 import { scoreProof } from "../../src/trust/scores";
-import { stringToHex, zeroHash } from "viem";
+import { stringToHex, zeroHash, type Hex } from "viem";
 import { createTestDb, type TestDb } from "../indexer/helpers/db";
 import { ACCOUNTS, startFork, type Fork } from "../indexer/helpers/fork";
 import { drain, memoryLog } from "../indexer/helpers/world";
 
 // #56's Done-when: the root on-chain equals the replay's.
 const fork = await startFork();
-const { alice, admin, runner, committer } = ACCOUNTS;
+const { alice, bob, admin, runner, committer } = ACCOUNTS;
 
 describe.skipIf(!fork)("season close on an Anvil fork", () => {
   let f: Fork;
@@ -89,8 +90,16 @@ describe.skipIf(!fork)("season close on an Anvil fork", () => {
     await fresh(at(0, "08:00"));
     await f.relay(alice, "BotRegistry", "createBot", [`0x${"a1".repeat(32)}`, 4000, 8]);
     await f.send(admin, "BotRegistry", "createHouseBot", [`0x${"c3".repeat(32)}`, 2500, 8]);
+    await f.relay(bob, "BotRegistry", "createBot", [`0x${"b2".repeat(32)}`, 4000, 8]);
     await new DebutWatcher(deps).tick();
     await db.query("update bots set name = 'Steady Sam' where id = 2");
+
+    // #61: Bob's bot (3) takes Alice's challenge; her second one is never accepted.
+    await f.relay(alice, "Challenges", "create", [1n, 0]);
+    await index();
+    const { rows: created } = await db.query<{ code: Hex }>("select code from challenges");
+    await f.relay(bob, "Challenges", "accept", [created[0]!.code, 3n]);
+    await f.relay(alice, "Challenges", "create", [1n, 0]);
     for (const hhmm of ["09:00", "13:00", "21:00"]) {
       await fresh(at(0, hhmm));
       await runSlot(deps, { slot: await ensureScheduledSlot(deps.db, chainNow), attempt: 0, signal });
@@ -108,6 +117,7 @@ describe.skipIf(!fork)("season close on an Anvil fork", () => {
     const sender = createSystemSender({ rpcUrls: [url], account: committer });
     const seasons = createSeasonChain({ client: f.client, address: addresses.SeasonLedger, sender });
     const trust = createTrustRegistryChain({ client: f.client, address: addresses.TrustScoreRegistry, sender });
+    const challenges = createChallengeChain({ client: f.client, address: addresses.Challenges, sender });
     closeDeps = {
       db,
       chain: {
@@ -117,6 +127,9 @@ describe.skipIf(!fork)("season close on an Anvil fork", () => {
         scoresRoot: (n) => trust.scoresRoot(n),
         rulesPublished: (version) => trust.rulesPublished(version),
         commitScores: (n, version, root, uri) => trust.commitScores(n, version, root, uri),
+        challenge: (code) => challenges.challenge(code),
+        settleChallenge: (code, winner) => challenges.settleChallenge(code, winner),
+        expireChallenge: (code) => challenges.expireChallenge(code),
       },
       store,
       contracts: { chainId: 1990, seasonLedger: addresses.SeasonLedger, paperLedger: addresses.PaperLedger, fromBlock: startBlock.toString() },
@@ -146,16 +159,33 @@ describe.skipIf(!fork)("season close on an Anvil fork", () => {
     expect(warnings).toContain("season.trust_rules_unpublished");
     expect(await f.read<string>("TrustScoreRegistry", "scoresRoot", [0])).toBe(zeroHash);
     const { rows } = await db.query<{ n: number }>("select count(*)::int as n from trust_scores where season_id = 0");
-    expect(rows[0]!.n).toBe(2);
+    expect(rows[0]!.n).toBe(3);
   }, 120_000);
 
   it("writes results with the battle rank against the house bot", async () => {
     const { rows } = await db.query<{ bot_id: string; battle_rank: number | null; trades: number }>(
       "select bot_id::text, battle_rank, trades from season_results where season_id = 0 order by bot_id",
     );
-    expect(rows.map((r) => [r.bot_id, r.battle_rank === null ? null : r.battle_rank > 0])).toEqual([["1", true], ["2", null]]);
+    expect(rows.map((r) => [r.bot_id, r.battle_rank === null ? null : r.battle_rank > 0])).toEqual([["1", true], ["2", null], ["3", true]]);
     expect(rows[0]!.trades).toBeGreaterThan(0);
   });
+
+  it("settles the accepted challenge for the winner recomputed from results, and expires the open one", async () => {
+    await index();
+    const { rows } = await db.query<{ status: string; opponent: string | null; winner: string | null }>(
+      `select status::text as status, opponent_bot::text as opponent, winner_bot::text as winner
+       from challenges where season_id = 0 order by opponent_bot nulls last`,
+    );
+    const { rows: results } = await db.query<{ bot_id: string; return_bps: number; max_dd_bps: number }>(
+      "select bot_id::text as bot_id, return_bps, max_dd_bps from season_results where season_id = 0",
+    );
+    const standings = new Map(results.map((r) => [BigInt(r.bot_id), { returnBps: r.return_bps, maxDdBps: r.max_dd_bps }]));
+    expect(rows).toEqual([
+      { status: "settled", opponent: "3", winner: challengeWinner(1n, 3n, standings).toString() },
+      { status: "expired", opponent: null, winner: null },
+    ]);
+    expect(await f.read<number>("Challenges", "openCount", [1n])).toBe(0);
+  }, 120_000);
 
   it("commits the trust scores once the rules are published, and verifyScore holds for every bot", async () => {
     await index();
@@ -174,7 +204,7 @@ describe.skipIf(!fork)("season close on an Anvil fork", () => {
     );
     expect(stored[0]).toEqual({ root: file.root, rules: "trust-v1-sprint" });
 
-    for (const bot of [1n, 2n]) {
+    for (const bot of [1n, 2n, 3n]) {
       const p = (await scoreProof(db, 0, bot))!;
       expect(p.committedRoot).toBe(file.root);
       expect(p.root).toBe(file.root);

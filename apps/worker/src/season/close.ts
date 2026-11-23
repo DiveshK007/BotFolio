@@ -3,12 +3,13 @@ import { revealOutputHashes } from "../decisions/secrecy";
 import type { Queryable } from "../scheduler/db";
 import type { Log } from "../scheduler/log";
 import { computeTrustScores, saveTrustScores, scoresFile } from "../trust/scores";
+import { settleChallenges, type ChallengeChain } from "./challenges";
 import { buildReplayFile, type ReplayContracts } from "./replay-file";
 import { computeSeasonResults, saveSeasonResults } from "./results";
 import type { ReplayStore } from "./storage";
 import { verifyOffline } from "./verify";
 
-export interface CloseChain {
+export interface CloseChain extends ChallengeChain {
   isClosed(season: number): Promise<boolean>;
   closeSeason(season: number, root: Hex, uri: string): Promise<void>;
   startCashE8(): Promise<bigint>;
@@ -30,18 +31,22 @@ export interface CloseDeps {
 
 /**
  * The close of every `closing` season (SPEC §2.3, #56): results and battle ranks, trust scores and their root
- * (§7, #58, #59), the replay file uploaded and read back, then `closeSeason` with its root. The indexer makes the
- * row `closed` from the event.
+ * (§7, #58, #59), the replay file uploaded and read back, `closeSeason` with its root, then each challenge settled
+ * or expired (§4.8, #61). The indexer makes the row `closed` from the event.
  *
- * A closed season whose scores aren't on-chain yet (the rules weren't published in time) is picked up again by
- * the next run, for the scores only.
+ * A closed season whose scores aren't on-chain yet (the rules weren't published in time), or that still has open
+ * or accepted challenges, is picked up again by the next run for those steps only.
  *
  * Safe to run again at any step. Each root is compared with the chain's first, so nothing is sent twice.
  */
 export async function closeSeasons(deps: CloseDeps, signal: AbortSignal): Promise<number[]> {
   const { db, chain, store, contracts, log } = deps;
   const { rows } = await db.query<{ id: number; status: string }>(
-    "select id, status::text as status from seasons where status = 'closing' or (status = 'closed' and scores_root is null) order by id",
+    `select id, status::text as status from seasons s
+     where status = 'closing'
+        or (status = 'closed' and (scores_root is null
+            or exists (select 1 from challenges c where c.season_id = s.id and c.status in ('open', 'accepted'))))
+     order by id`,
   );
   const closed: number[] = [];
 
@@ -56,7 +61,10 @@ export async function closeSeasons(deps: CloseDeps, signal: AbortSignal): Promis
       await saveSeasonResults(db, season, await computeSeasonResults(db, season, startCash));
     }
     await commitTrustScores(deps, season, startCash);
-    if (dataClosed) continue;
+    if (dataClosed) {
+      await settleChallenges(deps, season);
+      continue;
+    }
 
     const file = await buildReplayFile(db, season, contracts);
     // A file that doesn't replay would commit a root nobody can check.
@@ -69,6 +77,8 @@ export async function closeSeasons(deps: CloseDeps, signal: AbortSignal): Promis
     await chain.closeSeason(season, file.root, uri);
     closed.push(season);
     log.info("season.closed", { season, root: file.root, lines: file.lines.length, uri });
+    // `settle` and `expire` need the season closed on-chain, which it now is.
+    await settleChallenges(deps, season);
   }
   return closed;
 }
