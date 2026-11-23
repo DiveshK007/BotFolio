@@ -95,6 +95,14 @@ Take `reason` and `roast` from `GateResult.output`, never from the raw model out
 - A proposal is a `bot_versions` row with `committed_tx` null and `source = 'season_v2'`. `config_json` is the whole proposal, and `config_hash = keccak256(canonical config_json)`: what the owner signs in `commitVersion(botId, version, configHash, maxPerCoinBps, maxTradesPerDay)`.
 - The runner only uses committed versions, so a proposal changes nothing until approved. `approve_by` is 08:30 IST the next morning; after that the app should stop offering it. The next season's proposal replaces an unapproved one, and a committed version is never overwritten.
 
+### MCP server (SPEC §10.1, `src/mcp`)
+- `POST /mcp`: a read-only MCP server over Streamable HTTP. It is stateless (JSON-RPC in, JSON out, no session, no server-sent stream: `GET /mcp` is 405). It has three tools:
+  - `get_bot_record(bot_id | name)`: versions with config hashes, the latest 50 trades with tx hashes and round ids, season results, and the trust score with its Merkle proof.
+  - `get_leaderboard(board, season?)`: the top 20 of one board, for the current season by default.
+  - `verify_trade(tx_hash)`: re-reads the tx's `Trade` events and each oracle round from QIE RPC, not from the database.
+- No writes, no keys. 60 requests a minute per address. Needs `DATABASE_URL` and `PAPER_LEDGER_ADDRESS`.
+- To try it from Claude Desktop: Settings → Connectors → add a custom connector with `https://<worker host>/mcp`. UNVERIFIED until tried against the deployed service.
+
 ### Leaderboards (SPEC §8, `src/season/leaderboards.ts`)
 - `GET /leaderboards?season=<n>` returns Top Returns, Best Risk-Adjusted (Sortino), Most Trusted and Coach vs Bot, ranked with §8's eligibility and tiebreaks. The last tiebreak on every board is the bot created first.
 - A closed season reads what its close stored (`season_results`, `trust_scores`). An open one is live: returns and Sortino come from the marks so far, and Most Trusted from the latest scored season (`trustSeason`).
