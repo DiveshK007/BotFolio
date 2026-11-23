@@ -139,9 +139,9 @@ async function deployOnFork(bin: string, url: string, stopAnvil: () => void): Pr
 
   // Foundry's output goes to a directory of our own, so the repo's out/, cache/ and broadcast/ stay untouched.
   const work = mkdtempSync(join(tmpdir(), "botfolio-indexer-fork-"));
-  let stdout: string;
-  try {
-    ({ stdout } = await run(
+  let stdout = "";
+  const deploy = () =>
+    run(
       join(bin, "forge"),
       // --unlocked: Anvil signs for its own test accounts, so no key is on the command line.
       ["script", "script/Deploy.s.sol", "--rpc-url", url, "--broadcast", "--slow", "--unlocked", "--sender", deployer.address],
@@ -161,7 +161,20 @@ async function deployOnFork(bin: string, url: string, stopAnvil: () => void): Pr
           RELAYER_ADDRESS: relayer.address,
         },
       },
-    ));
+    );
+  try {
+    // The fork reads accounts from QIE's public RPC, which answers 429 when several fork suites deploy at once.
+    // A deploy that hit the limit is run again; it redeploys and prints its own addresses.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        ({ stdout } = await deploy());
+        break;
+      } catch (e) {
+        const text = `${(e as { stderr?: string }).stderr ?? ""} ${(e as Error).message}`;
+        if (attempt >= 4 || !/\b429\b|Too Many Requests/.test(text)) throw e;
+        await new Promise((resolve) => setTimeout(resolve, 3_000 * attempt));
+      }
+    }
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
