@@ -59,7 +59,10 @@ async function main(): Promise<void> {
     return startCash;
   };
   // Cards need START_CASH_E8 for the ₹ rule.
-  const cardChain = isAddress(paperLedger) ? createCardChain(client, startCashE8) : null;
+  const challengesAddress = process.env.CHALLENGES_ADDRESS?.trim().toLowerCase() ?? "";
+  const cardChain = isAddress(paperLedger)
+    ? createCardChain(client, startCashE8, isAddress(challengesAddress) ? (challengesAddress as Address) : null)
+    : null;
   const scheduler = startScheduler({
     health,
     jobs: [

@@ -22,6 +22,8 @@ const chain: CardChain = {
   startCashE8: async () => START,
   blockTime: async (block) => new Date(Date.UTC(2026, 10, 26, 3, 30) + Number(block) * 1000),
   roundUpdatedAt: async () => new Date("2026-11-26T03:00:00Z"),
+  txTime: async () => new Date("2026-11-26T04:00:00Z"),
+  challengeSettledTx: async () => null,
 };
 const deps = (): CardDeps => ({ db, chain, log: { info() {}, warn() {} }, now: () => clock });
 

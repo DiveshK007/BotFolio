@@ -104,7 +104,11 @@ Take `reason` and `roast` from `GateResult.output`, never from the raw model out
 - A one-minute sweeper (same pool as the read routes) writes first-trade and slot-loss cards. A newcomer's first trade gets its card within a minute.
 - The `recap` job (21:35 IST) runs the same sweep, then writes one recap per active raised bot, quiet days included: the day's change, best and worst call, and rank in the season.
 - Prices are as recorded. A round or block time we didn't store is read from QIE (`getRoundData`, `getBlock`), never estimated. Needs `PAPER_LEDGER_ADDRESS` (₹ rule) and `DATABASE_URL`.
-- Battle, season, evolution, challenge and call cards come with the rest of #185.
+- The same sweep writes the cards that follow a close or a settlement, each once:
+  - `battle-<bot>-s<n>` and `season-<bot>-s<n>`: for each raised bot once the season's close is indexed. They cite the `closeSeason` tx. Battle needs exactly 3 house bots.
+  - `evolution-<bot>-v<n>`: when the owner commits a v2. It shows the diff and the chip behind it ("too risky" ×N), and cites the commit.
+  - `challenge-<code8>-<bot>`: for each side of a settled challenge. The settle tx is found with `getLogs` after the close, so it needs `CHALLENGES_ADDRESS`.
+  - `call-<bot>-<day>`: a settled Daily Call, with the season's score and the owner's streak. It cites the call and the settle.
 
 ### MCP server (SPEC §10.1, `src/mcp`)
 - `POST /mcp`: a read-only MCP server over Streamable HTTP. It is stateless (JSON-RPC in, JSON out, no session, no server-sent stream: `GET /mcp` is 405). It has three tools:

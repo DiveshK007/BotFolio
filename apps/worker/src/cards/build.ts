@@ -22,12 +22,21 @@ export interface CardChain {
   blockTime(block: bigint): Promise<Date>;
   /** The feed's `updatedAt` for a round. */
   roundUpdatedAt(asset: AssetId, roundId: bigint): Promise<Date>;
+  /** When a tx was mined. */
+  txTime(hash: Hex): Promise<Date>;
+  /** The `ChallengeSettled` tx for a code, searched forward from `afterTx` (the season close). null until found. */
+  challengeSettledTx(code: Hex, afterTx: Hex): Promise<Hex | null>;
 }
 
 const FEED = parseAbi(["function getRoundData(uint80 roundId) view returns (uint80, int256, uint256, uint256, uint80)"]);
+const SETTLED = parseAbi(["event ChallengeSettled(bytes32 indexed code, uint256 indexed winnerBot)"])[0];
+/** QIE RPCs answer getLogs for ranges this big (as the replay verifier uses); settle runs right after the close. */
+const LOG_RANGE = 2000n;
+const SETTLE_SEARCH_BLOCKS = 20_000n;
 
-export function createCardChain(client: PublicClient, startCashE8: () => Promise<bigint>): CardChain {
+export function createCardChain(client: PublicClient, startCashE8: () => Promise<bigint>, challenges: Address | null = null): CardChain {
   const blocks = new Map<bigint, Promise<Date>>();
+  const txs = new Map<string, Promise<Date>>();
   const rounds = new Map<string, Promise<Date>>();
   const remember = <K>(cache: Map<K, Promise<Date>>, key: K, load: () => Promise<Date>) => {
     let hit = cache.get(key);
@@ -39,9 +48,23 @@ export function createCardChain(client: PublicClient, startCashE8: () => Promise
     }
     return hit;
   };
+  const blockTime = (block: bigint) =>
+    remember(blocks, block, async () => new Date(Number((await client.getBlock({ blockNumber: block })).timestamp) * 1000));
   return {
     startCashE8,
-    blockTime: (block) => remember(blocks, block, async () => new Date(Number((await client.getBlock({ blockNumber: block })).timestamp) * 1000)),
+    blockTime,
+    txTime: (hash) => remember(txs, hash, async () => blockTime((await client.getTransactionReceipt({ hash })).blockNumber)),
+    async challengeSettledTx(code, afterTx) {
+      if (!challenges) return null;
+      const from = (await client.getTransactionReceipt({ hash: afterTx })).blockNumber;
+      const latest = await client.getBlockNumber();
+      for (let start = from; start <= latest && start < from + SETTLE_SEARCH_BLOCKS; start += LOG_RANGE) {
+        const toBlock = start + LOG_RANGE - 1n < latest ? start + LOG_RANGE - 1n : latest;
+        const logs = await client.getLogs({ address: challenges, event: SETTLED, args: { code }, fromBlock: start, toBlock });
+        if (logs[0]) return logs[0].transactionHash;
+      }
+      return null;
+    },
     roundUpdatedAt: (asset, roundId) =>
       remember(rounds, `${asset}:${roundId}`, async () => {
         const feed = ASSETS.find((a) => a.id === asset)!.feed;
