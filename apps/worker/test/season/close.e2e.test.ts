@@ -20,7 +20,7 @@ import { createSystemSender } from "../../src/system/sender";
 import { challengeWinner, createChallengeChain } from "../../src/season/challenges";
 import { createTrustRegistryChain } from "../../src/trust/registry";
 import { scoreProof } from "../../src/trust/scores";
-import { stringToHex, zeroHash, type Hex } from "viem";
+import { keccak256, stringToHex, toHex, zeroHash, type Hex } from "viem";
 import { createTestDb, type TestDb } from "../indexer/helpers/db";
 import { ACCOUNTS, startFork, type Fork } from "../indexer/helpers/fork";
 import { drain, memoryLog } from "../indexer/helpers/world";
@@ -35,6 +35,7 @@ describe.skipIf(!fork)("season close on an Anvil fork", () => {
   let closeDeps: CloseDeps;
   let indexer: Indexer;
   let uploads: Map<string, string>;
+  let llm: FakeLlmClient;
   let chainNow: Date;
   let day: number;
   const warnings: string[] = [];
@@ -68,7 +69,7 @@ describe.skipIf(!fork)("season close on an Anvil fork", () => {
     await f.send(committer, "SeasonLedger", "openSeason", [0, BigInt(at(0, "00:00").getTime() / 1000), BigInt(at(0, "21:30").getTime() / 1000)]);
 
     const cfg = loadWorkerConfig({});
-    const llm = new FakeLlmClient((req) => {
+    llm = new FakeLlmClient((req) => {
       const body = { actions: [{ asset: "BTC", action: "BUY", pct: 10 }], reason: "A little more BTC.", reason_tag: "trend_up", roast: "" };
       return req.schemaName.endsWith("daily_call") ? { ...body, daily_call: { btc_up: true, why: "Up" } } : body;
     });
@@ -100,10 +101,29 @@ describe.skipIf(!fork)("season close on an Anvil fork", () => {
     const { rows: created } = await db.query<{ code: Hex }>("select code from challenges");
     await f.relay(bob, "Challenges", "accept", [created[0]!.code, 3n]);
     await f.relay(alice, "Challenges", "create", [1n, 0]);
-    for (const hhmm of ["09:00", "13:00", "21:00"]) {
+    const slot = async (hhmm: string) => {
       await fresh(at(0, hhmm));
       await runSlot(deps, { slot: await ensureScheduledSlot(deps.db, chainNow), attempt: 0, signal });
-    }
+    };
+    await slot("09:00");
+    await slot("13:00");
+
+    // #51: Alice corrects her 09:00 call. The app's pending row holds the note; the indexer confirms it.
+    const { rows: nine } = await db.query<{ id: string }>(
+      "select d.id::text as id from decisions d join slots s on s.id = d.slot_id where d.bot_id = 1 and s.slot_time = $1",
+      [at(0, "09:00").toISOString()],
+    );
+    const note = "stop going all in";
+    const noteHash = keccak256(toHex(note));
+    await db.query(
+      "insert into corrections (bot_id, decision_id, user_wallet, chip, note, note_hash) values (1, $1, $2, 'too risky', $3, decode($4, 'hex'))",
+      [nine[0]!.id, alice.address.toLowerCase(), note, noteHash.slice(2)],
+    );
+    const decisionId = `0x${"0".repeat(32)}${nine[0]!.id.replaceAll("-", "")}` as Hex;
+    await f.relay(alice, "SeasonLedger", "recordCorrection", [1n, decisionId, noteHash, 0]);
+    await index();
+
+    await slot("21:00");
     await index();
 
     uploads = new Map();
@@ -161,6 +181,18 @@ describe.skipIf(!fork)("season close on an Anvil fork", () => {
     const { rows } = await db.query<{ n: number }>("select count(*)::int as n from trust_scores where season_id = 0");
     expect(rows[0]!.n).toBe(3);
   }, 120_000);
+
+  it("the 21:00 decision read the correction Alice made on-chain at 13:00", async () => {
+    const asked = llm.calls.map((c) => c.input as { slot: string; bot: { name: string }; recent_corrections: { chip: string; note: string }[] });
+    const { rows: named } = await db.query<{ name: string }>("select name from bots where id = 1");
+    const own = asked.filter((input) => input.bot.name === named[0]!.name);
+    expect(own.length).toBeGreaterThanOrEqual(3); // debut, 09:00, 13:00, 21:00
+    expect(own.at(-1)!.recent_corrections).toEqual([{ chip: "too risky", note: "stop going all in" }]);
+    // The ones before it had nothing to read.
+    expect(own.slice(0, -1).every((input) => input.recent_corrections.length === 0)).toBe(true);
+    const { rows } = await db.query<{ tx: string | null }>("select tx_hash as tx from corrections");
+    expect(rows).toEqual([{ tx: expect.stringMatching(/^0x/) }]);
+  });
 
   it("writes results with the battle rank against the house bot", async () => {
     const { rows } = await db.query<{ bot_id: string; battle_rank: number | null; trades: number }>(
