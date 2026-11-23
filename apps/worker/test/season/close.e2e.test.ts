@@ -19,6 +19,7 @@ import { runSlot } from "../../src/slot/run";
 import { createSystemSender } from "../../src/system/sender";
 import { challengeWinner, createChallengeChain } from "../../src/season/challenges";
 import { createTrustRegistryChain } from "../../src/trust/registry";
+import { verifyTrade } from "../../src/mcp/verify-trade";
 import { scoreProof } from "../../src/trust/scores";
 import { keccak256, stringToHex, toHex, zeroHash, type Hex } from "viem";
 import { createTestDb, type TestDb } from "../indexer/helpers/db";
@@ -254,6 +255,19 @@ describe.skipIf(!fork)("season close on an Anvil fork", () => {
     expect(await closeSeasons(closeDeps, signal)).toEqual([]);
     expect(uploads.size).toBe(0);
   }, 120_000);
+
+  it("verify_trade (#64) reads a trade back from the chain and matches its oracle round", async () => {
+    const { rows } = await db.query<{ tx: Hex; bot: string }>(
+      "select tx_hash as tx, bot_id::text as bot from trades where tx_hash is not null order by block_number, log_index limit 1",
+    );
+    const check = await verifyTrade(f.client, f.addresses.PaperLedger, rows[0]!.tx);
+    expect(check).toMatchObject({ valid: true, matches_oracle: true });
+    expect(check.trades.some((t) => t.bot_id === rows[0]!.bot && t.oracle_price_e8 === t.price_e8)).toBe(true);
+    // A tx without trades (the season close), and one that doesn't exist.
+    const { rows: closed } = await db.query<{ tx: Hex }>("select root_tx as tx from seasons where id = 0");
+    expect(await verifyTrade(f.client, f.addresses.PaperLedger, closed[0]!.tx)).toMatchObject({ valid: false, trades: [] });
+    expect((await verifyTrade(f.client, f.addresses.PaperLedger, `0x${"12".repeat(32)}`)).valid).toBe(false);
+  }, 60_000);
 
   it("refuses to close when the public file isn't what was uploaded", async () => {
     await db.query(
