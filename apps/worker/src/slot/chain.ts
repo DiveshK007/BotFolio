@@ -31,6 +31,8 @@ export interface RunnerChain {
   nextBotId(): Promise<bigint>;
   startCashE8(): Promise<bigint>;
   orderUsed(orderId: Hex): Promise<boolean>;
+  /** The latest block's timestamp: what the contracts compare deadlines with. */
+  chainSeconds(): Promise<number>;
   executeBatch(orders: readonly LedgerOrder[]): Promise<Hex>;
 }
 
@@ -91,6 +93,10 @@ export function createRunnerChain(opts: {
 
     async orderUsed(orderId) {
       return (await readLedger("usedOrder", [orderId])) as boolean;
+    },
+
+    async chainSeconds() {
+      return Number((await client.getBlock({ blockTag: "latest" })).timestamp);
     },
 
     async executeBatch(orders) {

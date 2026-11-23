@@ -14,6 +14,7 @@ import { createRunnerChain } from "./chain";
 import { DebutWatcher } from "./debut";
 import type { RunnerDeps } from "./deps";
 import { runSlot } from "./run";
+import { sweepBigMoves } from "../big-moves/sweep";
 
 interface RunnerJobsOptions {
   db: Db;
@@ -54,7 +55,8 @@ export function runnerJobs({ db, env, cfg, client, health, log }: RunnerJobsOpti
     }
   }
   if (problems.length > 0 || !runner || !llm) {
-    return { handlers: {}, unavailable: { slot: `needs ${problems.join(", ")}` } };
+    const why = `needs ${problems.join(", ")}`;
+    return { handlers: {}, unavailable: { slot: why, big_move_sweep: why } };
   }
 
   const sender = createSystemSender({ rpcUrls: cfg.rpcUrls, account: runner });
@@ -74,7 +76,10 @@ export function runnerJobs({ db, env, cfg, client, health, log }: RunnerJobsOpti
   };
   return {
     unavailable: {},
-    handlers: { slot: (context) => runSlot(deps, context) },
+    handlers: {
+      slot: (context) => runSlot(deps, context),
+      big_move_sweep: async ({ signal }) => void (await sweepBigMoves(deps, signal)),
+    },
     service: new DebutWatcher(deps),
   };
 }
