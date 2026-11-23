@@ -1,3 +1,4 @@
+import { createLlmClient } from "@botfolio/llm";
 import { loadWorkerConfig } from "./config";
 import { createQiePublicClient } from "./chain";
 import { committerSender, dailyCallJobs } from "./daily-call";
@@ -30,10 +31,20 @@ async function main(): Promise<void> {
   const stopOracle = startOracleMonitor(client, cfg.feeds, health, cfg.oracleRefreshMs);
   const indexer = startIndexer({ rpcUrls: cfg.rpcUrls });
   const committer = committerSender(process.env, cfg.rpcUrls);
+  // For v2 proposals at season close. Without a working provider every bot gets the deterministic fallback.
+  let v2Llm: ReturnType<typeof createLlmClient> | null = null;
+  if (cfg.llm.provider !== "fake") {
+    try {
+      v2Llm = createLlmClient({ env: process.env });
+    } catch {
+      consoleLog("v2.fallback_only", { env: "LLM_PROVIDER key" });
+    }
+  }
+  const v2 = { llm: v2Llm, llmConfig: cfg.llm, resting: () => health.budget() === "resting" };
   const scheduler = startScheduler({
     health,
     jobs: [
-      ({ db, log }) => seasonJobs({ db, log, env: process.env, client, rpcUrls: cfg.rpcUrls, committer }),
+      ({ db, log }) => seasonJobs({ db, log, env: process.env, client, rpcUrls: cfg.rpcUrls, committer, v2 }),
       ({ db, log }) => dailyCallJobs({ db, log, env: process.env, client, feeds: cfg.feeds, committer }),
       ({ db, log }) => runnerJobs({ db, log, env: process.env, cfg, client, health }),
     ],

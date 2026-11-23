@@ -12,6 +12,7 @@ import { TARGET_ABIS } from "../relay/abis";
 import type { Abi, Address } from "viem";
 import { createChallengeChain } from "../season/challenges";
 import { createTrustRegistryChain } from "../trust/registry";
+import { proposeVersions, type V2Deps } from "../v2/job";
 import { createSeasonChain } from "./ledger";
 
 interface SeasonJobsOptions {
@@ -22,6 +23,8 @@ interface SeasonJobsOptions {
   log: Log;
   /** The committer wallet's shared sender. Defaults to one of its own. */
   committer?: SystemSender | null;
+  /** v2 proposals after each close (#57). Without an LLM they come from the deterministic fallback. */
+  v2?: Pick<V2Deps, "llm" | "llmConfig" | "resting">;
   now?: () => Date;
 }
 
@@ -29,7 +32,7 @@ const CLOSE_ATTEMPTS = 4;
 const CLOSE_RETRY_MS = 5 * 60_000;
 
 /** The two §6.1 season checks, or why they can't run (variable names only, never values). */
-export function seasonJobs({ db, env, client, rpcUrls, log, committer, now = () => new Date() }: SeasonJobsOptions): JobSet {
+export function seasonJobs({ db, env, client, rpcUrls, log, committer, v2, now = () => new Date() }: SeasonJobsOptions): JobSet {
   const missing: string[] = [];
   const address = env.SEASON_LEDGER_ADDRESS?.trim().toLowerCase() ?? "";
   if (!isAddress(address) || address === zeroAddress) missing.push("SEASON_LEDGER_ADDRESS");
@@ -90,19 +93,29 @@ export function seasonJobs({ db, env, client, rpcUrls, log, committer, now = () 
       },
       season_close: async ({ scheduledFor, signal }) => {
         await markSeasonsClosing({ db, chain, now: at(scheduledFor), signal, log });
+        let closeError: unknown = null;
         if (!closing) {
           log.warn("season.close_not_configured", { needs: closingMissing });
-          return;
-        }
-        // The last batch's trades need the indexer (10 s loop, 2 confirmations): retry a few times before giving up.
-        for (let attempt = 1; ; attempt++) {
-          try {
-            await closeSeasons({ ...closing, db, log, now }, signal);
-            return;
-          } catch (error) {
-            if (attempt >= CLOSE_ATTEMPTS || signal.aborted) throw error;
-            await new Promise((resolve) => setTimeout(resolve, CLOSE_RETRY_MS));
+        } else {
+          // The last batch's trades need the indexer (10 s loop, 2 confirmations): retry a few times before giving up.
+          for (let attempt = 1; ; attempt++) {
+            try {
+              await closeSeasons({ ...closing, db, log, now }, signal);
+              break;
+            } catch (error) {
+              if (attempt >= CLOSE_ATTEMPTS || signal.aborted) {
+                closeError = error;
+                break;
+              }
+              await new Promise((resolve) => setTimeout(resolve, CLOSE_RETRY_MS));
+            }
           }
+        }
+        try {
+          // From the results the close saved, even while its on-chain step is still failing.
+          if (v2) await proposeVersions({ ...v2, db, log, now }, signal);
+        } finally {
+          if (closeError) throw closeError;
         }
       },
     },
