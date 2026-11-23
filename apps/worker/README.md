@@ -82,6 +82,7 @@ Take `reason` and `roast` from `GateResult.output`, never from the raw model out
 ### Season close (SPEC §2.3, `src/season`)
 - At 21:30 IST a season past its end becomes `closing`. The close then writes `season_results` (battle rank against the house bots), builds `season-<n>.jsonl`, uploads it, reads the public copy back, and sends `closeSeason` with its root. The indexer makes the row `closed`.
 - Needs `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `PAPER_LEDGER_ADDRESS`, `INDEXER_START_BLOCK` and the committer key, plus a **public** Storage bucket (`REPLAY_BUCKET`, default `replay`).
+- After `closeSeason`, each accepted challenge of the season is settled (`Challenges.settle`) and each open one expired, so its slot frees up. The winner is the higher season return, then the lower max drawdown; on an exact tie, the bot created first. Anyone can recompute it from `site_season_results`. A closed season that still has open or accepted challenges is retried at the next 21:30. Also needs `CHALLENGES_ADDRESS`.
 - Check any season with `pnpm replay <file or URL>`.
 
 ### Trust scores (SPEC §7, `src/trust`)
