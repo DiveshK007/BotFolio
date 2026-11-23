@@ -4,7 +4,7 @@ import type { Db } from "../scheduler/db";
 import type { Log } from "../scheduler/log";
 import type { JobSet } from "../scheduler/scheduler";
 import { systemAccount } from "../system/key";
-import { createSystemSender } from "../system/sender";
+import { createSystemSender, type SystemSender } from "../system/sender";
 import { markSeasonsClosing, openDueSeasons } from "./checks";
 import { createSeasonChain } from "./ledger";
 
@@ -14,11 +14,13 @@ interface SeasonJobsOptions {
   client: PublicClient;
   rpcUrls: readonly string[];
   log: Log;
+  /** The committer wallet's shared sender. Defaults to one of its own. */
+  committer?: SystemSender | null;
   now?: () => Date;
 }
 
 /** The two §6.1 season checks, or why they can't run (variable names only, never values). */
-export function seasonJobs({ db, env, client, rpcUrls, log, now = () => new Date() }: SeasonJobsOptions): JobSet {
+export function seasonJobs({ db, env, client, rpcUrls, log, committer, now = () => new Date() }: SeasonJobsOptions): JobSet {
   const missing: string[] = [];
   const address = env.SEASON_LEDGER_ADDRESS?.trim().toLowerCase() ?? "";
   if (!isAddress(address) || address === zeroAddress) missing.push("SEASON_LEDGER_ADDRESS");
@@ -29,7 +31,7 @@ export function seasonJobs({ db, env, client, rpcUrls, log, now = () => new Date
     return { handlers: {}, unavailable: { season_open: why, season_close: why } };
   }
 
-  const chain = createSeasonChain({ client, address, sender: createSystemSender({ rpcUrls, account }) });
+  const chain = createSeasonChain({ client, address, sender: committer ?? createSystemSender({ rpcUrls, account }) });
   // A cron can fire a few ms before its minute, and a boundary is exactly on the minute.
   const at = (scheduledFor: Date) => new Date(Math.max(scheduledFor.getTime(), now().getTime()));
 

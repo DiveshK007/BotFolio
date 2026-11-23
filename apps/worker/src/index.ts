@@ -1,5 +1,6 @@
 import { loadWorkerConfig } from "./config";
 import { createQiePublicClient } from "./chain";
+import { committerSender, dailyCallJobs } from "./daily-call";
 import { HealthState, startOracleMonitor } from "./health";
 import { startIndexer } from "./indexer";
 import { startScheduler } from "./scheduler";
@@ -23,10 +24,12 @@ async function main(): Promise<void> {
   const health = new HealthState({ provider: cfg.llm.provider, capUsd: cfg.llm.monthlyBudgetUsd });
   const stopOracle = startOracleMonitor(client, cfg.feeds, health, cfg.oracleRefreshMs);
   const indexer = startIndexer({ rpcUrls: cfg.rpcUrls });
+  const committer = committerSender(process.env, cfg.rpcUrls);
   const scheduler = startScheduler({
     health,
     jobs: [
-      ({ db, log }) => seasonJobs({ db, log, env: process.env, client, rpcUrls: cfg.rpcUrls }),
+      ({ db, log }) => seasonJobs({ db, log, env: process.env, client, rpcUrls: cfg.rpcUrls, committer }),
+      ({ db, log }) => dailyCallJobs({ db, log, env: process.env, client, feeds: cfg.feeds, committer }),
       ({ db, log }) => runnerJobs({ db, log, env: process.env, cfg, client, health }),
     ],
   });
