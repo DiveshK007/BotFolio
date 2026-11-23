@@ -2,6 +2,7 @@ import type { Queryable } from "../scheduler/db";
 import type { Log } from "../scheduler/log";
 import type { JobSet } from "../scheduler/scheduler";
 import type { CardChain } from "./build";
+import { sweepCloseCards } from "./close-cards";
 import { makeRecaps } from "./recap";
 import { sweepSlotCards } from "./slot-cards";
 
@@ -22,6 +23,7 @@ export function cardJobs({ db, log, chain, now = () => new Date() }: CardJobOpti
     handlers: {
       recap: async ({ signal }) => {
         await sweepSlotCards(deps);
+        await sweepCloseCards(deps);
         await makeRecaps(deps, signal);
       },
     },
@@ -37,7 +39,9 @@ export function startCardSweeper(opts: { db: Queryable; chain: CardChain; log: L
   let running: Promise<void> | null = null;
   const timer = setInterval(() => {
     if (running) return;
-    running = sweepSlotCards({ db, chain, log, now })
+    const deps = { db, chain, log, now };
+    running = sweepSlotCards(deps)
+      .then(() => sweepCloseCards(deps))
       .then(() => undefined)
       .catch((error: unknown) => log.warn("cards.sweep_failed", { cause: error instanceof Error ? error.name : "error" }))
       .finally(() => {
