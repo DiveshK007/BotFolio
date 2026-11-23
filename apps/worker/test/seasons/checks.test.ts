@@ -24,6 +24,8 @@ beforeEach(async () => {
     async nextSeason() {
       return this.lagging ? 0 : this.opened.length;
     },
+    isClosed: async () => false,
+    closeSeason: async () => {},
     async openSeason(n, startsAt, endsAt) {
       if (n !== this.opened.length) throw new Error("BadSeason"); // as SeasonLedger does
       this.opened.push({ n, start: startsAt.toISOString(), end: endsAt.toISOString() });

@@ -78,3 +78,8 @@ Take `reason` and `roast` from `GateResult.output`, never from the raw model out
 - The debut watcher polls `nextBotId` every 2 s and writes a pending `bots` row until the indexer confirms it.
 - A bot's name and text come from `users.flags.personas[personaHash]` = `{name, emoji, persona, rules}`, if the owner has that draft.
 - House bots are matched by name: `Steady Sam`, `Gold Granny`, `Momentum Max` (the seed's, #134).
+
+### Season close (SPEC §2.3, `src/season`)
+- At 21:30 IST a season past its end becomes `closing`. The close then writes `season_results` (battle rank against the house bots), builds `season-<n>.jsonl`, uploads it, reads the public copy back, and sends `closeSeason` with its root. The indexer makes the row `closed`.
+- Needs `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `PAPER_LEDGER_ADDRESS`, `INDEXER_START_BLOCK` and the committer key, plus a **public** Storage bucket (`REPLAY_BUCKET`, default `replay`).
+- Check any season with `pnpm replay <file or URL>`.
