@@ -20,6 +20,8 @@ import { databaseConfig, openDb } from "./relay/db";
 import { setUpRelayer } from "./relay/setup";
 import { trustRoutes } from "./trust/route";
 import { leaderboardRoutes } from "./season/route";
+import { mcpRoutes } from "./mcp/mcp";
+import { verifyTrade } from "./mcp/verify-trade";
 import { TARGET_ABIS } from "./relay/abis";
 import { isAddress, type Address } from "viem";
 
@@ -84,6 +86,11 @@ async function main(): Promise<void> {
     ...personaRoutes({ origins, auth: auth.authenticator, clientIp, log: consoleLog, service: persona.service }),
     ...trustRoutes({ db: reads, origins, clientIp }),
     ...leaderboardRoutes({ source: boards, origins, clientIp }),
+    ...mcpRoutes({
+      source: boards && { ...boards, verifyTrade: (tx) => verifyTrade(client, paperLedger as Address, tx) },
+      clientIp,
+      log: consoleLog,
+    }),
   };
   const server = createWorkerServer({ health, routes });
   server.listen(cfg.port, () => {
