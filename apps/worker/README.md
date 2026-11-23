@@ -85,6 +85,16 @@ Take `reason` and `roast` from `GateResult.output`, never from the raw model out
 - After `closeSeason`, each accepted challenge of the season is settled (`Challenges.settle`) and each open one expired, so its slot frees up. The winner is the higher season return, then the lower max drawdown; on an exact tie, the bot created first. Anyone can recompute it from `site_season_results`. A closed season that still has open or accepted challenges is retried at the next 21:30. Also needs `CHALLENGES_ADDRESS`.
 - Check any season with `pnpm replay <file or URL>`.
 
+### v2 proposals (SPEC §2.3, `src/v2`)
+- After each close (the same 21:30 job), every active raised bot with a season result gets a proposed next version. The input is its current rules and limits, the season's results and its indexed corrections from the season.
+- The model (`LLM_MODEL_V2`) answers the §6.3 v2 schema. Changes citing a correction that isn't this bot's this season are dropped; banned or URL text is cleaned; limits are clamped to 10–50 % / 1–8.
+- If the model fails, changes nothing, or the budget is resting, a deterministic fallback moves one slider one step:
+  - direction: the chip cited most, else careful after a loss or a drawdown of 10 % or more, else bolder;
+  - step: max per coin by 5 points, or trades per day by 1 at its bound.
+  - So every bot gets a diff. A worker without an LLM key only makes fallbacks.
+- A proposal is a `bot_versions` row with `committed_tx` null and `source = 'season_v2'`. `config_json` is the whole proposal, and `config_hash = keccak256(canonical config_json)`: what the owner signs in `commitVersion(botId, version, configHash, maxPerCoinBps, maxTradesPerDay)`.
+- The runner only uses committed versions, so a proposal changes nothing until approved. `approve_by` is 08:30 IST the next morning; after that the app should stop offering it. The next season's proposal replaces an unapproved one, and a committed version is never overwritten.
+
 ### Leaderboards (SPEC §8, `src/season/leaderboards.ts`)
 - `GET /leaderboards?season=<n>` returns Top Returns, Best Risk-Adjusted (Sortino), Most Trusted and Coach vs Bot, ranked with §8's eligibility and tiebreaks. The last tiebreak on every board is the bot created first.
 - A closed season reads what its close stored (`season_results`, `trust_scores`). An open one is live: returns and Sortino come from the marks so far, and Most Trusted from the latest scored season (`trustSeason`).
