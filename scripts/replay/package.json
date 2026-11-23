@@ -1,0 +1,26 @@
+{
+  "name": "@botfolio/replay",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "bin": { "botfolio-replay": "dist/cli.js" },
+  "scripts": {
+    "build": "tsup",
+    "start": "node dist/cli.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@botfolio/shared": "workspace:*",
+    "@botfolio/worker": "workspace:*",
+    "@types/node": "^20.16.0",
+    "tsup": "^9.0.0",
+    "typescript": "npm:@typescript/typescript6@6.0.2",
+    "typescript-7": "npm:typescript@7.0.2",
+    "vitest": "4.1.12"
+  }
+}

@@ -27,3 +27,5 @@ export { buildDecisionInput, type DecisionContext, type DecisionInput } from "./
 export { decisionPrompt } from "./decision/prompt";
 export { DECISION_OUTPUT_SCHEMA, DECISION_SCHEMA, type DecisionOutput } from "./decision/schema";
 export { orderIdOf, SKIP_REASONS, type ApprovedOrder, type LedgerOrder, type SkipReason } from "./interfaces";
+export { merkleProof, merkleRoot, verifyMerkleProof } from "./season/merkle";
+export { verifyOffline, verifyOnChain, type ChainResult, type Finding, type OfflineResult } from "./season/verify";
