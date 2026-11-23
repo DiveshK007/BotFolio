@@ -10,6 +10,7 @@ import { closeSeasons } from "../season/close";
 import { supabaseStore } from "../season/storage";
 import { TARGET_ABIS } from "../relay/abis";
 import type { Abi, Address } from "viem";
+import { createTrustRegistryChain } from "../trust/registry";
 import { createSeasonChain } from "./ledger";
 
 interface SeasonJobsOptions {
@@ -44,12 +45,16 @@ export function seasonJobs({ db, env, client, rpcUrls, log, committer, now = () 
   if (!isAddress(ledger) || ledger === zeroAddress) closingMissing.push("PAPER_LEDGER_ADDRESS");
   const fromBlock = env.INDEXER_START_BLOCK?.trim() ?? "";
   if (!/^\d+$/.test(fromBlock)) closingMissing.push("INDEXER_START_BLOCK");
+  const trustRegistry = env.TRUST_REGISTRY_ADDRESS?.trim().toLowerCase() ?? "";
+  if (!isAddress(trustRegistry) || trustRegistry === zeroAddress) closingMissing.push("TRUST_REGISTRY_ADDRESS");
   const supabaseUrl = env.SUPABASE_URL?.trim() ?? "";
   if (!/^https:\/\//.test(supabaseUrl)) closingMissing.push("SUPABASE_URL");
   const serviceKey = secret(env, "SUPABASE_SERVICE_ROLE_KEY", 20);
   if (!serviceKey) closingMissing.push("SUPABASE_SERVICE_ROLE_KEY");
 
-  const chain = createSeasonChain({ client, address, sender: committer ?? createSystemSender({ rpcUrls, account }) });
+  const sender = committer ?? createSystemSender({ rpcUrls, account });
+  const chain = createSeasonChain({ client, address, sender });
+  const trust = createTrustRegistryChain({ client, address: trustRegistry as Address, sender });
   const closing =
     closingMissing.length === 0 && serviceKey
       ? {
@@ -58,6 +63,9 @@ export function seasonJobs({ db, env, client, rpcUrls, log, committer, now = () 
             closeSeason: (n: number, root: `0x${string}`, uri: string) => chain.closeSeason(n, root, uri),
             startCashE8: async () =>
               (await client.readContract({ address: ledger as Address, abi: TARGET_ABIS.PaperLedger as Abi, functionName: "START_CASH_E8" })) as bigint,
+            scoresRoot: (n: number) => trust.scoresRoot(n),
+            rulesPublished: (version: `0x${string}`) => trust.rulesPublished(version),
+            commitScores: (n: number, version: `0x${string}`, root: `0x${string}`, uri: string) => trust.commitScores(n, version, root, uri),
           },
           store: supabaseStore({ url: supabaseUrl, serviceKey, bucket: env.REPLAY_BUCKET?.trim() || "replay" }),
           contracts: { chainId: 1990, seasonLedger: address, paperLedger: ledger as Address, fromBlock },

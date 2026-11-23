@@ -83,3 +83,9 @@ Take `reason` and `roast` from `GateResult.output`, never from the raw model out
 - At 21:30 IST a season past its end becomes `closing`. The close then writes `season_results` (battle rank against the house bots), builds `season-<n>.jsonl`, uploads it, reads the public copy back, and sends `closeSeason` with its root. The indexer makes the row `closed`.
 - Needs `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `PAPER_LEDGER_ADDRESS`, `INDEXER_START_BLOCK` and the committer key, plus a **public** Storage bucket (`REPLAY_BUCKET`, default `replay`).
 - Check any season with `pnpm replay <file or URL>`.
+
+### Trust scores (SPEC §7, `src/trust`)
+- At the same close, every bot with a season result gets a `trust_scores` row: F1 to F4 over its whole history up to the season's end, the total, `provisional` and the leaf. The rules are in [`docs/trust-rules.md`](../../docs/trust-rules.md).
+- The close uploads `season-<n>-scores.json` (every leaf in botId order), reads it back, and sends `commitScores` with its root and the season's `trust_rules_version`. Also needs `TRUST_REGISTRY_ADDRESS`.
+- If that rules version isn't published on-chain yet, the data root still goes out. The scores wait, and the next 21:30 run commits them for any closed season without a `scores_root`.
+- `GET /trust/proof?season=<n>&bot=<botId>` returns the score and the Merkle proof for `TrustScoreRegistry.verifyScore`. It is public (120 requests a minute per address) and needs `DATABASE_URL`.

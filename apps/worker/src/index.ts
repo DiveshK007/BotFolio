@@ -15,7 +15,9 @@ import { consoleLog } from "./auth/log";
 import { authRoutes } from "./auth/routes";
 import { setUpAuth } from "./auth/setup";
 import { relayRoutes } from "./relay/route";
+import { databaseConfig, openDb } from "./relay/db";
 import { setUpRelayer } from "./relay/setup";
+import { trustRoutes } from "./trust/route";
 
 /** Render web service entry point (SPEC §10). Keys stay in Render env; nothing secret is logged. */
 async function main(): Promise<void> {
@@ -43,10 +45,15 @@ async function main(): Promise<void> {
   relayer.start();
   const persona = setUpPersona({ env: process.env, cfg, health, log: consoleLog });
   if (!persona.service) consoleLog("persona.disabled", { env: persona.problems.join(",") });
+  // Small read-only pool for the public proof route.
+  const database = databaseConfig(process.env.DATABASE_URL);
+  const reads = database ? openDb({ ...database, max: 2 }, consoleLog) : null;
+  if (!reads) consoleLog("trust.proofs_disabled", { env: "DATABASE_URL" });
   const routes = {
     ...authRoutes({ origins, clientIp, log: consoleLog, siwe: auth.siwe }),
     ...relayRoutes({ relay: relayer.relay, origins, clientIp }),
     ...personaRoutes({ origins, auth: auth.authenticator, clientIp, log: consoleLog, service: persona.service }),
+    ...trustRoutes({ db: reads, origins, clientIp }),
   };
   const server = createWorkerServer({ health, routes });
   server.listen(cfg.port, () => {
@@ -58,7 +65,7 @@ async function main(): Promise<void> {
     console.log(`[worker] ${signal} — shutting down`);
     stopOracle();
     // Let a broadcast and an indexer batch in progress finish, then close.
-    void Promise.allSettled([relayer.stop(), indexer?.stop(), scheduler?.stop(), persona.stop()]).then(() => server.close(() => process.exit(0)));
+    void Promise.allSettled([relayer.stop(), indexer?.stop(), scheduler?.stop(), persona.stop(), reads?.close()]).then(() => server.close(() => process.exit(0)));
     setTimeout(() => process.exit(1), 10_000).unref();
   };
   process.on("SIGTERM", () => shutdown("SIGTERM"));

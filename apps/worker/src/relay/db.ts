@@ -19,7 +19,7 @@ export function databaseConfig(raw: string | undefined): pg.PoolConfig | null {
 
 /** UNVERIFIED against Supabase's pooler. Transaction mode is fine: the locks here last one transaction. */
 export function openDb(config: pg.PoolConfig, log: Log): Db {
-  const pool = new pg.Pool({ ...config, max: 10, connectionTimeoutMillis: 5_000, query_timeout: 5_000 });
+  const pool = new pg.Pool({ ...config, max: config.max ?? 10, connectionTimeoutMillis: 5_000, query_timeout: 5_000 });
   // An idle client's error would otherwise crash the whole worker.
   pool.on("error", (error) => log("db.idle_client_error", { cause: errorLabel(error) }));
 
