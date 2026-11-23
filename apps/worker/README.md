@@ -85,6 +85,13 @@ Take `reason` and `roast` from `GateResult.output`, never from the raw model out
 - After `closeSeason`, each accepted challenge of the season is settled (`Challenges.settle`) and each open one expired, so its slot frees up. The winner is the higher season return, then the lower max drawdown; on an exact tie, the bot created first. Anyone can recompute it from `site_season_results`. A closed season that still has open or accepted challenges is retried at the next 21:30. Also needs `CHALLENGES_ADDRESS`.
 - Check any season with `pnpm replay <file or URL>`.
 
+### Leaderboards (SPEC §8, `src/season/leaderboards.ts`)
+- `GET /leaderboards?season=<n>` returns Top Returns, Best Risk-Adjusted (Sortino), Most Trusted and Coach vs Bot, ranked with §8's eligibility and tiebreaks. The last tiebreak on every board is the bot created first.
+- A closed season reads what its close stored (`season_results`, `trust_scores`). An open one is live: returns and Sortino come from the marks so far, and Most Trusted from the latest scored season (`trustSeason`).
+- House bots are listed with `isHouse` but get `rank: null`, so #1 is always a human-raised bot.
+- Coach vs Bot counts the owner's Daily Calls that have a result in the season's IST days. It needs 2 in a sprint season and 4 in a weekly one, and orders by win rate, then right calls.
+- Public, 120 requests a minute per address, cached for a minute per season. Needs `DATABASE_URL` and `PAPER_LEDGER_ADDRESS`.
+
 ### Trust scores (SPEC §7, `src/trust`)
 - At the same close, every bot with a season result gets a `trust_scores` row: F1 to F4 over its whole history up to the season's end, the total, `provisional` and the leaf. The rules are in [`docs/trust-rules.md`](../../docs/trust-rules.md).
 - The close uploads `season-<n>-scores.json` (every leaf in botId order), reads it back, and sends `commitScores` with its root and the season's `trust_rules_version`. Also needs `TRUST_REGISTRY_ADDRESS`.
