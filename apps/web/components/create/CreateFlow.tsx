@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Hex } from "viem";
 import { ExplorerLink } from "@/components/ui/ExplorerLink";
 import { getCreateConfig } from "@/lib/config";
@@ -41,6 +41,10 @@ const STEP_TEXT: Record<LaunchStep, string> = {
 
 const SLOW_PERSONA_MS = 5_000; // SPEC §2.1 target for the persona call
 
+// sessionStorage is browser-only and nothing changes it while this screen is open.
+const noSubscribe = () => () => {};
+const noDraftOnServer = () => undefined;
+
 function PersonaLoading() {
   const [slow, setSlow] = useState(false);
   useEffect(() => {
@@ -61,8 +65,10 @@ function PersonaLoading() {
 export function CreateFlow() {
   const [config] = useState(getCreateConfig);
   const [wallet] = useState(getWallet);
-  // undefined until mounted (sessionStorage is browser-only), null when there's no usable sentence.
-  const [sentence, setSentence] = useState<string | null>();
+  // undefined on the server and while hydrating, null when there's no usable sentence.
+  const stored = useSyncExternalStore<string | undefined>(noSubscribe, readDraft, noDraftOnServer);
+  const check = stored === undefined ? undefined : checkSentence(stored); // storage is editable, so check again
+  const sentence = check === undefined ? undefined : check.ok ? check.value : null;
   const [session, setSession] = useState<WalletSession>();
   const [draft, setDraft] = useState<PersonaDraft>();
   const [limits, setLimits] = useState<BotLimits>();
@@ -70,11 +76,7 @@ export function CreateFlow() {
   const [error, setError] = useState<string | null>(null);
   const personaCall = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    const check = checkSentence(readDraft()); // storage is editable, so check again
-    setSentence(check.ok ? check.value : null);
-    return () => personaCall.current?.abort();
-  }, []);
+  useEffect(() => () => personaCall.current?.abort(), []);
 
   async function loadPersona(signedIn: WalletSession, text: string) {
     if (!config) return;

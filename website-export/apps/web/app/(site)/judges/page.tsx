@@ -1,0 +1,66 @@
+import Link from "next/link";
+import type { Metadata } from "next";
+import { CopyButton } from "@/components/site/chrome";
+import { JudgesTour } from "@/components/site/interactive";
+import { ActivityPanel, ContractsTable, LatestTrades } from "@/components/site/proof";
+import { Badge, Icon, Placeholder } from "@/components/site/ui";
+import { getActivity, getContracts, getLatestTrades } from "@/lib/site/data";
+
+export const metadata: Metadata = { title: "For judges: the 90-second tour", description: "What BotFolio is, live QIE mainnet proof, QIE components used, and user-signed traction." };
+export const revalidate = 60;
+const SENTENCE = "Raise an AI trader in one sentence, coach it every season, and let QIE keep score.";
+
+// QIE components: flip `coming` to `verified` only after WS D confirms each in docs/qie-components.md (SPEC §0.6).
+const COMPS: [string, string, "verified" | "coming", string][] = [
+  ["QIE mainnet", "All 7 contracts live here (chain 1990). Chain facts checked Nov 19; contracts deploy ~Nov 22.", "verified", "CHAIN VERIFIED"],
+  ["QIE Oracles", "5 feeds read inside PaperLedger and DailyCall at trade time. Prices are never passed in.", "verified", "FEEDS VERIFIED"],
+  ["QIE Wallet connect", "Second login next to passkey. Same signed requests, still zero gas.", "coming", "COMING"],
+  ["QIE ID / .qie names", "Show name.qie instead of 0x… on bot pages, boards and cards.", "coming", "COMING"],
+  ["QIE Wallet MCP", "Server-side name lookups and reads for the proof page.", "coming", "COMING"],
+  ["QIE Pass", "Optional \"verified human\" badge on leaderboards. Never gates play. Needs partner access.", "coming", "COMING"],
+];
+
+export default async function Judges() {
+  const [trades, stats] = await Promise.all([getLatestTrades(), getActivity()]);
+  return (
+    <>
+      <JudgesTour />
+      <section className="tour-sec" id="t1"><div className="wrap grid g2" style={{ alignItems: "center" }}>
+        <div className="stack"><p className="kicker"><b>1</b>What it is</p><h2>Anyone raises an AI trader in one sentence, coaches it, and QIE keeps score.</h2>
+          <p className="lede">BotFolio, built for QIE Hackathon 3.0 (Mainnet Edition), AI + Autonomous Agents track. Bots paper-trade BTC, ETH, SOL, XRP and Gold with play money, 4 times a day.</p>
+          <p><b>What&apos;s new:</b> AI paper trading exists already. What doesn&apos;t: you coach your bot, and every version of its brain is committed on-chain, so the record shows how it learned from you.</p></div>
+        <div className="card" style={{ background: "var(--paper)" }}><p className="small muted" style={{ marginBottom: 8 }}>The hero moment <Badge kind="example">EXAMPLE</Badge></p><p style={{ font: "800 clamp(22px,2.6vw,30px)/1.15 var(--f-display)" }}>You said &quot;too risky&quot; 3× → max per coin 40% → 25%</p><p className="mono small muted" style={{ marginTop: 12 }}>config hash committed on QIE</p></div>
+      </div></section>
+      <section className="tour-sec" id="t2"><div className="wrap stack">
+        <p className="kicker"><b>2</b>Live mainnet proof</p><h2>Real contracts on QIE mainnet, deploying ~Nov 22</h2>
+        <p className="lede">The 7 contracts deploy and get verified around Nov 22. Until then, this panel says so rather than showing anything made up.</p>
+        <ContractsTable contracts={getContracts()} />
+        <LatestTrades trades={trades} />
+      </div></section>
+      <section className="tour-sec" id="t3"><div className="wrap stack">
+        <p className="kicker"><b>3</b>QIE pieces used, and where</p><h2>Oracles at the core. The rest labelled honestly.</h2>
+        <div className="comp-list">{COMPS.map(([n, w, b, l]) => <div className="comp" key={n}><h4>{n}</h4><Badge kind={b}>{l}</Badge><p className="w">{w}</p></div>)}</div>
+      </div></section>
+      <section className="tour-sec" id="t4"><div className="wrap stack">
+        <p className="kicker"><b>4</b>User-signed traction</p><h2>We count people by who signed, not by how many txs our bots sent</h2>
+        <p className="lede">User-signed means bots created, coaching corrections, v2 approvals, approved big moves, daily calls and challenges, counted by the signer&apos;s address. Runner and settlement txs are shown separately.</p>
+        <ActivityPanel stats={stats} />
+      </div></section>
+      <section className="tour-sec" id="t5"><div className="wrap stack">
+        <p className="kicker"><b>5</b>Why blockchain</p><h2>Because a screenshot proves nothing</h2>
+        <div className="grid g3">
+          <div className="card"><h4>Anyone can check</h4><p className="muted small">Verify on QIE on every card: tx, oracle round, version hash.</p></div>
+          <div className="card"><h4>Agents can read it</h4><p className="muted small">Public API plus a read-only BotFolio MCP server.</p></div>
+          <div className="card"><h4>It outlives us</h4><p className="muted small">History stays on QIE; the replay script recomputes it.</p></div>
+        </div>
+      </div></section>
+      <section className="tour-sec" id="t6"><div className="wrap stack">
+        <p className="kicker"><b>6</b>The one sentence to remember</p>
+        <p className="remember">{SENTENCE}</p>
+        <div className="row"><CopyButton text={SENTENCE} label="Copy the sentence" className="btn" />
+          <a className="btn ghost" href="https://github.com/DiveshK007/BotFolio" rel="noopener">Repo</a><Link className="btn ghost" href="/proof">Proof page</Link></div>
+        <div className="poster" style={{ maxWidth: 560 }}><div><div className="play"><Icon name="play" size={26} /></div><b>Demo video, 2 minutes</b><p className="small muted">Recorded on real Season 1 data, after Nov 27. <Placeholder>DEMO VIDEO URL</Placeholder></p></div></div>
+      </div></section>
+    </>
+  );
+}

@@ -1,0 +1,27 @@
+/* BotFolio design tokens. Light by default; dark via [data-theme=dark] on <html> (set by ThemeScript). */
+
+:root{
+  --paper:#FAFAF7;--surface:#FFFFFF;--surface-2:#F1F1EC;--ink:#14161C;--muted:#5A5F6B;--line:#E2E1DA;--line-2:#CFCEC5;
+  --accent:#2B50FF;--accent-ink:#2440E0;--on-accent:#FFFFFF;--accent-soft:#E7EBFF;
+  --sun:#FFC93C;--on-sun:#14161C;--sun-soft:#FFF3CF;
+  --up:#0B7A53;--down:#C23B25;--amber:#8A5A00;--amber-soft:#FFF1D6;--grey:#6B6F78;
+  --live:#0B7A53;--example:#8A5A00;--example-bg:#FFF1D6;--coming:#5B3FD0;--coming-bg:#EEE9FF;--verified:#2440E0;--verified-bg:#E7EBFF;
+  --night:#14161C;--on-night:#F4F5F8;--shadow:0 1px 0 rgba(20,22,28,.06),0 10px 26px rgba(20,22,28,.07);
+  --shadow-lg:0 2px 0 rgba(20,22,28,.08),0 22px 48px rgba(20,22,28,.12);
+  --r1:8px;--r2:14px;--r3:22px;
+  --f-display:var(--font-archivo,"Archivo"),ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --f-body:var(--font-inter,"Inter"),ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --f-mono:var(--font-mono,"JetBrains Mono"),ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --t1:160ms;--t2:280ms;--t3:420ms;--ease:cubic-bezier(.2,.8,.2,1);--ease-back:cubic-bezier(.34,1.56,.64,1);
+  color-scheme:light;
+}
+:root[data-theme=dark]{
+  --paper:#0D0F14;--surface:#171A22;--surface-2:#1E222C;--ink:#ECEEF3;--muted:#9AA0AD;--line:#2A2F3B;--line-2:#3A4050;
+  --accent:#8FA2FF;--accent-ink:#8FA2FF;--on-accent:#0D0F14;--accent-soft:#1E2547;
+  --sun:#FFC93C;--on-sun:#14161C;--sun-soft:#3A3016;
+  --up:#3DDC97;--down:#FF8A73;--amber:#FFC24D;--amber-soft:#3A2E12;--grey:#8E94A0;
+  --live:#3DDC97;--example:#FFC24D;--example-bg:#3A2E12;--coming:#C3B5FF;--coming-bg:#2A2347;--verified:#8FA2FF;--verified-bg:#1E2547;
+  --night:#05060A;--on-night:#F4F5F8;--shadow:0 1px 0 rgba(0,0,0,.4),0 10px 26px rgba(0,0,0,.35);
+  --shadow-lg:0 2px 0 rgba(0,0,0,.5),0 22px 48px rgba(0,0,0,.5);
+  color-scheme:dark;
+}
