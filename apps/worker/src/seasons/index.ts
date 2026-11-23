@@ -1,11 +1,15 @@
 import { isAddress, zeroAddress, type PublicClient } from "viem";
-import type { Env } from "../auth/env";
+import { secret, type Env } from "../auth/env";
 import type { Db } from "../scheduler/db";
 import type { Log } from "../scheduler/log";
 import type { JobSet } from "../scheduler/scheduler";
 import { systemAccount } from "../system/key";
 import { createSystemSender, type SystemSender } from "../system/sender";
 import { markSeasonsClosing, openDueSeasons } from "./checks";
+import { closeSeasons } from "../season/close";
+import { supabaseStore } from "../season/storage";
+import { TARGET_ABIS } from "../relay/abis";
+import type { Abi, Address } from "viem";
 import { createSeasonChain } from "./ledger";
 
 interface SeasonJobsOptions {
@@ -19,6 +23,9 @@ interface SeasonJobsOptions {
   now?: () => Date;
 }
 
+const CLOSE_ATTEMPTS = 4;
+const CLOSE_RETRY_MS = 5 * 60_000;
+
 /** The two §6.1 season checks, or why they can't run (variable names only, never values). */
 export function seasonJobs({ db, env, client, rpcUrls, log, committer, now = () => new Date() }: SeasonJobsOptions): JobSet {
   const missing: string[] = [];
@@ -31,7 +38,32 @@ export function seasonJobs({ db, env, client, rpcUrls, log, committer, now = () 
     return { handlers: {}, unavailable: { season_open: why, season_close: why } };
   }
 
+  // What closing needs beyond the checks: storage for the replay file, and where the file says to check it.
+  const closingMissing: string[] = [];
+  const ledger = env.PAPER_LEDGER_ADDRESS?.trim().toLowerCase() ?? "";
+  if (!isAddress(ledger) || ledger === zeroAddress) closingMissing.push("PAPER_LEDGER_ADDRESS");
+  const fromBlock = env.INDEXER_START_BLOCK?.trim() ?? "";
+  if (!/^\d+$/.test(fromBlock)) closingMissing.push("INDEXER_START_BLOCK");
+  const supabaseUrl = env.SUPABASE_URL?.trim() ?? "";
+  if (!/^https:\/\//.test(supabaseUrl)) closingMissing.push("SUPABASE_URL");
+  const serviceKey = secret(env, "SUPABASE_SERVICE_ROLE_KEY", 20);
+  if (!serviceKey) closingMissing.push("SUPABASE_SERVICE_ROLE_KEY");
+
   const chain = createSeasonChain({ client, address, sender: committer ?? createSystemSender({ rpcUrls, account }) });
+  const closing =
+    closingMissing.length === 0 && serviceKey
+      ? {
+          chain: {
+            isClosed: (n: number) => chain.isClosed(n),
+            closeSeason: (n: number, root: `0x${string}`, uri: string) => chain.closeSeason(n, root, uri),
+            startCashE8: async () =>
+              (await client.readContract({ address: ledger as Address, abi: TARGET_ABIS.PaperLedger as Abi, functionName: "START_CASH_E8" })) as bigint,
+          },
+          store: supabaseStore({ url: supabaseUrl, serviceKey, bucket: env.REPLAY_BUCKET?.trim() || "replay" }),
+          contracts: { chainId: 1990, seasonLedger: address, paperLedger: ledger as Address, fromBlock },
+        }
+      : null;
+
   // A cron can fire a few ms before its minute, and a boundary is exactly on the minute.
   const at = (scheduledFor: Date) => new Date(Math.max(scheduledFor.getTime(), now().getTime()));
 
@@ -43,6 +75,20 @@ export function seasonJobs({ db, env, client, rpcUrls, log, committer, now = () 
       },
       season_close: async ({ scheduledFor, signal }) => {
         await markSeasonsClosing({ db, chain, now: at(scheduledFor), signal, log });
+        if (!closing) {
+          log.warn("season.close_not_configured", { needs: closingMissing });
+          return;
+        }
+        // The last batch's trades need the indexer (10 s loop, 2 confirmations): retry a few times before giving up.
+        for (let attempt = 1; ; attempt++) {
+          try {
+            await closeSeasons({ ...closing, db, log, now }, signal);
+            return;
+          } catch (error) {
+            if (attempt >= CLOSE_ATTEMPTS || signal.aborted) throw error;
+            await new Promise((resolve) => setTimeout(resolve, CLOSE_RETRY_MS));
+          }
+        }
       },
     },
   };
