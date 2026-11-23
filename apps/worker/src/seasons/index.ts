@@ -10,6 +10,7 @@ import { closeSeasons } from "../season/close";
 import { supabaseStore } from "../season/storage";
 import { TARGET_ABIS } from "../relay/abis";
 import type { Abi, Address } from "viem";
+import { createChallengeChain } from "../season/challenges";
 import { createTrustRegistryChain } from "../trust/registry";
 import { createSeasonChain } from "./ledger";
 
@@ -47,6 +48,8 @@ export function seasonJobs({ db, env, client, rpcUrls, log, committer, now = () 
   if (!/^\d+$/.test(fromBlock)) closingMissing.push("INDEXER_START_BLOCK");
   const trustRegistry = env.TRUST_REGISTRY_ADDRESS?.trim().toLowerCase() ?? "";
   if (!isAddress(trustRegistry) || trustRegistry === zeroAddress) closingMissing.push("TRUST_REGISTRY_ADDRESS");
+  const challengesAddress = env.CHALLENGES_ADDRESS?.trim().toLowerCase() ?? "";
+  if (!isAddress(challengesAddress) || challengesAddress === zeroAddress) closingMissing.push("CHALLENGES_ADDRESS");
   const supabaseUrl = env.SUPABASE_URL?.trim() ?? "";
   if (!/^https:\/\//.test(supabaseUrl)) closingMissing.push("SUPABASE_URL");
   const serviceKey = secret(env, "SUPABASE_SERVICE_ROLE_KEY", 20);
@@ -55,6 +58,7 @@ export function seasonJobs({ db, env, client, rpcUrls, log, committer, now = () 
   const sender = committer ?? createSystemSender({ rpcUrls, account });
   const chain = createSeasonChain({ client, address, sender });
   const trust = createTrustRegistryChain({ client, address: trustRegistry as Address, sender });
+  const challenges = createChallengeChain({ client, address: challengesAddress as Address, sender });
   const closing =
     closingMissing.length === 0 && serviceKey
       ? {
@@ -66,6 +70,9 @@ export function seasonJobs({ db, env, client, rpcUrls, log, committer, now = () 
             scoresRoot: (n: number) => trust.scoresRoot(n),
             rulesPublished: (version: `0x${string}`) => trust.rulesPublished(version),
             commitScores: (n: number, version: `0x${string}`, root: `0x${string}`, uri: string) => trust.commitScores(n, version, root, uri),
+            challenge: (code: `0x${string}`) => challenges.challenge(code),
+            settleChallenge: (code: `0x${string}`, winner: bigint) => challenges.settleChallenge(code, winner),
+            expireChallenge: (code: `0x${string}`) => challenges.expireChallenge(code),
           },
           store: supabaseStore({ url: supabaseUrl, serviceKey, bucket: env.REPLAY_BUCKET?.trim() || "replay" }),
           contracts: { chainId: 1990, seasonLedger: address, paperLedger: ledger as Address, fromBlock },
