@@ -122,6 +122,10 @@ export const seasonLedgerHandlers: ContractHandlers<"SeasonLedger"> = {
         [...key, found.owner, ctx.txHash, createdAt],
       );
     }
+    // SPEC §2.2: Block is this correction. The runner must then not send the safe-size order for the decision.
+    if (chip === "blocked") {
+      await ctx.db.query("update big_moves set status = 'blocked' where decision_id = $1::uuid and status = 'pending'", [decision]);
+    }
     return written;
   },
 
