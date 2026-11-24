@@ -95,6 +95,11 @@ Take `reason` and `roast` from `GateResult.output`, never from the raw model out
 - A proposal is a `bot_versions` row with `committed_tx` null and `source = 'season_v2'`. `config_json` is the whole proposal, and `config_hash = keccak256(canonical config_json)`: what the owner signs in `commitVersion(botId, version, configHash, maxPerCoinBps, maxTradesPerDay)`.
 - The runner only uses committed versions, so a proposal changes nothing until approved. `approve_by` is 08:30 IST the next morning; after that the app should stop offering it. The next season's proposal replaces an unapproved one, and a committed version is never overwritten.
 
+### Approve Big Move, the owner's side (SPEC §2.2, `src/big-moves/route.ts`)
+- `POST /big-moves` (signed in): the owner's pending big moves, each with the `ApprovedOrder` and the runner's signature. The app relays `executeApproved(order, runnerSig)` through the forwarder. The signature is never anon-readable.
+- `POST /big-moves/shrink {orderId}`: ends the 2 h window now, so the next sweep (≤ 10 min) sends the safe-size order under the same orderId. `usedOrder` lets only one of the two execute.
+- Block is the owner's signed correction with chip "blocked"; when it is indexed, the decision's pending big moves become `blocked` and the sweep leaves them alone.
+
 ### Cards (SPEC §9, `src/cards`)
 - Payloads follow the frozen `packages/shared/src/cards.ts`. Each card's id comes from what it is about, so it is written once:
   - `trade-<bot>`: the first trade;

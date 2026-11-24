@@ -338,6 +338,26 @@ describe("SeasonLedger corrections", () => {
     expect(await one(CORRECTIONS)).toMatchObject({ chip });
   });
 
+  it("a 'blocked' correction stops the big move's safe-size fallback; other chips don't (#52)", async () => {
+    await seedAliceWithDecision();
+    const move = (orderByte: string) =>
+      w.db.query(
+        `insert into big_moves (decision_id, action_index, order_id, bot_id, asset, side, bps, runner_sig, deadline)
+         values ($1::uuid, 0, decode(repeat($2, 32), 'hex'), 1, 'GOLD', 'BUY', 3500, '\\x00', now() + interval '2 hours')`,
+        [DECISION, orderByte],
+      );
+    await move("aa");
+    const status = async () => (await w.db.query<{ s: string }>("select status::text as s from big_moves")).rows.map((r) => r.s);
+
+    correct(0); // too risky
+    await w.index();
+    expect(await status()).toEqual(["pending"]);
+
+    correct(CHIPS.indexOf("blocked"));
+    await w.index();
+    expect(await status()).toEqual(["blocked"]);
+  });
+
   it("confirms the pending row that holds the note", async () => {
     await seedAliceWithDecision();
     await seedPendingCorrection(w.db, {
