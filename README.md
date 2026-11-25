@@ -353,6 +353,9 @@ curl localhost:10000/healthz   # "reasons" lists what is still degraded
 | :--- | :--- |
 | [SPEC.md](SPEC.md) | Full product and technical spec: verified QIE facts, flows, contracts, runner, trust score, stack |
 | [CLAUDE.md](CLAUDE.md) | Rules for contributors and Claude Code sessions, and how we work |
+| [docs/architecture.md](docs/architecture.md) | Components, diagram and data flows: create a bot, a slot, a user-signed action, season close |
+| [docs/oracle-caveat.md](docs/oracle-caveat.md) | The QIE oracle caveat: one operator, update gaps, max ages, skip and hold |
+| [docs/replay.md](docs/replay.md) | Recompute a season, and what is and isn't reproducible |
 | [docs/trust-rules.md](docs/trust-rules.md) | Trust score rules `trust-v1-sprint` and `trust-v1` |
 | [docs/runbook.md](docs/runbook.md) | Incidents: restart, stale oracle, LLM down, RPC down, wallet top-up, key rotation |
 | [docs/rollback.md](docs/rollback.md) | Rollback: Vercel, Render, contract-address switch |
