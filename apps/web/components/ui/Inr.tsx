@@ -1,7 +1,8 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { displayInr, displayInrDelta, formatInr, inrTooltip } from "@/lib/format";
+import { loadUsdInr } from "@/lib/usd-inr";
 
 interface InrProps {
   /** On-chain value in play USDT, 8 decimals (SPEC §3). */
@@ -19,9 +20,17 @@ interface InrProps {
  */
 export function Inr({ valueE8, startValueE8, delta = false, className = "" }: InrProps) {
   const [open, setOpen] = useState(false);
+  const [usdInr, setUsdInr] = useState<number | null>(null);
   const id = useId();
+  useEffect(() => {
+    let live = true;
+    void loadUsdInr().then((rate) => live && setUsdInr(rate));
+    return () => {
+      live = false;
+    };
+  }, []);
   const rupees = delta ? displayInrDelta(valueE8, startValueE8) : displayInr(valueE8, startValueE8);
-  const note = inrTooltip(delta ? valueE8 - startValueE8 : valueE8);
+  const note = inrTooltip(delta ? valueE8 - startValueE8 : valueE8, usdInr);
   return (
     <span className={`relative inline-flex items-baseline gap-1 ${className}`}>
       <span className="tabular-nums" title={note}>

@@ -38,6 +38,11 @@ describe("₹ display rule (SPEC §3)", () => {
 
   it("tooltip shows the USDT value and says INR is approximate", () => {
     expect(inrTooltip(123456789012n)).toBe("≈ 1,234.57 USDT; INR conversion approximate");
+    expect(inrTooltip(123456789012n, null)).toBe("≈ 1,234.57 USDT; INR conversion approximate");
+  });
+
+  it("tooltip adds today's USD/INR rate when the worker sent one", () => {
+    expect(inrTooltip(123456789012n, 92.92)).toBe("≈ 1,234.57 USDT; INR conversion approximate (1 USD ≈ ₹92.92 today)");
   });
 });
 
