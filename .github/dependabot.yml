@@ -24,6 +24,9 @@ updates:
       # The stack is Next.js 15 (SPEC §10). A major bump is a team decision, not a bot PR.
       - dependency-name: next
         update-types: ["version-update:semver-major"]
+      # Runtime is Node 20 (.nvmrc). Newer @types/node majors type APIs Node 20 doesn't have.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: "/"
