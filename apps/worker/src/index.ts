@@ -24,6 +24,7 @@ import { botPageRoutes } from "./bot-page/route";
 import { mcpRoutes } from "./mcp/mcp";
 import { verifyTrade } from "./mcp/verify-trade";
 import { bigMoveRoutes } from "./big-moves/route";
+import { DEFAULT_USDINR_SOURCE_URL, usdInrCache, usdInrRoutes } from "./fx/usd-inr";
 import { dailyCallRoutes } from "./daily-call/route";
 import { createCardChain } from "./cards/build";
 import { cardJobs, startCardSweeper } from "./cards/jobs";
@@ -92,6 +93,9 @@ async function main(): Promise<void> {
   const stopCards = reads && cardChain ? startCardSweeper({ db: reads, chain: cardChain, log: { info: consoleLog, warn: consoleLog } }) : null;
   const boards = reads && isAddress(paperLedger) ? { db: reads, startCashE8 } : null;
   if (!boards) consoleLog("leaderboards.disabled", { env: "DATABASE_URL,PAPER_LEDGER_ADDRESS" });
+  // Display-only USD/INR for the ₹ tooltip; first fetch starts now.
+  const usdInr = usdInrCache({ url: process.env.USDINR_SOURCE_URL?.trim() || DEFAULT_USDINR_SOURCE_URL, log: consoleLog });
+  usdInr.get();
   const routes = {
     ...authRoutes({ origins, clientIp, log: consoleLog, siwe: auth.siwe }),
     ...relayRoutes({ relay: relayer.relay, origins, clientIp }),
@@ -100,6 +104,7 @@ async function main(): Promise<void> {
     ...bigMoveRoutes({ origins, auth: auth.authenticator, log: consoleLog, db: reads }),
     ...dailyCallRoutes({ origins, auth: auth.authenticator, log: consoleLog, db: reads }),
     ...leaderboardRoutes({ source: boards, origins, clientIp }),
+    ...usdInrRoutes({ cache: usdInr, origins }),
     ...botPageRoutes({ source: boards, origins, clientIp }),
     ...mcpRoutes({
       source: boards && { ...boards, verifyTrade: (tx) => verifyTrade(client, paperLedger as Address, tx) },

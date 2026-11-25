@@ -48,9 +48,10 @@ export function formatE8(e8: bigint, decimals = 2): string {
   return (neg ? "−" : "") + whole + frac;
 }
 
-/** Tooltip for every ₹ figure (SPEC §3). */
-export const inrTooltip = (valueE8: bigint) =>
-  `≈ ${formatE8(valueE8)} USDT; INR conversion approximate`;
+/** Tooltip for every ₹ figure (SPEC §3). `usdInr` is the worker's daily off-chain rate, display only. */
+export const inrTooltip = (valueE8: bigint, usdInr?: number | null) =>
+  `≈ ${formatE8(valueE8)} USDT; INR conversion approximate` +
+  (usdInr ? ` (1 USD ≈ ₹${usdInr.toLocaleString("en-IN", { maximumFractionDigits: 2 })} today)` : "");
 
 // ---------------------------------------------------------------------------
 // Price age (SPEC §5.7)
