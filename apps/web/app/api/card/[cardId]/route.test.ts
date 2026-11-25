@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CARD_SIZES } from "@botfolio/shared";
 import { clampText } from "../render";
 import { GET } from "./route";
@@ -35,6 +35,17 @@ describe("GET /api/card/:cardId", () => {
       expect(res.headers.get("cache-control")).toBe("no-store");
     }
     expect((await call("trade-999")).status).toBe(404);
+  });
+
+  afterEach(() => vi.unstubAllEnvs());
+  it("never serves the mock cards in production", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    expect((await call("trade-mock")).status).toBe(404);
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("NODE_ENV", "production");
+    expect((await call("trade-mock")).status).toBe(200);
+    vi.stubEnv("VERCEL_ENV", undefined);
+    expect((await call("trade-mock")).status).toBe(404);
   });
 
   it("answers 429 once an IP has used its minute", async () => {
