@@ -76,6 +76,31 @@ contract DeployForkTest is DeployedFixture {
         }
     }
 
+    /// Issue #30: the replay above can't see RoleAdminChanged, so check the role admin directly. Every
+    /// role is administered by DEFAULT_ADMIN_ROLE (the cold key), and neither hot key can grant anything.
+    function test_roleAdminIsColdKeyOnly() public {
+        bytes32[5] memory roles =
+            [bytes32(0), Roles.RUNNER, Roles.COMMITTER, Roles.REGISTRY, Roles.SEASON_LEDGER];
+        address[2] memory hot = [cfg.runner, cfg.committer];
+        address[6] memory managed = _managed();
+        for (uint256 c; c < managed.length; ++c) {
+            IAccessControl ac = IAccessControl(managed[c]);
+            for (uint256 r; r < roles.length; ++r) {
+                assertEq(ac.getRoleAdmin(roles[r]), bytes32(0));
+            }
+            for (uint256 h; h < hot.length; ++h) {
+                assertFalse(ac.hasRole(bytes32(0), hot[h]));
+                vm.expectRevert(
+                    abi.encodeWithSelector(
+                        IAccessControl.AccessControlUnauthorizedAccount.selector, hot[h], bytes32(0)
+                    )
+                );
+                vm.prank(hot[h]);
+                ac.grantRole(bytes32(0), hot[h]);
+            }
+        }
+    }
+
     /// The flow #187 asks for: createBot -> initPortfolio -> commitVersion -> setLimits.
     function test_createBotThenCommitVersion() public {
         vm.expectCall(address(d.paperLedger), abi.encodeCall(IPaperLedger.initPortfolio, (1)), 1);

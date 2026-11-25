@@ -1,6 +1,12 @@
-import { RELAY_ALLOWLIST, RELAY_LIMITS, forwardRequestFromJson, type ForwardRequestMessage } from "@botfolio/shared";
+import {
+  RELAY_ALLOWLIST,
+  RELAY_LIMITS,
+  forwardRequestFromJson,
+  type ForwardRequestMessage,
+  type RelayTargetContract,
+} from "@botfolio/shared";
 import { describe, expect, it } from "vitest";
-import { encodeFunctionData, parseAbi, type Address, type Hex } from "viem";
+import { encodeFunctionData, parseAbi, toFunctionSelector, type AbiFunction, type Address, type Hex } from "viem";
 import { TARGET_ABIS } from "../../src/relay/abis";
 import { loadRelayContracts, selectorsFromAbis } from "../../src/relay/allowlist";
 import { MIN_SECONDS_LEFT, checkPolicy } from "../../src/relay/policy";
@@ -115,6 +121,53 @@ describe("policy (#38)", () => {
       expect(f.sender.send).not.toHaveBeenCalled();
     },
   );
+});
+
+// SPEC §11, typed out by hand on purpose: the one list in this file not derived from relay.ts (#30).
+const SPEC_11 = [
+  "BotRegistry.createBot",
+  "BotRegistry.setActive",
+  "SeasonLedger.commitVersion",
+  "SeasonLedger.recordCorrection",
+  "PaperLedger.executeApproved",
+  "DailyCall.call",
+  "Challenges.create",
+  "Challenges.accept",
+];
+
+// Every other state-changing function the target ABIs expose: role-gated, permissionless upkeep, or AccessControl.
+const notRelayable = Object.entries(TARGET_ABIS).flatMap(([contract, abi]) =>
+  abi
+    .filter((i): i is AbiFunction => i.type === "function" && i.stateMutability === "nonpayable")
+    .filter((fn) => !SPEC_11.includes(`${contract}.${fn.name}`))
+    .map((fn) => [`${contract}.${fn.name}`, contract as RelayTargetContract, toFunctionSelector(fn)] as const),
+);
+
+describe("allowlist = SPEC §11, and nothing privileged (#30)", () => {
+  it("is exactly the 8 user-signed calls SPEC §11 names", () => {
+    expect(RELAY_ALLOWLIST.map((e) => `${e.contract}.${e.fn}`).sort()).toEqual([...SPEC_11].sort());
+  });
+
+  it("sees every runner, committer, registry, season-ledger and admin function in the ABIs", () => {
+    expect(notRelayable.map(([name]) => name)).toEqual(
+      expect.arrayContaining([
+        "BotRegistry.createHouseBot",
+        "BotRegistry.setLimits",
+        "PaperLedger.executeBatch",
+        "PaperLedger.initPortfolio",
+        "SeasonLedger.openSeason",
+        "SeasonLedger.closeSeason",
+        "DailyCall.settle",
+        "Challenges.settle",
+        "Challenges.expire",
+        ...Object.keys(TARGET_ABIS).flatMap((c) => [`${c}.grantRole`, `${c}.revokeRole`, `${c}.renounceRole`]),
+      ]),
+    );
+  });
+
+  it.each(notRelayable)("refuses %s on its own contract", async (_name, contract, data) => {
+    expect(await decide({ to: TARGETS[contract], data })).toBe("NOT_ALLOWLISTED");
+  });
 });
 
 describe("relay contract addresses from env", () => {
