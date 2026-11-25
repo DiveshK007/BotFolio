@@ -23,13 +23,14 @@ export const registryHandlers: ContractHandlers<"BotRegistry"> = {
     const createdAt = (await ctx.chain.blockTime(ctx.block)).toString();
 
     await ctx.db.query(
-      `insert into bots (id, owner_wallet, name, emoji, persona_text, persona_hash, created_at, created_tx, is_house, status)
-       values ($1::bigint, $2::text, $3::text, $10::text, $11::text, $4::bytea, to_timestamp($5::float8), $6::text, $7::boolean, $8::bot_status)
+      `insert into bots (id, owner_wallet, name, emoji, persona_text, persona_hash, dna_seed, created_at, created_tx, is_house, status)
+       values ($1::bigint, $2::text, $3::text, $10::text, $11::text, $4::bytea, $12::text, to_timestamp($5::float8), $6::text, $7::boolean, $8::bot_status)
        on conflict (id) do update set
          owner_wallet = excluded.owner_wallet,
          name         = case when $9::boolean then bots.name else excluded.name end,
          emoji        = case when $9::boolean then bots.emoji else excluded.emoji end,
          persona_text = case when $9::boolean then bots.persona_text else excluded.persona_text end,
+         dna_seed     = case when $9::boolean then bots.dna_seed else excluded.dna_seed end,
          persona_hash = excluded.persona_hash,
          created_at   = excluded.created_at,
          created_tx   = excluded.created_tx,
@@ -47,6 +48,7 @@ export const registryHandlers: ContractHandlers<"BotRegistry"> = {
         keepText,
         draft?.emoji ?? "",
         draft?.persona ?? "",
+        draft?.dnaSeed ?? null,
       ],
     );
 

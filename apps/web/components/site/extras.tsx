@@ -9,7 +9,7 @@ import { e8ToNumber, priceDecimals, usd } from "@/lib/site/format";
 import { reducedMotion, sfx, track } from "./fx";
 
 /* ================= Bot Dex ================= */
-export interface DexBot { id: string; name: string; persona?: string; isHouse?: boolean; returnPct?: number | null; version?: number }
+export interface DexBot { id: string; name: string; persona?: string; dnaSeed?: string | null; isHouse?: boolean; returnPct?: number | null; version?: number }
 const LABEL: Record<string, string> = { square: "Boxy", round: "Round", capsule: "Capsule", tv: "TV", egg: "Egg", visor: "Visor", cyclops: "Cyclops", sleepy: "Sleepy", ball: "Ball antenna", bolt: "Lightning", sprout: "Sprout", coil: "Coil", twin: "Twin antennas", none: "None", chain: "Gold chain", ears: "Wolf ears", headphones: "Headphones", glasses: "Glasses", bow: "Bow", cap: "Cap", scarf: "Scarf", band: "Doctor band", blush: "Blush", stripes: "Stripes", spots: "Spots" };
 const GROUPS: [keyof Omit<ReturnType<typeof dnaTraits>, "pal" | "version" | "pat">, string, string[]][] = [
   ["body", "Body", ["square", "round", "capsule", "tv", "egg"]], ["eyes", "Eyes", ["round", "visor", "cyclops", "sleepy"]],
@@ -19,9 +19,9 @@ const pctTxt = (n: number) => `${n > 0 ? "▲ +" : n < 0 ? "▼ −" : ""}${Math
 export function DexGrid({ bots, example }: { bots: DexBot[]; example: boolean }) {
   const [f, setF] = useState<Record<string, string | null>>({ body: null, eyes: null, ant: null, acc: null });
   const [q, setQ] = useState(""); const [open, setOpen] = useState<DexBot | null>(null);
-  const withTraits = useMemo(() => bots.map(b => ({ b, t: dnaTraits(botSeed(b.id), `${b.name} ${b.persona ?? ""}`, b.version ?? 1) })), [bots]);
+  const withTraits = useMemo(() => bots.map(b => ({ b, t: dnaTraits(b.dnaSeed || botSeed(b.id), `${b.name} ${b.persona ?? ""}`, b.version ?? 1) })), [bots]);
   const list = withTraits.filter(({ b, t }) => GROUPS.every(([k]) => !f[k] || t[k] === f[k]) && (!q || b.name.toLowerCase().includes(q.toLowerCase())));
-  const ot = open ? dnaTraits(botSeed(open.id), `${open.name} ${open.persona ?? ""}`, open.version ?? 1) : null;
+  const ot = open ? dnaTraits(open.dnaSeed || botSeed(open.id), `${open.name} ${open.persona ?? ""}`, open.version ?? 1) : null;
   return (
     <>
       <div className="dex-filters">
@@ -34,7 +34,7 @@ export function DexGrid({ bots, example }: { bots: DexBot[]; example: boolean })
       <ul className="dex">
         {list.length ? list.map(({ b }) => (
           <li key={b.id}><button type="button" className="dex-card" onClick={() => { setOpen(b); sfx("blip"); }}>
-            <DnaBot size={86} bot={{ id: b.id, name: b.name, personaText: b.persona }} version={b.version ?? 1} /><b>{b.name}</b>
+            <DnaBot size={86} bot={{ id: b.id, name: b.name, personaText: b.persona, dnaSeed: b.dnaSeed }} version={b.version ?? 1} /><b>{b.name}</b>
             {typeof b.returnPct === "number" && <span className={`small ${b.returnPct >= 0 ? "up" : "down"}`}>{pctTxt(b.returnPct)}</span>}
             {b.isHouse && <span className="badge house">HOUSE</span>}{(b.version ?? 1) >= 2 && <span className="badge new">v{b.version}</span>}</button></li>
         )) : <li className="dex-empty"><p><b>No bot has that combo yet.</b> Yours could be the first.</p><Link className="btn sm" href="/">Make one</Link></li>}
@@ -42,10 +42,10 @@ export function DexGrid({ bots, example }: { bots: DexBot[]; example: boolean })
       {open && ot && (
         <div className="party" role="dialog" aria-modal="true" aria-labelledby="dexName" onClick={e => e.target === e.currentTarget && setOpen(null)}>
           <div className="dex-modal" style={{ display: "block", position: "relative" }}>
-            <div className="dex-big holo"><DnaBot size={160} bot={{ id: open.id, name: open.name, personaText: open.persona }} version={open.version ?? 1} mood="proud" /></div>
+            <div className="dex-big holo"><DnaBot size={160} bot={{ id: open.id, name: open.name, personaText: open.persona, dnaSeed: open.dnaSeed }} version={open.version ?? 1} mood="proud" /></div>
             <h2 id="dexName" style={{ marginTop: 14 }}>{open.name}</h2>
             <ul className="traits">{([["Body", ot.body], ["Eyes", ot.eyes], ["Antenna", ot.ant], ["Extra", ot.acc], ["Pattern", ot.pat]] as const).map(([k, v]) => <li key={k}><span>{k}</span><b>{LABEL[v] ?? v}</b></li>)}</ul>
-            <div className="row" style={{ marginTop: 14 }}><Link className="btn sm" href={`/bot/${open.id}`}>Open its page</Link><ShareCardButton title={open.name} line="One of a kind, drawn from its own DNA." stat={typeof open.returnPct === "number" ? `${pctTxt(open.returnPct)} this season` : ""} seed={botSeed(open.id)} hint={`${open.name} ${open.persona ?? ""}`} example={example} /><button className="btn ghost sm" type="button" onClick={() => setOpen(null)} autoFocus>Close</button></div>
+            <div className="row" style={{ marginTop: 14 }}><Link className="btn sm" href={`/bot/${open.id}`}>Open its page</Link><ShareCardButton title={open.name} line="One of a kind, drawn from its own DNA." stat={typeof open.returnPct === "number" ? `${pctTxt(open.returnPct)} this season` : ""} seed={open.dnaSeed || botSeed(open.id)} hint={`${open.name} ${open.persona ?? ""}`} example={example} /><button className="btn ghost sm" type="button" onClick={() => setOpen(null)} autoFocus>Close</button></div>
           </div>
         </div>
       )}
@@ -77,7 +77,7 @@ export function RaceReplay({ series, labels, example }: { series: RaceSeries[]; 
 }
 
 /* ================= Talk to a bot ================= */
-export function TalkToBot({ botId, name }: { botId: string; name: string }) {
+export function TalkToBot({ botId, name, dnaSeed }: { botId: string; name: string; dnaSeed?: string | null }) {
   const [msgs, setMsgs] = useState<{ role: "user" | "assistant"; content: string }[]>([]); const [busy, setBusy] = useState(false); const [text, setText] = useState(""); const [note, setNote] = useState<string | null>(null);
   const used = msgs.filter(m => m.role === "user").length, left = Math.max(0, 6 - used);
   const send = async (e: React.FormEvent) => {
@@ -92,7 +92,7 @@ export function TalkToBot({ botId, name }: { botId: string; name: string }) {
   };
   return (
     <div className="card talk">
-      <div className="block-head"><div className="row"><DnaBot size={48} bot={{ id: botId, name }} /><h3>Talk to {name}</h3></div><span className="badge example">AI · IN CHARACTER</span></div>
+      <div className="block-head"><div className="row"><DnaBot size={48} bot={{ id: botId, name, dnaSeed }} /><h3>Talk to {name}</h3></div><span className="badge example">AI · IN CHARACTER</span></div>
       <div className="talk-log" aria-live="polite">
         {msgs.length === 0 && <p className="tm assistant">Hi, I&apos;m {name}. Ask me about my last call or what my owner coached me on.</p>}
         {msgs.map((m, k) => <p key={k} className={`tm ${m.role}`}>{m.content}</p>)}{busy && <p className="tm assistant">…</p>}
@@ -133,7 +133,7 @@ export function ShareCardButton(props: Parameters<typeof cardSvg>[0] & { label?:
 }
 
 /* ================= Judges attract mode ================= */
-export function Attract({ ids }: { ids: { id: string; name: string }[] }) {
+export function Attract({ ids }: { ids: { id: string; name: string; dnaSeed?: string | null }[] }) {
   const [show, setShow] = useState(false);
   useEffect(() => { const id = setTimeout(() => { try { setShow(sessionStorage.getItem("bf-attract") !== "1"); } catch { setShow(true); } }, 0); return () => clearTimeout(id); }, []);
   const hide = () => { setShow(false); try { sessionStorage.setItem("bf-attract", "1"); } catch { /* storage blocked */ } };
@@ -179,13 +179,13 @@ export function VerifyTx({ explorer }: { explorer: string }) {
 }
 
 /* ================= Bot page: evolution + trust gauge ================= */
-export function Evolution({ botId, name, versions }: { botId: string; name: string; versions: { version: number; max_per_coin_bps: number }[] }) {
+export function Evolution({ botId, name, dnaSeed, versions }: { botId: string; name: string; dnaSeed?: string | null; versions: { version: number; max_per_coin_bps: number }[] }) {
   const vs = [...versions].sort((a, b) => a.version - b.version);
   if (!vs.length) return null;
   return (
     <div className="card"><div className="block-head"><h3>How it evolved</h3><span className="small muted">same DNA, new version</span></div>
-      <div className="evo">{vs.map((v, k) => <span key={v.version} style={{ display: "contents" }}>{k > 0 && <span className="evo-arrow" aria-hidden="true">→</span>}<figure><DnaBot size={84} bot={{ id: botId, name }} version={v.version} mood={k === vs.length - 1 ? "proud" : "smile"} /><figcaption><b>v{v.version}</b><br /><span className="small muted">max {v.max_per_coin_bps / 100}% per coin</span></figcaption></figure></span>)}
-        <span className="evo-arrow" aria-hidden="true">→</span><figure className="evo-next"><DnaBot size={84} bot={{ id: botId, name }} version={vs[vs.length - 1].version + 1} mood="think" /><figcaption><b>v{vs[vs.length - 1].version + 1}?</b><br /><span className="small muted">after you coach it</span></figcaption></figure></div></div>
+      <div className="evo">{vs.map((v, k) => <span key={v.version} style={{ display: "contents" }}>{k > 0 && <span className="evo-arrow" aria-hidden="true">→</span>}<figure><DnaBot size={84} bot={{ id: botId, name, dnaSeed }} version={v.version} mood={k === vs.length - 1 ? "proud" : "smile"} /><figcaption><b>v{v.version}</b><br /><span className="small muted">max {v.max_per_coin_bps / 100}% per coin</span></figcaption></figure></span>)}
+        <span className="evo-arrow" aria-hidden="true">→</span><figure className="evo-next"><DnaBot size={84} bot={{ id: botId, name, dnaSeed }} version={vs[vs.length - 1].version + 1} mood="think" /><figcaption><b>v{vs[vs.length - 1].version + 1}?</b><br /><span className="small muted">after you coach it</span></figcaption></figure></div></div>
   );
 }
 export function TrustGauge({ f, total }: { f: [number, number, number, number]; total: number }) {

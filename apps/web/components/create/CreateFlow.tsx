@@ -6,6 +6,7 @@ import type { Hex } from "viem";
 import { ExplorerLink } from "@/components/ui/ExplorerLink";
 import { getCreateConfig } from "@/lib/config";
 import type { LaunchStep } from "@/lib/create-bot";
+import { sentenceSeed } from "@/lib/dna";
 import { readDraft } from "@/lib/draft";
 import { FlowError, userMessage } from "@/lib/errors";
 import type { BotLimits, PersonaDraft } from "@/lib/persona";
@@ -85,7 +86,7 @@ export function CreateFlow() {
     const call = new AbortController();
     personaCall.current = call;
     try {
-      const result = await requestPersona(config.workerUrl, signedIn, text, call.signal);
+      const result = await requestPersona(config.workerUrl, signedIn, text, call.signal, sentenceSeed(text));
       setDraft(result);
       setLimits(result.persona.limits);
       setPhase({ name: "review" });
@@ -177,7 +178,7 @@ export function CreateFlow() {
     return (
       <div role="status" className="flex flex-col gap-4">
         <h1 className="font-display text-3xl font-extrabold tracking-tight">Your bot is on QIE</h1>
-        {draft && <PersonaCard persona={draft.persona} />}
+        {draft && <PersonaCard persona={draft.persona} dnaSeed={draft.dnaSeed ?? sentenceSeed(sentence)} />}
         <p className="text-sm">Bot #{phase.botId.toString()} was created on QIE mainnet.</p>
         <p>
           <ExplorerLink tx={phase.txHash} label="View on explorer" />
@@ -219,7 +220,7 @@ export function CreateFlow() {
 
       {draft && limits && (
         <>
-          <PersonaCard persona={draft.persona} />
+          <PersonaCard persona={draft.persona} dnaSeed={draft.dnaSeed ?? sentenceSeed(sentence)} />
           <LimitSliders limits={limits} disabled={phase.name !== "review"} onChange={setLimits} />
           {/* SPEC §4.2: the UI states that createBot authorises the runner to trade. */}
           <p className="text-sm text-muted">

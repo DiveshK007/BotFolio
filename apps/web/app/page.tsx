@@ -61,7 +61,7 @@ export default async function Landing() {
             <p className="small muted">The on-chain version is in the app, signed by you. Bragging rights only.</p></div>
           <DailyCall />
         </div></section>
-        <BotOfWeek id={spot.data.id} name={spot.data.name} line={spot.data.line} stat={spot.data.stat} example={spot.example} href={`/bot/${spot.data.id}`} />
+        <BotOfWeek id={spot.data.id} name={spot.data.name} dnaSeed={spot.data.dnaSeed} line={spot.data.line} stat={spot.data.stat} example={spot.example} href={`/bot/${spot.data.id}`} />
         <section className="band alt" id="how" aria-labelledby="howH"><div className="wrap"><HowItWorks /></div></section>
         <section className="band" id="coach" aria-labelledby="coachH"><div className="wrap">
           <div className="section-head"><div><h2 id="coachH">Your AI trader. Your rules. Your fault.</h2><p className="lede">Tell it when it messed up. Once a season it proposes a better version of itself, and you approve it on QIE.</p></div><span className="badge example">EXAMPLE walkthrough</span></div>

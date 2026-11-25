@@ -69,7 +69,7 @@ export function Ticker({ items, status }: { items: TickerItem[] | null; status: 
 }
 
 /* ---------- Arena: season race + next-call countdown + "bots are thinking" ---------- */
-export interface Racer { id: number | string; name: string; personaText?: string; isHouse?: boolean; owner?: string; ret: number; vol: number; you?: boolean; lines: [string, string] }
+export interface Racer { id: number | string; name: string; personaText?: string; dnaSeed?: string | null; isHouse?: boolean; owner?: string; ret: number; vol: number; you?: boolean; lines: [string, string] }
 function nextSlot() {
   const now = new Date(), ist = new Date(now.getTime() + (330 + now.getTimezoneOffset()) * 60000);
   for (const h of [9, 13, 17, 21]) { const t = new Date(ist); t.setHours(h, 0, 0, 0); if (t > ist) return { ms: +t - +ist, label: `${String(h).padStart(2, "0")}:00 IST` }; }
@@ -137,7 +137,7 @@ export function Arena({ initial, btcSeries, btcRound, status }: { initial: Racer
           <li key={r.id} className={`lane ${r.you ? "you" : ""}`}>
             <div className="who"><b>{r.name}</b>{r.isHouse ? <span className="house">HOUSE</span> : r.you ? <span className="house" style={{ color: "#FF6FA8" }}>YOURS</span> : r.owner ? <span className="mono" style={{ color: "#8C93B8", fontSize: 12 }}>{short(r.owner)}</span> : null}</div>
             <div className="track"><span className={`runner ${x < 30 ? "l" : x > 70 ? "r" : ""}`} style={{ left: `${x}%` }}>
-              <BotHead size={54} bot={{ id: r.id, name: r.name, personaText: r.personaText }} mood={b && b !== "dots" ? b.mood : "smile"} />
+              <BotHead size={54} bot={{ id: r.id, name: r.name, personaText: r.personaText, dnaSeed: r.dnaSeed }} mood={b && b !== "dots" ? b.mood : "smile"} />
               {r === top && <span className="crown" aria-label="Top human-raised bot">👑</span>}
               {b && <span className={`think ${b === "dots" ? "dots" : ""}`}>{b === "dots" ? "thinking" : b.text}</span>}
             </span></div>

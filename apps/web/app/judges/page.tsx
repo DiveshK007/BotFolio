@@ -35,7 +35,7 @@ export default async function Judges() {
   // The attract march is decoration: real bots from the board when there are any, else the example cast.
   const march = racers.example
     ? [3, 12, 7, 1, 2, 21, 41, 52, 58, 33].map(id => ({ id: String(id), name: SAMPLE_BOTS[id].name }))
-    : racers.data.map(r => ({ id: String(r.id), name: r.name }));
+    : racers.data.map(r => ({ id: String(r.id), name: r.name, dnaSeed: r.dnaSeed }));
   return (
     <>
       <SiteHeader current="/judges" />

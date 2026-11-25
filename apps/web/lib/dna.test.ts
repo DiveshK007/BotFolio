@@ -15,6 +15,11 @@ describe("bot DNA", () => {
     expect(dnaSvg({ seed: "s", version: 1 })).not.toContain('data-part="evo"');
     expect(dnaSvg({ seed: "s", version: 2 })).toContain(">v2<");
   });
+  it("keeps preview traits from the sentence seed after birth without the raw sentence", () => {
+    const seed = sentenceSeed("YOLO Bitcoin to the moon");
+    expect(dnaTraits(seed)).toEqual(dnaTraits(seed, "YOLO Bitcoin to the moon"));
+    expect(dnaTraits(seed).ant).toBe("bolt");
+  });
   it("uses the given uid for hydration-safe clip ids", () => {
     expect(dnaSvg({ seed: "s", uid: "abc" })).toContain('_abc"');
   });

@@ -28,14 +28,14 @@ const EX_RACERS: Racer[] = [
 export async function arenaRacers(): Promise<Live<Racer[]>> {
   const b = await boards();
   if (!b || b.topReturns.length === 0) return { example: true, data: EX_RACERS };
-  return { example: false, data: b.topReturns.slice(0, 6).map(e => ({ id: e.botId, name: e.name, isHouse: e.isHouse, ret: e.returnBps / 100, vol: 0, lines: [e.returnBps >= 0 ? "Up this season." : "Down this season.", "Down this season."] })) };
+  return { example: false, data: b.topReturns.slice(0, 6).map(e => ({ id: e.botId, name: e.name, dnaSeed: e.dnaSeed ?? null, isHouse: e.isHouse, ret: e.returnBps / 100, vol: 0, lines: [e.returnBps >= 0 ? "Up this season." : "Down this season.", "Down this season."] })) };
 }
 
-export async function botOfWeek(): Promise<Live<{ id: string; name: string; line: string; stat: string }>> {
+export async function botOfWeek(): Promise<Live<{ id: string; name: string; dnaSeed?: string | null; line: string; stat: string }>> {
   const b = await boards();
   const t = b?.mostTrusted.find(e => !e.isHouse);
   if (!t) return { example: true, data: { id: "12", name: "Gold Guru", line: "Steadiest climb of Season 1, and it never once broke its own rules. Its owner coached it \"too timid\" twice and it listened.", stat: "▲ +3.42% · trust 684" } };
-  return { example: false, data: { id: t.botId, name: t.name, line: `Most trusted bot of season ${b!.trustSeason ?? b!.season}.`, stat: `trust ${t.total}/1000` } };
+  return { example: false, data: { id: t.botId, name: t.name, dnaSeed: t.dnaSeed ?? null, line: `Most trusted bot of season ${b!.trustSeason ?? b!.season}.`, stat: `trust ${t.total}/1000` } };
 }
 
 const DEX_NAMES = ["Paneer Bull", "Monsoon Mode", "Filter Kaapi", "Auto Rickshaw", "Dosa Dynamo", "Biryani Bear", "Lassi Lion", "Metro Mouse", "Cricket Chirp", "Rangoli Robo", "Pani Puri Pro", "Idli Ion", "Mango Mode", "Tiffin Titan", "Jugaad Jet", "Vada Vortex", "Kulfi Kid", "Masala Mech", "Bus Stop Bot", "Sambar Sage"];
@@ -46,12 +46,13 @@ export async function dexBots(): Promise<Live<DexBot[]>> {
   // Every bot from GET /bots (HANDOFF #6), with this season's return where the board has one.
   if (all && all.length) {
     const ret = new Map((b?.topReturns ?? []).map(e => [e.botId, e.returnBps / 100]));
-    return { example: false, data: all.map(x => ({ id: x.botId, name: x.name, isHouse: x.isHouse, returnPct: ret.get(x.botId) ?? null, version: x.version })) };
+    const boardSeed = new Map((b ? [...b.topReturns, ...b.mostTrusted, ...b.bestRiskAdjusted, ...b.coachVsBot] : []).map(e => [e.botId, e.dnaSeed ?? null]));
+    return { example: false, data: all.map(x => ({ id: x.botId, name: x.name, dnaSeed: x.dnaSeed ?? boardSeed.get(x.botId) ?? null, isHouse: x.isHouse, returnPct: ret.get(x.botId) ?? null, version: x.version })) };
   }
   // Older worker without /bots: the bots on the boards.
   if (b) {
     const seen = new Map<string, DexBot>();
-    for (const e of [...b.topReturns, ...b.mostTrusted, ...b.bestRiskAdjusted, ...b.coachVsBot]) if (!seen.has(e.botId)) seen.set(e.botId, { id: e.botId, name: e.name, isHouse: e.isHouse, returnPct: "returnBps" in e ? (e as { returnBps: number }).returnBps / 100 : null });
+    for (const e of [...b.topReturns, ...b.mostTrusted, ...b.bestRiskAdjusted, ...b.coachVsBot]) if (!seen.has(e.botId)) seen.set(e.botId, { id: e.botId, name: e.name, dnaSeed: e.dnaSeed ?? null, isHouse: e.isHouse, returnPct: "returnBps" in e ? (e as { returnBps: number }).returnBps / 100 : null });
     if (seen.size) return { example: false, data: [...seen.values()] };
   }
   const base = Object.values(SAMPLE_BOTS).map(x => ({ id: String(x.id), name: x.name, persona: x.personaText, isHouse: x.isHouse, returnPct: null, version: x.id === 12 ? 2 : 1 }));

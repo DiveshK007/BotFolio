@@ -31,6 +31,12 @@ describe("requestPersona", () => {
     expect(init!.headers).toMatchObject({ authorization: "Bearer test-token", "x-botfolio-auth": "privy" });
   });
 
+  it("passes dnaSeed when given and returns it", async () => {
+    const mock = respond({ ok: true, persona, personaHash, dnaSeed: "pet-99-dip" });
+    await expect(requestPersona(base, auth, "Buys dips", undefined, "pet-99-dip")).resolves.toMatchObject({ dnaSeed: "pet-99-dip" });
+    expect(JSON.parse(mock.mock.calls[0]![1]!.body as string)).toEqual({ sentence: "Buys dips", termsAccepted: true, dnaSeed: "pet-99-dip" });
+  });
+
   it("fails on an off-schema persona", async () => {
     respond({ ok: true, persona: { ...persona, max_per_coin_pct: 90 }, personaHash });
     await expect(requestPersona(base, auth, "x")).rejects.toMatchObject({ code: "BAD_RESPONSE" });

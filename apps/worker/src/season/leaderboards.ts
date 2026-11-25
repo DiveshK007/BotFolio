@@ -14,6 +14,7 @@ export interface BoardEntry {
   emoji: string;
   isHouse: boolean;
   ownerQieName: string | null;
+  dnaSeed: string | null;
   /** Place among human-raised bots. House bots are listed with a badge but never ranked, so #1 is always human. */
   rank: number | null;
 }
@@ -57,6 +58,7 @@ interface BotMeta {
   emoji: string;
   is_house: boolean;
   qie: string | null;
+  dna_seed: string | null;
   created_at: Date;
 }
 
@@ -78,7 +80,7 @@ function ranked<T extends { botId: string }>(rows: T[], meta: Map<string, BotMet
   let place = 0;
   return rows.map((row) => {
     const m = meta.get(row.botId)!;
-    return { ...row, name: m.name, emoji: m.emoji, isHouse: m.is_house, ownerQieName: m.qie, rank: m.is_house ? null : ++place };
+    return { ...row, name: m.name, emoji: m.emoji, isHouse: m.is_house, ownerQieName: m.qie, dnaSeed: m.dna_seed, rank: m.is_house ? null : ++place };
   });
 }
 
@@ -145,7 +147,7 @@ export async function leaderboards(db: Queryable, season: number, startCashE8: (
 
   const ids = [...new Set([...standings.map((r) => r.botId), ...trust.map((t) => t.bot_id), ...calls.map((c) => c.bot_id)])];
   const { rows: bots } = await db.query<BotMeta>(
-    `select b.id::text as id, b.name, b.emoji, b.is_house, q.qie_name as qie, b.created_at
+    `select b.id::text as id, b.name, b.emoji, b.is_house, q.qie_name as qie, b.dna_seed, b.created_at
      from bots b left join qie_names q on q.wallet_address = b.owner_wallet where b.id = any($1::bigint[])`,
     [ids],
   );

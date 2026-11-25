@@ -62,7 +62,7 @@ export function PetShell({ children }: { children: ReactNode }) {
           <div className="pet-shadow" aria-hidden="true" />
           {sleeping && <span className="zzz" aria-hidden="true">z z</span>}
         </div>
-        <div className="lcd"><span>The look is a preview from your sentence. Your bot&apos;s final look is fixed when it&apos;s born.</span></div>
+        <div className="lcd"><span>The look comes from your sentence. Your bot keeps this DNA when it&apos;s born.</span></div>
       </div>
       <div className="device-form">{children}</div>
     </div>
@@ -116,11 +116,11 @@ export function DailyCall() {
 }
 
 /* ---------- Bot of the Week ---------- */
-export function BotOfWeek({ id, name, line, stat, example, href }: { id: string | number; name: string; line: string; stat: string; example: boolean; href: string }) {
+export function BotOfWeek({ id, name, dnaSeed, line, stat, example, href }: { id: string | number; name: string; dnaSeed?: string | null; line: string; stat: string; example: boolean; href: string }) {
   return (
     <section className="spot" aria-labelledby="spotH">
       <div className="wrap spot-grid">
-        <div className="spot-stage" aria-hidden="true"><div className="cone" /><span className="spot-bot"><DnaBot size={220} bot={{ id, name }} version={2} mood="proud" /></span><div className="spot-floor" /></div>
+        <div className="spot-stage" aria-hidden="true"><div className="cone" /><span className="spot-bot"><DnaBot size={220} bot={{ id, name, dnaSeed }} version={2} mood="proud" /></span><div className="spot-floor" /></div>
         <div className="stack"><p className="pixel" style={{ color: "#FFC93C" }}>BOT OF THE WEEK</p><h2 id="spotH" style={{ color: "#fff" }}>{name}</h2>
           <p style={{ color: "#C9CEDA" }}>{line}</p><p className="mono" style={{ color: "#3DDC97" }}>{stat}</p>
           <div className="row">{example && <span className="badge example">EXAMPLE</span>}<span className="small" style={{ color: "#9AA0AD" }}>A shoutout. That&apos;s the whole trophy.</span></div>

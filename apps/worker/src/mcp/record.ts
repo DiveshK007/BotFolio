@@ -15,6 +15,7 @@ export interface BotRecord {
     status: string;
     created_at: string;
     created_tx: string | null;
+    dna_seed: string | null;
   };
   /** Committed versions only, newest first: each brain the owner put on-chain, with its config hash. */
   versions: { version: number; source: string; config_hash: string; committed_tx: string | null; approved_at: string | null; max_per_coin_bps: number; max_trades_per_day: number }[];
@@ -42,10 +43,10 @@ export async function botRecord(db: Queryable, botId: bigint): Promise<BotRecord
   const id = botId.toString();
   const { rows: bots } = await db.query<{
     id: string; name: string; emoji: string; persona: string; owner: string; qie: string | null; is_house: boolean;
-    status: string; created_at: Date; created_tx: string | null;
+    status: string; created_at: Date; created_tx: string | null; dna_seed: string | null;
   }>(
     `select b.id::text as id, b.name, b.emoji, b.persona_text as persona, b.owner_wallet as owner, q.qie_name as qie,
-            b.is_house, b.status::text as status, b.created_at, b.created_tx
+            b.is_house, b.status::text as status, b.created_at, b.created_tx, b.dna_seed
      from bots b left join qie_names q on q.wallet_address = b.owner_wallet where b.id = $1::bigint`,
     [id],
   );
@@ -92,6 +93,7 @@ export async function botRecord(db: Queryable, botId: bigint): Promise<BotRecord
       status: b.status,
       created_at: new Date(b.created_at).toISOString(),
       created_tx: b.created_tx,
+      dna_seed: b.dna_seed,
     },
     versions: versions.map((v) => ({ ...v, approved_at: v.approved_at ? new Date(v.approved_at).toISOString() : null })),
     trades: trades.map((t) => ({

@@ -22,11 +22,13 @@ const ANT = ['ball', 'bolt', 'sprout', 'coil', 'twin', 'none'];
 const ACC = ['none', 'none', 'headphones', 'glasses', 'bow', 'cap', 'scarf'];
 const PAT = ['none', 'blush', 'stripes', 'spots', 'blush'];
 
+export const DNA_SEED = /^[a-zA-Z0-9_-]{1,64}$/;
+
 export function dnaTraits(seed: string, hint = '', version = 1): DnaTraits {
   const r = rng(fnv(String(seed)));
   const pick = <T,>(a: readonly T[]): T => a[Math.floor(r() * a.length)];
   const t: DnaTraits = { pal: pick(PAL), body: pick(BODIES), eyes: pick(EYES), ant: pick(ANT), acc: pick(ACC), pat: pick(PAT), version };
-  const h = hint.toLowerCase();
+  const h = `${hint} ${seed}`.toLowerCase();
   if (/gold|granny/.test(h)) { t.pal = PAL[1]; t.acc = /granny/.test(h) ? 'glasses' : 'chain'; }
   if (/wolf/.test(h)) { t.pal = ['#6B7385', '#4A5163']; t.acc = 'ears'; t.eyes = 'round'; }
   if (/moon|rocket|yolo|maxi|momentum/.test(h)) { t.pal = PAL[4]; t.ant = 'bolt'; }
@@ -107,4 +109,14 @@ export function dnaSvg({ seed = 'botfolio', hint = '', version = 1, mood = 'smil
 /** Seed for a real bot: its id (stable for life); the version adds visible evolution. */
 export const botSeed = (id: string | number) => `bot-${id}`;
 /** Seed for an unborn preview from the sentence the visitor typed. */
-export const sentenceSeed = (s: string) => `pet-${dnaHash(s.trim().toLowerCase())}`;
+export function sentenceSeed(s: string): string {
+  const norm = s.trim().toLowerCase();
+  const tags: string[] = [];
+  if (/granny/.test(norm)) tags.push("granny");
+  else if (/gold/.test(norm)) tags.push("gold");
+  if (/wolf/.test(norm)) tags.push("wolf");
+  if (/moon|rocket|yolo|maxi|momentum/.test(norm)) tags.push("rocket");
+  if (/dip|doctor/.test(norm)) tags.push("dip");
+  if (/steady|sam/.test(norm)) tags.push("steady");
+  return `pet-${dnaHash(norm)}${tags.length ? "-" + tags.join("-") : ""}`;
+}

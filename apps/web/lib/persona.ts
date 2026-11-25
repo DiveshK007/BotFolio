@@ -1,4 +1,5 @@
 import type { Hex } from "viem";
+import { DNA_SEED } from "./dna";
 
 /** Slider bounds (SPEC §2.1 step 3, same as BotRegistry.createBot in §4.2). */
 export const PER_COIN_PCT = { min: 10, max: 50, step: 5 } as const;
@@ -22,6 +23,7 @@ export interface Persona {
 export interface PersonaDraft {
   persona: Persona;
   personaHash: Hex;
+  dnaSeed?: string;
 }
 
 type Range = { min: number; max: number; step: number };
@@ -37,7 +39,7 @@ export const validLimits = (l: BotLimits) =>
 /** null for anything off-schema. We never clamp or fill in: the user would be signing values nobody generated. */
 export function parsePersonaDraft(body: unknown): PersonaDraft | null {
   if (typeof body !== "object" || body === null) return null;
-  const { persona, personaHash } = body as { persona?: unknown; personaHash?: unknown };
+  const { persona, personaHash, dnaSeed } = body as { persona?: unknown; personaHash?: unknown; dnaSeed?: unknown };
   if (typeof personaHash !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(personaHash)) return null;
   if (typeof persona !== "object" || persona === null) return null;
 
@@ -46,8 +48,10 @@ export function parsePersonaDraft(body: unknown): PersonaDraft | null {
   if (!isText(p.name, 20) || !isText(p.emoji, 16) || !isText(p.persona, 120) || !isText(p.rules, 240)) return null;
   if (!inRange(p.max_per_coin_pct, PER_COIN_PCT) || !inRange(p.max_trades_per_day, TRADES_PER_DAY)) return null;
 
+  const validSeed = typeof dnaSeed === "string" && DNA_SEED.test(dnaSeed) ? dnaSeed : undefined;
   return {
     personaHash: personaHash as Hex,
+    ...(validSeed ? { dnaSeed: validSeed } : {}),
     persona: {
       name: p.name,
       emoji: p.emoji,

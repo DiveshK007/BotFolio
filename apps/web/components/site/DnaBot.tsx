@@ -27,11 +27,11 @@ function listen() {
   addEventListener("scroll", kick, { passive: true });
 }
 
-type BotLike = { id: number | string; name?: string; personaText?: string };
+type BotLike = { id: number | string; name?: string; personaText?: string; dnaSeed?: string | null };
 export function DnaBot({ bot, configHash, seed, hint, version = 1, mood = "smile", size = 40, className, assemble }:
   { bot?: BotLike; configHash?: string; seed?: string; hint?: string; version?: number; mood?: DnaMood; size?: number; className?: string; assemble?: boolean }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const d = bot ? { seed: typeof bot.id === "string" && !/^\d+$/.test(bot.id) ? bot.id : botSeed(bot.id), hint: `${bot.name ?? ""} ${bot.personaText ?? ""}` } : { seed: seed ?? "botfolio", hint: hint ?? "botfolio mascot" };
+  const d = bot ? { seed: bot.dnaSeed || (typeof bot.id === "string" && !/^\d+$/.test(bot.id) ? bot.id : botSeed(bot.id)), hint: `${bot.name ?? ""} ${bot.personaText ?? ""}` } : { seed: seed ?? "botfolio", hint: hint ?? "botfolio mascot" };
   void configHash;
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const html = useMemo(() => dnaSvg({ seed: d.seed, hint: d.hint, version, mood, uid }), [d.seed, d.hint, version, mood, uid]);

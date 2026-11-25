@@ -11,6 +11,7 @@ export interface PublicBot {
   isHouse: boolean;
   version: number;
   createdAt: string;
+  dnaSeed?: string | null;
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -21,8 +22,8 @@ export function parseBots(json: unknown): PublicBot[] | null {
   const out: PublicBot[] = [];
   for (const b of json.bots) {
     if (!isObj(b) || typeof b.botId !== "string" || !/^[1-9]\d{0,19}$/.test(b.botId) || typeof b.name !== "string" || typeof b.emoji !== "string"
-      || typeof b.isHouse !== "boolean" || !Number.isSafeInteger(b.version) || (b.version as number) < 1 || typeof b.createdAt !== "string") return null;
-    out.push({ botId: b.botId, name: b.name, emoji: b.emoji, isHouse: b.isHouse, version: b.version as number, createdAt: b.createdAt });
+      || typeof b.isHouse !== "boolean" || !Number.isSafeInteger(b.version) || (b.version as number) < 1 || typeof b.createdAt !== "string" || (b.dnaSeed !== undefined && b.dnaSeed !== null && typeof b.dnaSeed !== "string")) return null;
+    out.push({ botId: b.botId, name: b.name, emoji: b.emoji, isHouse: b.isHouse, version: b.version as number, createdAt: b.createdAt, ...(b.dnaSeed !== undefined ? { dnaSeed: b.dnaSeed } : {}) });
   }
   return out;
 }

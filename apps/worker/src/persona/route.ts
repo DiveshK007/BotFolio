@@ -7,7 +7,7 @@ import type { Authenticator } from "../auth/types";
 import type { HealthState } from "../health";
 import type { Db } from "../relay/db";
 import type { Routes } from "../server";
-import { savePersonaDraft } from "./drafts";
+import { DNA_SEED_PATTERN, savePersonaDraft } from "./drafts";
 import { MAX_SENTENCE_CHARS, cleanSentence, createPersona } from "./persona";
 
 /** UNVERIFIED as a product decision (#219): SPEC names no path. It is the one apps/web already calls. */
@@ -42,7 +42,7 @@ const refusal = (status: number, code: string, message: string, retryAfterSecond
 });
 
 /**
- * POST /persona `{ sentence, termsAccepted: true }` → `{ ok: true, persona: <§6.3>, personaHash }`.
+ * POST /persona `{ sentence, termsAccepted: true, dnaSeed? }` → `{ ok: true, persona: <§6.3>, personaHash, dnaSeed }`.
  *
  * The wallet comes from the verified token, never the body. A Privy user's embedded wallet is listed first,
  * and it is the one that will sign createBot.
@@ -64,13 +64,17 @@ export function personaRoutes(options: PersonaRouteOptions): Routes {
       const wallet = identity.wallets[0];
       if (!wallet) return refusal(403, "NO_WALLET", "Your sign-in has no wallet yet. Sign in again.");
 
-      const { sentence, termsAccepted } = (body ?? {}) as { sentence?: unknown; termsAccepted?: unknown };
+      const { sentence, termsAccepted, dnaSeed } = (body ?? {}) as { sentence?: unknown; termsAccepted?: unknown; dnaSeed?: unknown };
       if (termsAccepted !== true) {
         return refusal(400, "TERMS_NOT_ACCEPTED", "Confirm you're 18+ and accept the Terms first.");
       }
       if (typeof sentence !== "string" || sentence.length > MAX_SENTENCE_CHARS || !cleanSentence(sentence)) {
         return refusal(400, "BAD_REQUEST", `Describe your bot in one sentence, up to ${MAX_SENTENCE_CHARS} characters.`);
       }
+      if (dnaSeed !== undefined && dnaSeed !== null && (typeof dnaSeed !== "string" || !DNA_SEED_PATTERN.test(dnaSeed))) {
+        return refusal(400, "BAD_REQUEST", "Invalid dnaSeed.");
+      }
+      const cleanSeed = typeof dnaSeed === "string" ? dnaSeed : null;
       if (service.health.budget(now()) === "resting") {
         return refusal(503, "BUDGET_RESTING", "The bot maker is resting. Please try again later.");
       }
@@ -96,7 +100,7 @@ export function personaRoutes(options: PersonaRouteOptions): Routes {
         privyDid: identity.privyDid ?? null,
         loginMethod: identity.kind === "siwe" ? ("qie_wallet" as const) : ("passkey" as const),
       };
-      await service.db.transaction((tx) => savePersonaDraft(tx as Parameters<typeof savePersonaDraft>[0], owner, personaHash, persona, now()));
+      await service.db.transaction((tx) => savePersonaDraft(tx as Parameters<typeof savePersonaDraft>[0], owner, personaHash, persona, now(), cleanSeed));
       log("persona.created", { personaHash, promptVersion: result.log.promptVersion, flags: result.flags.length });
 
       return {
@@ -104,6 +108,7 @@ export function personaRoutes(options: PersonaRouteOptions): Routes {
         body: {
           ok: true,
           personaHash,
+          dnaSeed: cleanSeed,
           persona: {
             ...persona,
             max_per_coin_pct: limits.maxPerCoinBps / 100,

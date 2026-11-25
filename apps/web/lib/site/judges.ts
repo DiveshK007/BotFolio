@@ -52,7 +52,7 @@ const inrDisplay = (cashE8: string, startE8: string) => {
 export function tradesFromPages(pages: BotPage[], limit = TRADE_ROWS): Trade[] {
   const rows: Trade[] = [];
   for (const p of pages) {
-    const bot = { id: Number(p.bot.id), name: p.bot.name, emoji: p.bot.emoji, isHouse: p.bot.is_house, ownerWallet: p.bot.owner_wallet as `0x${string}` };
+    const bot = { id: Number(p.bot.id), name: p.bot.name, emoji: p.bot.emoji, dnaSeed: p.bot.dna_seed ?? null, isHouse: p.bot.is_house, ownerWallet: p.bot.owner_wallet as `0x${string}` };
     for (const t of p.trades) {
       rows.push({
         botId: bot.id, asset: t.asset, side: t.side, cashE8: t.cash_e8, priceE8: t.price_e8, roundId: t.round_id,

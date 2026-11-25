@@ -33,6 +33,7 @@ export interface Bot {
   isHouse: boolean;
   /** Display colour for the BotHead mascot. Derived client-side from id if absent. */
   color?: string;
+  dnaSeed?: string | null;
   houseRule?: string;
   qieName?: string | null; // .qie reverse lookup — COMING (SPEC §0.6, UNVERIFIED)
 }

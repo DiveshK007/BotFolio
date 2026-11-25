@@ -26,6 +26,11 @@ describe("parsePersonaDraft (SPEC §6.3)", () => {
     });
   });
 
+  it("accepts a safe dnaSeed and ignores a malformed one", () => {
+    expect(parsePersonaDraft({ ...body(), dnaSeed: "pet-42-wolf" })?.dnaSeed).toBe("pet-42-wolf");
+    expect(parsePersonaDraft({ ...body(), dnaSeed: "<svg/onload=1>" })?.dnaSeed).toBeUndefined();
+  });
+
   it("accepts both ends of both sliders", () => {
     expect(parsePersonaDraft(body({ max_per_coin_pct: 10, max_trades_per_day: 1 }))).not.toBeNull();
     expect(parsePersonaDraft(body({ max_per_coin_pct: 50, max_trades_per_day: 8 }))).not.toBeNull();
