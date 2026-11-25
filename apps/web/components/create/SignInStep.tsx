@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { PrimaryButton } from "./controls";
 
@@ -36,13 +37,25 @@ export function SignInStep({ blocked, busy, onSignIn }: SignInStepProps) {
           onChange={(e) => setConfirmed(e.target.checked)}
           className="size-5 shrink-0 accent-accent"
         />
-        {/* TODO(#173): link "Terms of use" once the page exists. Required before launch. */}
-        I&apos;m 18+ and accept the Terms of use.
+        <span>
+          I&apos;m 18+ and accept the{" "}
+          {/* New tab, so reading the terms doesn't lose the bot card. */}
+          <Link href="/terms" target="_blank" rel="noopener" className="font-semibold text-accent-ink underline">
+            Terms of use
+          </Link>
+          .
+        </span>
       </label>
       <PrimaryButton disabled={!confirmed || busy} onClick={onSignIn}>
         {busy ? "Waiting for your passkey…" : "Continue with passkey"}
       </PrimaryButton>
       <p className="text-center text-xs text-muted">No seed phrase, no gas. You never pay.</p>
+      <p className="text-center text-xs text-muted">
+        We keep your wallet address and login ID, not your email.{" "}
+        <Link href="/privacy" target="_blank" rel="noopener" className="underline">
+          Privacy policy
+        </Link>
+      </p>
     </section>
   );
 }

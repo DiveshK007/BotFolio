@@ -82,6 +82,17 @@ function ranked<T extends { botId: string }>(rows: T[], meta: Map<string, BotMet
   });
 }
 
+/** The season boards default to: the latest that has started and isn't closed, else the latest closed one. null = none yet. */
+export async function currentSeason(db: Queryable, now: Date): Promise<number | null> {
+  const { rows } = await db.query<{ id: number | null }>(
+    `select coalesce(
+       (select max(id) from seasons where status <> 'closed' and starts_at <= $1::timestamptz),
+       (select max(id) from seasons where status = 'closed')) as id`,
+    [now.toISOString()],
+  );
+  return rows[0]?.id ?? null;
+}
+
 export async function leaderboards(db: Queryable, season: number, startCashE8: () => Promise<bigint>): Promise<Leaderboards | null> {
   const { rows: seasons } = await db.query<{ starts_at: Date; ends_at: Date; kind: "sprint" | "weekly"; status: string; stored: number }>(
     `select starts_at, ends_at, kind::text as kind, status::text as status,

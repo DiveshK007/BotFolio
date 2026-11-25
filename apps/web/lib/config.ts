@@ -37,6 +37,9 @@ export function parseCreateConfig(env: PublicEnv): CreateConfig | null {
   return { workerUrl, forwarder, registry };
 }
 
+/** The Render service origin alone, for public reads that need no contract address (leaderboards). null = not set. */
+export const getWorkerUrl = () => workerBase(process.env.NEXT_PUBLIC_RELAY_URL);
+
 // Each var is named in full: Next only inlines literal process.env.NEXT_PUBLIC_* reads into the browser bundle.
 export const getCreateConfig = () =>
   parseCreateConfig({

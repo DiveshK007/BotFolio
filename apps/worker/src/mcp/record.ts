@@ -18,8 +18,15 @@ export interface BotRecord {
   };
   /** Committed versions only, newest first: each brain the owner put on-chain, with its config hash. */
   versions: { version: number; source: string; config_hash: string; committed_tx: string | null; approved_at: string | null; max_per_coin_bps: number; max_trades_per_day: number }[];
-  /** The latest trades, newest first. Each can be checked with `verify_trade`. */
-  trades: { tx_hash: string; block_number: string; asset: string; side: string; cash_e8: string; units_e18: string; price_e8: string; round_id: string; reason: string | null }[];
+  /**
+   * The latest trades, newest first. Each can be checked with `verify_trade`. The runner sends them, except
+   * `owner_signed` ones: an Approve Big Move the owner signed. `oracle_updated_at` is the round's updatedAt when the
+   * slot's oracle read saw the same round, else null.
+   */
+  trades: {
+    tx_hash: string; block_number: string; asset: string; side: string; cash_e8: string; units_e18: string; price_e8: string; round_id: string;
+    reason: string | null; decision_id: string; slot_time: string; oracle_updated_at: string | null; owner_signed: boolean;
+  }[];
   seasons: { season: number; return_bps: number; max_dd_bps: number; sortino: number | null; trades: number; battle_rank: number | null }[];
   /** The latest trust score, with the proof for `TrustScoreRegistry.verifyScore`. */
   trust: ScoreProof | null;
@@ -51,11 +58,13 @@ export async function botRecord(db: Queryable, botId: bigint): Promise<BotRecord
      from bot_versions where bot_id = $1::bigint and (committed_tx is not null or source = 'create') order by version desc`,
     [id],
   );
-  const { rows: trades } = await db.query<BotRecord["trades"][number]>(
+  const { rows: trades } = await db.query<Omit<BotRecord["trades"][number], "slot_time" | "oracle_updated_at"> & { slot_time: Date; oracle_updated_at: Date | null }>(
     `select t.tx_hash, t.block_number::text as block_number, t.asset::text as asset, t.side::text as side,
             t.cash_e8::text as cash_e8, t.units_e18::text as units_e18, t.price_e8::text as price_e8,
-            t.round_id::text as round_id, d.reason
-     from trades t join decisions d on d.id = t.decision_id
+            t.round_id::text as round_id, d.reason, d.id::text as decision_id, s.slot_time, r.updated_at as oracle_updated_at,
+            exists (select 1 from big_moves m where m.user_tx = t.tx_hash) as owner_signed
+     from trades t join decisions d on d.id = t.decision_id join slots s on s.id = d.slot_id
+     left join oracle_reads r on r.slot_id = d.slot_id and r.asset = t.asset and r.round_id = t.round_id
      where t.bot_id = $1::bigint and t.tx_hash is not null
      order by t.block_number desc, t.log_index desc limit $2::int`,
     [id, RECORD_TRADES],
@@ -85,7 +94,11 @@ export async function botRecord(db: Queryable, botId: bigint): Promise<BotRecord
       created_tx: b.created_tx,
     },
     versions: versions.map((v) => ({ ...v, approved_at: v.approved_at ? new Date(v.approved_at).toISOString() : null })),
-    trades,
+    trades: trades.map((t) => ({
+      ...t,
+      slot_time: new Date(t.slot_time).toISOString(),
+      oracle_updated_at: t.oracle_updated_at ? new Date(t.oracle_updated_at).toISOString() : null,
+    })),
     seasons: seasons.map((s) => ({ ...s, sortino: s.sortino === null ? null : Number(s.sortino) })),
     trust: trustSeason === null || trustSeason === undefined ? null : await scoreProof(db, trustSeason, botId),
     chain: { chain_id: 1990, explorer: "https://mainnet.qie.digital" },
