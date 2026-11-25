@@ -17,7 +17,7 @@ interface PublicEnv {
  * NEXT_PUBLIC_RELAY_URL (SPEC §10) reads as either the Render service URL or the full /relay URL, so accept both.
  * Plain http only for local dev, because we send a bearer token to it.
  */
-function workerBase(raw: string | undefined): string | null {
+export function workerBase(raw: string | undefined): string | null {
   if (!raw) return null;
   try {
     const url = new URL(raw);
@@ -36,6 +36,9 @@ export function parseCreateConfig(env: PublicEnv): CreateConfig | null {
   if (!workerUrl || !forwarder || !registry || !isAddress(forwarder) || !isAddress(registry)) return null;
   return { workerUrl, forwarder, registry };
 }
+
+/** The Render service origin alone, for public reads that need no contract address (leaderboards). null = not set. */
+export const getWorkerUrl = () => workerBase(process.env.NEXT_PUBLIC_RELAY_URL);
 
 // Each var is named in full: Next only inlines literal process.env.NEXT_PUBLIC_* reads into the browser bundle.
 export const getCreateConfig = () =>
