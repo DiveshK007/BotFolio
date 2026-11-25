@@ -125,6 +125,7 @@ Take `reason` and `roast` from `GateResult.output`, never from the raw model out
 
 ### Leaderboards (SPEC §8, `src/season/leaderboards.ts`)
 - `GET /leaderboards?season=<n>` returns Top Returns, Best Risk-Adjusted (Sortino), Most Trusted and Coach vs Bot, ranked with §8's eligibility and tiebreaks. The last tiebreak on every board is the bot created first.
+- Without `season` it serves the current one: the latest that has started and isn't closed, else the latest closed (same rule as the MCP `get_leaderboard`). Every answer carries `currentSeason`; 404 before any season has started.
 - A closed season reads what its close stored (`season_results`, `trust_scores`). An open one is live: returns and Sortino come from the marks so far, and Most Trusted from the latest scored season (`trustSeason`).
 - House bots are listed with `isHouse` but get `rank: null`, so #1 is always a human-raised bot.
 - Coach vs Bot counts the owner's Daily Calls that have a result in the season's IST days. It needs 2 in a sprint season and 4 in a weekly one, and orders by win rate, then right calls.
