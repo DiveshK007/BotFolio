@@ -23,6 +23,7 @@ import { setUpRelayer } from "./relay/setup";
 import { trustRoutes } from "./trust/route";
 import { leaderboardRoutes } from "./season/route";
 import { botPageRoutes } from "./bot-page/route";
+import { statsRoutes } from "./stats/route";
 import { mcpRoutes } from "./mcp/mcp";
 import { verifyTrade } from "./mcp/verify-trade";
 import { bigMoveRoutes } from "./big-moves/route";
@@ -122,6 +123,7 @@ async function main(): Promise<void> {
     ...usdInrRoutes({ cache: usdInr, origins }),
     ...statusRoutes({ health, origins, clientIp }),
     ...botPageRoutes({ source: boards, origins, clientIp }),
+    ...statsRoutes({ db: reads, origins, clientIp }),
     ...mcpRoutes({
       source: boards && { ...boards, verifyTrade: (tx) => verifyTrade(client, paperLedger as Address, tx) },
       clientIp,
