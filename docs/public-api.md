@@ -74,7 +74,7 @@ Never in the body: correction notes, signatures (`runner_sig`), Privy ids, IPs, 
 | Route | Limit | Where |
 |---|---|---|
 | `GET /api/v1/*` | 60 requests / minute / IP (same as the MCP server, SPEC §10.1) | web route handler (`apps/web/lib/rate-limit.ts`) |
-| `/api/card/*` | not built yet: cards are made by the worker (`apps/worker/src/cards`) and there is no web card route. When it lands it must call `limitByIp`; CDN hits (cards are immutable, SPEC §9) never reach it | — |
+| `GET /api/card/:cardId` | 30 renders / minute / IP (a render costs CPU). CDN hits never reach it: cards are immutable (SPEC §9, `cache-control: public, max-age=31536000, immutable`). Serves mock cards only until real payloads are fetched from the worker (#102) | web route handler (`apps/web/app/api/card/[cardId]/route.ts`) |
 | worker `GET /bot-page` | 120 / minute / IP | worker (`apps/worker/src/bot-page/route.ts`) |
 | worker `/mcp` | 60 / minute / IP | worker |
 
