@@ -88,3 +88,18 @@ Needs a phone (iOS Safari or Android Chrome) and a fresh passkey wallet. Users n
 ## 6. If something is wrong
 
 Roll back first, then diagnose. See [`rollback.md`](rollback.md) for Vercel, Render and the contract-address switch, and [`runbook.md`](runbook.md) for incidents. Log real decisions in `docs/decisions.md`.
+
+## 7. Code freeze (from Sun Nov 29)
+
+SPEC 12.3: S2 closes Nov 29 21:30, submission is Mon Nov 30 evening IST, with the night as buffer before 04:29 IST Dec 1. From the freeze on, `main` is the submission. Only fixes go in.
+
+- [ ] **Announce** in the team chat before the freeze starts, with the exact freeze time and who may merge
+- [ ] **Allowed:** PRs labelled `bug`, plus `documentation` PRs for README, architecture, trust-rules, replay guide (SPEC 13). Nothing else
+- [ ] **Not allowed:** new features, refactors, dependency bumps (close or leave open the Dependabot PRs), frozen interface changes, contract redeploys that move addresses
+- [ ] Each fix PR says what broke, links the issue, and runs the full checklist above for the part it touches
+- [ ] Workstream owner reviews as usual; a second pair of eyes on anything under `apps/worker` or `packages/contracts`
+- [ ] Before merging in the freeze, ask: can this break the live S3 season or the demo path? If yes, hold it until after submission
+- [ ] After each freeze merge, run sections 3 and 4 on production
+- [ ] Final: run the whole checklist once on the commit that is submitted, and tag it. Check the README works from a fresh clone (SPEC 12.3, Nov 29 gate)
+
+Rollback if a freeze merge breaks production: [`rollback.md`](rollback.md).
