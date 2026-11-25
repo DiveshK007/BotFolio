@@ -60,9 +60,33 @@ Never in the body: correction notes, signatures (`runner_sig`), Privy ids, IPs, 
 |---|---|---|
 | 400 | `BAD_REQUEST` | `:id` isn't a positive integer |
 | 404 | `NOT_FOUND` | no such bot |
+| 429 | `RATE_LIMITED` | over the per-IP limit (see Rate limits); `retry-after` header and `retryAfterSeconds` say how long to wait |
 | 503 | `NOT_LIVE` | the worker URL isn't set or the worker has bot pages off |
+| 503 | `BUSY` | the worker rate-limited the web app (not you); `retry-after: 60` |
 | 502 | `UPSTREAM_ERROR` | the worker failed or answered badly |
 
 ### Caching
 
 200s: `cache-control: public, s-maxage=60, stale-while-revalidate=300`. The data changes once a slot.
+
+## Rate limits (#156)
+
+| Route | Limit | Where |
+|---|---|---|
+| `GET /api/v1/*` | 60 requests / minute / IP (same as the MCP server, SPEC §10.1) | web route handler (`apps/web/lib/rate-limit.ts`) |
+| `/api/card/*` | not built yet: cards are made by the worker (`apps/worker/src/cards`) and there is no web card route. When it lands it must call `limitByIp`; CDN hits (cards are immutable, SPEC §9) never reach it | — |
+| worker `GET /bot-page` | 120 / minute / IP | worker (`apps/worker/src/bot-page/route.ts`) |
+| worker `/mcp` | 60 / minute / IP | worker |
+
+Over the limit: `429`, `retry-after` in seconds, `{ "error": { "code": "RATE_LIMITED", "message", "retryAfterSeconds" } }`, `no-store`.
+
+Why limit on the web too: the web's server-side reads all reach the worker from Vercel's IPs, so the worker's per-IP
+limits count every visitor as one caller. The web limit is per real caller. When the worker limits the web anyway,
+`/api/v1` answers `503 BUSY` and the bot page says "Too many requests right now. Try again in a minute."
+
+Known limits of this setup:
+- The caller IP is `x-real-ip`, else the first `x-forwarded-for` entry. UNVERIFIED: that Vercel overwrites both
+  so a client can't set them. Check one deployed request before relying on it.
+- The counter is in memory, per Vercel instance, and resets on a cold start. A caller spread over several
+  instances gets more than 60. Move to a shared store if the API is abused.
+- Cached 200s (`s-maxage=60`) are served by Vercel's CDN and don't count against the limit.
