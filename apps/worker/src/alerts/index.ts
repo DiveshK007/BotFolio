@@ -73,7 +73,7 @@ export function hotWallets(env: Env): HotWallet[] {
   });
 }
 
-/** LOW_BALANCE_ALERT_QIE in wei; SPEC §6 says alert below 2 QIE. Null if it isn't a number. */
+/** LOW_BALANCE_ALERT_QIE in wei; SPEC §4 says alert below 2 QIE. Null if it isn't a number. */
 export function lowBalanceWei(env: Env): bigint | null {
   const raw = env.LOW_BALANCE_ALERT_QIE?.trim() || "2";
   try {
