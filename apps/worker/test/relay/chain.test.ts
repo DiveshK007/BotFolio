@@ -54,8 +54,11 @@ describe("pre-checks before spending gas (#37)", () => {
     expect(calls).toHaveLength(1);
   });
 
-  it("WOULD_REVERT with plain words for a known custom error", async () => {
-    const data = encodeErrorResult({ abi: parseAbi(["error PriceTooOld(uint8 asset)"]), args: [2] });
+  // PaperLedger.executeApproved and DailyCall.call both revert on a stale price, with different selectors (#151).
+  it.each([
+    ["PaperLedger", encodeErrorResult({ abi: parseAbi(["error PriceTooOld(uint8 asset)"]), args: [2] })],
+    ["DailyCall", encodeErrorResult({ abi: parseAbi(["error PriceTooOld()"]) })],
+  ])("WOULD_REVERT with plain words for %s's stale-price error", async (_name, data) => {
     const { result, calls } = await prepare({ inner: reverted(data) });
     await expect(result).rejects.toMatchObject({
       code: "WOULD_REVERT",

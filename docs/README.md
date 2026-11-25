@@ -5,6 +5,7 @@
 - [`oracle-caveat.md`](oracle-caveat.md) — QIE-operated feeds, update gaps, max ages, skip and hold
 - [`public-api.md`](public-api.md) — public read API (`/api/v1`)
 - [`replay.md`](replay.md) — recompute a season; what is and isn't reproducible
+- [`release.md`](release.md) — regression checklist before every production deploy, plus code freeze
 - [`rollback.md`](rollback.md) — rollback: Vercel, Render, contract-address switch
 - [`runbook.md`](runbook.md) — incidents: restart, stale oracle, LLM down, RPC down, wallet top-up, key rotation
 - [`trust-rules.md`](trust-rules.md) — trust score rules `trust-v1-sprint` and `trust-v1`
