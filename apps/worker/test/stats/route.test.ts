@@ -3,6 +3,7 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { HealthState } from "../../src/health";
+import { fetchStats } from "../../../web/lib/stats";
 import type { Queryable } from "../../src/scheduler/db";
 import { createWorkerServer } from "../../src/server";
 import { STATS_CACHE_MS, STATS_PER_IP_PER_MINUTE, statsRoutes, type StatsRouteOptions } from "../../src/stats/route";
@@ -171,6 +172,14 @@ describe("GET /stats", () => {
     clock = STATS_CACHE_MS;
     const fresh = (await (await fetch(url)).json()) as { stats: ActivityStats };
     expect(fresh.stats.userSigned.byAction.createBot.txs).toBe(1);
+  });
+
+  it("answers in the shape apps/web's fetchStats accepts", async () => {
+    clock = 0;
+    await start();
+    const result = await fetchStats(url.replace(/\/stats$/, ""));
+    expect(result.kind).toBe("ok");
+    if (result.kind === "ok") expect(result.stats).toMatchObject({ asOf: NOW.toISOString(), userSigned: { txs: 7, signers: 2 }, system: { txs: 6 } });
   });
 
   it("503 when not configured, 429 when flooded", async () => {

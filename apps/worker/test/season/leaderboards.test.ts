@@ -1,5 +1,6 @@
 import type { PGlite } from "@electric-sql/pglite";
 import { istDay } from "@botfolio/shared";
+import { fetchLeaderboards } from "../../../web/lib/leaderboards";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -155,6 +156,19 @@ describe("GET /leaderboards", () => {
 
     expect((await fetch(`${url}?season=9`)).status).toBe(404);
     for (const q of ["?season=", "?season=x", "?season=01", "?season=-1"]) expect((await fetch(`${url}${q}`)).status).toBe(400);
+  });
+
+  it("answers in the shape apps/web's fetchLeaderboards accepts, every row kept", async () => {
+    await seedClosedSeason();
+    const url = await start({ source: { db, startCashE8: startCash }, origins: new Set(), clientIp: () => "1.2.3.4", now: () => 0 });
+    const raw = (await (await fetch(`${url}?season=1`)).json()) as { leaderboards: Record<string, unknown[]> };
+    const answer = await fetchLeaderboards(url.replace(/\/leaderboards$/, ""), 1);
+    expect(answer.boards.season).toBe(1);
+    // parseLeaderboards rejects the whole answer on one bad row, so equal lengths mean every row passed.
+    for (const key of ["topReturns", "bestRiskAdjusted", "mostTrusted", "coachVsBot"] as const) {
+      expect(answer.boards[key]).toHaveLength(raw.leaderboards[key]!.length);
+    }
+    expect(answer.boards.topReturns.length).toBeGreaterThan(0);
   });
 
   it("serves the current season when none is given, and says which is current", async () => {

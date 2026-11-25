@@ -2,6 +2,7 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 import { HealthState } from "../../src/health";
+import { fetchStatus } from "../../../web/lib/status";
 import type { OracleReading } from "../../src/oracle";
 import { createWorkerServer } from "../../src/server";
 import { STATUS_PER_IP_PER_MINUTE, publicStatus, statusRoutes } from "../../src/status/route";
@@ -49,6 +50,15 @@ describe("GET /status", () => {
     const text = await res.text();
     expect(JSON.parse(text)).toEqual({ ok: true, staleFeeds: ["SOL", "GOLD"], resting: true });
     for (const secret of ["RELAYER", "rpc1", "runner", "spent", "xai", "0x111"]) expect(text).not.toContain(secret);
+  });
+
+  it("answers in the shape apps/web's fetchStatus accepts", async () => {
+    const base = (await start(degraded())).replace(/\/status$/, "");
+    expect(await fetchStatus(base)).toEqual({ staleFeeds: ["SOL", "GOLD"], resting: true });
+    await new Promise<void>((done) => server!.close(() => done()));
+    server = undefined;
+    const clear = (await start(new HealthState({ provider: "fake", capUsd: null }))).replace(/\/status$/, "");
+    expect(await fetchStatus(clear)).toEqual({ staleFeeds: [], resting: false });
   });
 
   it("limits each IP", async () => {
