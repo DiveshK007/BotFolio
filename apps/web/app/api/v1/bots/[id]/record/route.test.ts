@@ -5,7 +5,8 @@ import { GET } from "./route";
 const HEX = (b: string) => `0x${b.repeat(32)}`;
 const proofTrust = { botId: "7", leaf: HEX("44"), proof: [HEX("55"), HEX("66")] };
 
-const call = (id: string) => GET(new Request(`https://botfolio.example/api/v1/bots/${id}/record`), { params: Promise.resolve({ id }) });
+const call = (id: string, ip = "203.0.113.1") =>
+  GET(new Request(`https://botfolio.example/api/v1/bots/${id}/record`, { headers: { "x-real-ip": ip } }), { params: Promise.resolve({ id }) });
 const worker = (body: unknown, status = 200) => vi.fn<typeof fetch>(async () => new Response(JSON.stringify(body), { status }));
 
 describe("GET /api/v1/bots/:id/record", () => {
@@ -64,5 +65,24 @@ describe("GET /api/v1/bots/:id/record", () => {
     const off = await call("7");
     expect(off.status).toBe(503);
     expect(await off.json()).toEqual({ error: { code: "NOT_LIVE", message: expect.any(String) } });
+  });
+
+  it("says busy, not 'your fault', when the worker rate-limits the web", async () => {
+    vi.stubGlobal("fetch", worker({ ok: false }, 429));
+    const res = await call("7");
+    expect(res.status).toBe(503);
+    expect(res.headers.get("retry-after")).toBe("60");
+    expect((await res.json()).error.code).toBe("BUSY");
+  });
+
+  it("limits each caller IP to 60 a minute before asking the worker", async () => {
+    const f = worker({ ok: true, page: samplePage() });
+    vi.stubGlobal("fetch", f);
+    for (let i = 0; i < 60; i++) expect((await call("7", "198.51.100.9")).status).toBe(200);
+    const over = await call("7", "198.51.100.9");
+    expect(over.status).toBe(429);
+    expect(Number(over.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(f).toHaveBeenCalledTimes(60);
+    expect((await call("7", "198.51.100.10")).status).toBe(200);
   });
 });
