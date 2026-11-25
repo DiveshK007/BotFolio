@@ -96,3 +96,26 @@ describe("Privy token, verified server-side (#186)", () => {
     expect((await verifier.verify(token))!.wallets).toContain(lower(OTHER.address));
   });
 });
+
+describe("Deleting a Privy user (#174)", () => {
+  const deleter = (status: number) => {
+    const calls: [string, RequestInit][] = [];
+    const fetch = (async (url: string, init: RequestInit) => {
+      calls.push([url, init]);
+      return new Response(null, { status });
+    }) as unknown as typeof globalThis.fetch;
+    return { calls, verifier: new PrivyVerifier({ appId: APP_ID, appSecret: APP_SECRET, fetch }) };
+  };
+
+  it.each([200, 204, 404])("sends DELETE with the app secret, and %i counts as deleted", async (status) => {
+    const { calls, verifier } = deleter(status);
+    await verifier.deleteUser(DID);
+    expect(calls[0]![0]).toBe(`https://api.privy.io/v1/users/${encodeURIComponent(DID)}`);
+    expect(calls[0]![1].method).toBe("DELETE");
+    expect((calls[0]![1].headers as Record<string, string>)["privy-app-id"]).toBe(APP_ID);
+  });
+
+  it.each([401, 429, 500])("throws on %i", async (status) => {
+    await expect(deleter(status).verifier.deleteUser(DID)).rejects.toMatchObject({ reason: `privy_api_${status}` });
+  });
+});
