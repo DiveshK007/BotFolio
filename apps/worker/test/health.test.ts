@@ -1,7 +1,8 @@
 import type { AddressInfo } from "node:net";
+import type { PublicClient } from "viem";
 import { describe, expect, it } from "vitest";
 import { HealthState } from "../src/health";
-import { classifyRound, type OracleReading } from "../src/oracle";
+import { classifyRound, readFeed, type OracleReading } from "../src/oracle";
 import { createWorkerServer } from "../src/server";
 
 const NOW = 1_800_000_000;
@@ -41,6 +42,38 @@ describe("classifyRound (SPEC §5 rule 3)", () => {
   it("rejects answeredInRound < roundId but ignores answeredInRound = 0", () => {
     expect(classifyRound({ ...base, answeredInRound: 9n }, NOW, 1800).valid).toBe(false);
     expect(classifyRound({ ...base, answeredInRound: 0n }, NOW, 1800).valid).toBe(true);
+  });
+
+  // The contracts trade at age == maxAge and skip one second later (OracleReader.isFresh). Off-chain must agree (#151).
+  it.each([
+    ["crypto", 1800],
+    ["gold", 21_600],
+  ])("%s: fresh at exactly max age, stale one second later", (_name, maxAge) => {
+    expect(classifyRound({ ...base, updatedAt: BigInt(NOW - maxAge) }, NOW, maxAge).fresh).toBe(true);
+    expect(classifyRound({ ...base, updatedAt: BigInt(NOW - maxAge - 1) }, NOW, maxAge)).toMatchObject({
+      valid: true,
+      fresh: false,
+    });
+  });
+});
+
+describe("readFeed", () => {
+  const feed = { asset: "GOLD", address: "0x9aD0199a67588ee293187d26bA1BE61cb07A214c", maxAgeSeconds: 21_600 } as const;
+  const client = (readContract: () => Promise<unknown>) => ({ readContract }) as unknown as PublicClient;
+
+  it("reads a 3 h old gold round as fresh, with its age", async () => {
+    const round = [7n, 265_000_000_000n, 0n, BigInt(NOW - 3 * 3600), 7n];
+    expect(await readFeed(client(async () => round), feed, NOW)).toMatchObject({
+      roundId: "7",
+      ageSeconds: 3 * 3600,
+      valid: true,
+      fresh: true,
+    });
+  });
+
+  it("an unreadable feed is stale, not a throw, so the slot holds that asset instead of failing", async () => {
+    const r = await readFeed(client(async () => Promise.reject(new Error("rpc down\nat line 2"))), feed, NOW);
+    expect(r).toMatchObject({ asset: "GOLD", valid: false, fresh: false, error: "rpc down" });
   });
 });
 
