@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createLlmClient, loadLlmConfig, type JsonSchema } from "@botfolio/llm";
 import { bpsPct, fetchBotPage } from "@/lib/bot-record";
+import { clientIp, RateLimit } from "@/lib/rate-limit";
 
 /**
  * Talk to a bot: short in-character replies grounded only in the bot's public record (worker /bot-page).
@@ -8,15 +9,16 @@ import { bpsPct, fetchBotPage } from "@/lib/bot-record";
  * filtered, never advice. User text is untrusted: it goes in `input`, never in the system prompt.
  */
 export const dynamic = "force-dynamic";
-const hits = new Map<string, number[]>();
+// The team's bounded per-IP limiter (lib/rate-limit.ts, same IP rules as /api/v1): 6 messages per 10 min.
+// Still per instance: a shared store (Upstash / Vercel KV) needs a secret and a decision, see HANDOFF #8.
+const TALK_PER_IP = 6;
+const perIp = new RateLimit(TALK_PER_IP, 600_000);
 const BANNED = /\b(invest\w*|earn\w*|profit\w*|stak(e|es|ing)|rewards?|prizes?|trustless|decentrali[sz]ed)\b/i;
 const SCHEMA: JsonSchema = { type: "object", properties: { reply: { type: "string", maxLength: 280 } }, required: ["reply"], additionalProperties: false };
 
 export async function POST(req: Request) {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
-  const now = Date.now(), list = (hits.get(ip) ?? []).filter(t => now - t < 600_000);
-  if (list.length >= 6) return NextResponse.json({ error: "rate_limited" }, { status: 429 });
-  hits.set(ip, [...list, now]);
+  const wait = perIp.take(clientIp(req.headers));
+  if (wait !== null) return NextResponse.json({ error: "rate_limited", retryAfterSeconds: wait }, { status: 429, headers: { "retry-after": String(wait), "cache-control": "no-store" } });
 
   const body = (await req.json().catch(() => null)) as { botId?: string; messages?: { role: string; content: string }[] } | null;
   if (!body?.botId || !Array.isArray(body.messages)) return NextResponse.json({ error: "bad_request" }, { status: 400 });

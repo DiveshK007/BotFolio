@@ -86,7 +86,7 @@ export function TalkToBot({ botId, name }: { botId: string; name: string }) {
     try {
       const r = await fetch("/api/site/talk", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ botId, messages: next.slice(-8) }) });
       const j = (await r.json().catch(() => ({}))) as { reply?: string; error?: string };
-      if (!r.ok || !j.reply) { setNote(r.status === 429 ? "Slow down a little and try again in a minute." : "The bot can't chat right now."); setMsgs(next); }
+      if (!r.ok || !j.reply) { setNote(r.status === 429 ? "That's 6 messages for now. Try again in a few minutes." : "The bot can't chat right now."); setMsgs(next); }
       else setMsgs([...next, { role: "assistant", content: j.reply }]);
     } catch { setNote("The bot can't chat right now."); } finally { setBusy(false); }
   };
