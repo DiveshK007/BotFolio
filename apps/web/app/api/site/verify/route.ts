@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { rpc } from "@/lib/site/oracle";
+import { decodeTrades } from "@/lib/site/verify";
 
 /**
  * Verify-any-tx (proof page): is this tx on QIE mainnet, which block, and was it sent to a BotFolio contract?
- * Decoding the TradeExecuted event into round id + price is a follow-up once the ABIs are frozen (packages/contracts/events.md).
+ * PaperLedger `Trade` logs are decoded into bot, asset, oracle round and price (lib/site/verify.ts, events.md).
  */
 export const dynamic = "force-dynamic";
 const CONTRACTS: [string, string | undefined][] = [
@@ -18,7 +19,7 @@ export async function GET(req: Request) {
   try {
     const [t, rc] = await Promise.all([
       rpc<{ to: string | null; blockNumber: string | null } | null>("eth_getTransactionByHash", [tx]),
-      rpc<{ status: string; logs: unknown[]; blockNumber: string } | null>("eth_getTransactionReceipt", [tx]),
+      rpc<{ status: string; logs: { address?: string; topics?: `0x${string}`[]; data?: `0x${string}` }[]; blockNumber: string } | null>("eth_getTransactionReceipt", [tx]),
     ]);
     if (!t) return NextResponse.json({ ok: true, found: false });
     const to = t.to?.toLowerCase() ?? null;
@@ -28,6 +29,7 @@ export async function GET(req: Request) {
       block: t.blockNumber ? BigInt(t.blockNumber).toString() : "pending",
       status: rc ? (rc.status === "0x1" ? "success" : "reverted") : "pending",
       logs: rc?.logs?.length ?? 0,
+      trades: rc?.status === "0x1" ? decodeTrades(rc.logs ?? [], process.env.NEXT_PUBLIC_PAPER_LEDGER_ADDRESS) : [],
     });
   } catch {
     return NextResponse.json({ ok: false, error: "rpc_unreachable" }, { status: 502 });

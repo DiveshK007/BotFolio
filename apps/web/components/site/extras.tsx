@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { botSeed, dnaSvg, dnaTraits } from "@/lib/dna";
 import { DnaBot } from "./DnaBot";
+import type { VerifiedTrade } from "@/lib/site/verify";
+import { e8ToNumber, priceDecimals, usd } from "@/lib/site/format";
 import { reducedMotion, sfx, track } from "./fx";
 
 /* ================= Bot Dex ================= */
@@ -148,7 +150,7 @@ export function Attract({ ids }: { ids: { id: string; name: string }[] }) {
 }
 
 /* ================= Verify any tx ================= */
-interface VerifyAnswer { ok: boolean; found?: boolean; block?: string; to?: string | null; contract?: string | null; status?: string; logs?: number; error?: string }
+interface VerifyAnswer { ok: boolean; found?: boolean; block?: string; to?: string | null; contract?: string | null; status?: string; logs?: number; error?: string; trades?: VerifiedTrade[] }
 export function VerifyTx({ explorer }: { explorer: string }) {
   const [v, setV] = useState(""); const [a, setA] = useState<VerifyAnswer | null>(null); const [busy, setBusy] = useState(false); const [msg, setMsg] = useState("");
   const go = async (e: React.FormEvent) => {
@@ -161,6 +163,10 @@ export function VerifyTx({ explorer }: { explorer: string }) {
     ["TX", "Transaction found", `Status ${a.status ?? "?"} · ${a.logs ?? 0} event logs`],
     ["BLOCK", "Included on QIE mainnet", `Block ${a.block}`],
     ["TO", a.contract ? `Sent to BotFolio's ${a.contract}` : "Not a BotFolio contract", a.to ?? "contract creation"],
+    // Decoded PaperLedger Trade logs: the oracle round and price the contract read itself in this tx.
+    ...(a.trades ?? []).map((t, k) => [`TRADE${(a.trades?.length ?? 0) > 1 ? ` ${k + 1}` : ""}`,
+      `Bot #${t.botId} ${t.side === "BUY" ? "bought" : "sold"} ${t.asset ?? "an asset"}${t.ownerApproved ? " · signed by its owner" : ""}`,
+      `${usd(e8ToNumber(t.priceE8), t.asset ? priceDecimals(t.asset) : 2)} · oracle round ${t.roundId} · price time ${new Date(t.oracleUpdatedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false })} IST`]),
   ] : [];
   return (
     <div className="stack">

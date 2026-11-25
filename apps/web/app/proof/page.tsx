@@ -51,7 +51,7 @@ export default function ProofPage() {
         {/* v3: verify any tx against QIE mainnet (app/api/site/verify). */}
         <section aria-labelledby="verifyH" className="bf"><div className="card stack">
           <h2 id="verifyH" style={{ fontSize: 22 }}>Verify any BotFolio transaction</h2>
-          <p className="small muted">Paste a tx hash. We read it from QIE mainnet and tell you which block it&apos;s in and whether it went to a BotFolio contract.</p>
+          <p className="small muted">Paste a tx hash. We read it from QIE mainnet and tell you which block it&apos;s in, whether it went to a BotFolio contract and, for a trade, the oracle round and price the contract read itself.</p>
           <VerifyTx explorer={process.env.NEXT_PUBLIC_QIE_EXPLORER_URL ?? "https://mainnet.qie.digital"} />
         </div></section>
 
