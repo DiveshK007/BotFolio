@@ -82,16 +82,39 @@ export class PrivyVerifier {
     return wallets;
   }
 
-  private async lookUp(did: string): Promise<Address[] | null> {
+  /**
+   * Deletes the Privy user, and with it the embedded wallet Privy keeps for them (#174). A user that is already
+   * gone counts as deleted. UNVERIFIED: `DELETE /v1/users/{did}` and its 204 are from Privy's API docs, not tried
+   * against a real Privy app (#71).
+   */
+  async deleteUser(did: string): Promise<void> {
+    let status: number;
+    try {
+      const res = await this.fetch(`${PRIVY_API}/v1/users/${encodeURIComponent(did)}`, {
+        method: "DELETE",
+        headers: this.apiHeaders(),
+        redirect: "error",
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      status = res.status;
+    } catch {
+      throw new InternalFailure("privy_api_unreachable");
+    }
+    this.users.delete(did);
+    if (status !== 200 && status !== 204 && status !== 404) throw new InternalFailure(`privy_api_${status}`);
+  }
+
+  private apiHeaders() {
     const { appId, appSecret } = this.opts;
+    return { authorization: `Basic ${Buffer.from(`${appId}:${appSecret}`).toString("base64")}`, "privy-app-id": appId };
+  }
+
+  private async lookUp(did: string): Promise<Address[] | null> {
     let status: number;
     let user: { id?: unknown; linked_accounts?: unknown } | null;
     try {
       const res = await this.fetch(`${PRIVY_API}/v1/users/${encodeURIComponent(did)}`, {
-        headers: {
-          authorization: `Basic ${Buffer.from(`${appId}:${appSecret}`).toString("base64")}`,
-          "privy-app-id": appId,
-        },
+        headers: this.apiHeaders(),
         redirect: "error",
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });

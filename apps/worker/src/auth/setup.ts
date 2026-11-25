@@ -9,6 +9,8 @@ import type { Authenticator } from "./types";
 export interface AuthSetup {
   authenticator: Authenticator;
   siwe: AuthRouteOptions["siwe"];
+  /** For deleting a Privy user (#174); null when Privy isn't configured. */
+  privy: PrivyVerifier | null;
   /** Names of missing or placeholder variables. The relay doesn't start while there are any. */
   problems: string[];
 }
@@ -35,6 +37,7 @@ export function setUpAuth(env: Env, opts: { fetch?: typeof fetch; now?: () => nu
   return {
     authenticator: createAuthenticator({ jwt, privy }),
     siwe: jwt && domain ? { domain, jwt, nonces: new NonceService(opts.now) } : null,
+    privy,
     problems,
   };
 }
