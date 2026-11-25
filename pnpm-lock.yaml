@@ -18,7 +18,7 @@ importers:
         version: link:../../packages/shared
       next:
         specifier: 15.5.29
-        version: 15.5.29(@babel/core@7.29.13)(@types/node@20.19.25)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 15.5.29(@babel/core@7.29.13)(@types/node@20.19.43)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -26,15 +26,15 @@ importers:
         specifier: 19.3.1
         version: 19.3.1(react@19.3.1)
       viem:
-        specifier: ^2.21.0
-        version: 2.58.2(@typescript/typescript6@6.0.2)(zod@4.6.7)
+        specifier: ^2.58.4
+        version: 2.58.4(@typescript/typescript6@6.0.2)(zod@4.6.7)
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 4.3.5
         version: 4.3.5
       '@types/node':
-        specifier: 20.19.25
-        version: 20.19.25
+        specifier: 20.19.43
+        version: 20.19.43
       '@types/react':
         specifier: 19.3.0
         version: 19.3.0
@@ -58,7 +58,7 @@ importers:
         version: typescript@7.0.2
       vitest:
         specifier: 5.1.1
-        version: 5.1.1(@types/node@20.19.25)(vite@8.3.8(@types/node@20.19.25)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+        version: 5.1.1(@types/node@20.19.43)(vite@8.3.8(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
   apps/worker:
     dependencies:
@@ -78,15 +78,15 @@ importers:
         specifier: ^8.16.0
         version: 8.23.1
       viem:
-        specifier: ^2.21.0
-        version: 2.58.2(@typescript/typescript6@6.0.2)(zod@4.6.7)
+        specifier: ^2.58.4
+        version: 2.58.4(@typescript/typescript6@6.0.2)(zod@4.6.7)
     devDependencies:
       '@electric-sql/pglite':
         specifier: ^0.5.0
         version: 0.5.17
       '@types/node':
-        specifier: ^20.16.0
-        version: 20.19.25
+        specifier: ^20.19.43
+        version: 20.19.43
       '@types/pg':
         specifier: ^8.15.0
         version: 8.23.1
@@ -104,13 +104,13 @@ importers:
         version: typescript@7.0.2
       vitest:
         specifier: 5.1.1
-        version: 5.1.1(@types/node@20.19.25)(vite@8.3.8(@types/node@20.19.25)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+        version: 5.1.1(@types/node@20.19.43)(vite@8.3.8(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
   packages/llm:
     devDependencies:
       '@types/node':
-        specifier: ^20.16.0
-        version: 20.19.25
+        specifier: ^20.19.43
+        version: 20.19.43
       tsup:
         specifier: ^9.0.0
         version: 9.0.0(@typescript/typescript6@6.0.2)(jiti@2.7.0)(postcss@8.5.33)(tsx@4.23.15)
@@ -122,13 +122,13 @@ importers:
         version: typescript@7.0.2
       vitest:
         specifier: 5.1.1
-        version: 5.1.1(@types/node@20.19.25)(vite@8.3.8(@types/node@20.19.25)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+        version: 5.1.1(@types/node@20.19.43)(vite@8.3.8(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
   packages/shared:
     dependencies:
       viem:
-        specifier: ^2.21.0
-        version: 2.58.2(@typescript/typescript6@6.0.2)(zod@4.6.7)
+        specifier: ^2.58.4
+        version: 2.58.4(@typescript/typescript6@6.0.2)(zod@4.6.7)
     devDependencies:
       typescript:
         specifier: npm:@typescript/typescript6@6.0.2
@@ -138,13 +138,13 @@ importers:
         version: typescript@7.0.2
       vitest:
         specifier: 5.1.1
-        version: 5.1.1(@types/node@20.19.25)(vite@8.3.8(@types/node@20.19.25)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+        version: 5.1.1(@types/node@20.19.43)(vite@8.3.8(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
   scripts/replay:
     dependencies:
       viem:
-        specifier: ^2.21.0
-        version: 2.58.2(@typescript/typescript6@6.0.2)(zod@4.6.7)
+        specifier: ^2.58.4
+        version: 2.58.4(@typescript/typescript6@6.0.2)(zod@4.6.7)
     devDependencies:
       '@botfolio/shared':
         specifier: workspace:*
@@ -153,8 +153,8 @@ importers:
         specifier: workspace:*
         version: link:../../apps/worker
       '@types/node':
-        specifier: ^20.16.0
-        version: 20.19.25
+        specifier: ^20.19.43
+        version: 20.19.43
       tsup:
         specifier: ^9.0.0
         version: 9.0.0(@typescript/typescript6@6.0.2)(jiti@2.7.0)(postcss@8.5.33)(tsx@4.23.15)
@@ -166,7 +166,7 @@ importers:
         version: typescript@7.0.2
       vitest:
         specifier: 5.1.1
-        version: 5.1.1(@types/node@20.19.25)(vite@8.3.8(@types/node@20.19.25)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+        version: 5.1.1(@types/node@20.19.43)(vite@8.3.8(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
 packages:
 
@@ -1094,8 +1094,8 @@ packages:
   '@types/json5@0.0.29':
     resolution: {integrity: sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==}
 
-  '@types/node@20.19.25':
-    resolution: {integrity: sha512-ZsJzA5thDQMSQO788d7IocwwQbI8B5OPzmqNvpf3NY/+MHDAS759Wo0gd2WQeXYt5AAAQjzcrTVC6SKCuYgoCQ==}
+  '@types/node@20.19.43':
+    resolution: {integrity: sha512-6oYBAi5ikg4Pl+kGsoYtawUMBT2zZMCvPNF7pVLnHZfd1zf38DRiWn/gT01RYCdUqkv7Fhr+C9ot4/tb+2sVvA==}
 
   '@types/pg@8.23.1':
     resolution: {integrity: sha512-fKVHpikPdg4GKks3JuLEhvwSyvwzF23hnabPy6DD8ljVbC7+6J5dQzdv4arV6jqq57djnMgs1HKBxX4P8aBI3A==}
@@ -2859,8 +2859,8 @@ packages:
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
 
-  viem@2.58.2:
-    resolution: {integrity: sha512-tOdKI6+6oQWbb0NirduHfILojP9uY8YamtYIwallzObzMhhSCxWb2zOVw7SwrkYWTt7JmB1/Of4L3hTokp9GJA==}
+  viem@2.58.4:
+    resolution: {integrity: sha512-zeYi2PliKbmJVbIvudHZrYJLh1XMXci6GBJznQLjhhGPGl9L7Hp/LmelpXhOM9VvlXwnvfW7/2PCgpjnc2j8MQ==}
     peerDependencies:
       mppx: '>=0.17.0'
       typescript: '>=5.0.4'
@@ -3726,13 +3726,13 @@ snapshots:
 
   '@types/json5@0.0.29': {}
 
-  '@types/node@20.19.25':
+  '@types/node@20.19.43':
     dependencies:
       undici-types: 6.21.0
 
   '@types/pg@8.23.1':
     dependencies:
-      '@types/node': 20.19.25
+      '@types/node': 20.19.43
       pg-protocol: 1.16.1
       pg-types: 2.2.0
 
@@ -3973,7 +3973,7 @@ snapshots:
       estree-walker: 3.0.3
       magic-string: 1.4.5
     optionalDependencies:
-      vite: 8.3.8(@types/node@20.19.25)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
+      vite: 8.3.8(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
 
   '@vitest/spy@5.1.1': {}
 
@@ -5046,7 +5046,7 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  next@15.5.29(@babel/core@7.29.13)(@types/node@20.19.25)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  next@15.5.29(@babel/core@7.29.13)(@types/node@20.19.43)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@next/env': 15.5.29
       '@swc/helpers': 0.5.15
@@ -5064,7 +5064,7 @@ snapshots:
       '@next/swc-linux-x64-musl': 15.5.29
       '@next/swc-win32-arm64-msvc': 15.5.29
       '@next/swc-win32-x64-msvc': 15.5.29
-      sharp: 0.35.5(@types/node@20.19.25)
+      sharp: 0.35.5(@types/node@20.19.43)
     transitivePeerDependencies:
       - '@babel/core'
       - '@types/node'
@@ -5414,7 +5414,7 @@ snapshots:
       es-errors: 1.3.0
       es-object-atoms: 1.1.2
 
-  sharp@0.35.5(@types/node@20.19.25):
+  sharp@0.35.5(@types/node@20.19.43):
     dependencies:
       '@img/colour': 1.1.0
       detect-libc: 2.1.2
@@ -5445,7 +5445,7 @@ snapshots:
       '@img/sharp-win32-arm64': 0.35.5
       '@img/sharp-win32-ia32': 0.35.5
       '@img/sharp-win32-x64': 0.35.5
-      '@types/node': 20.19.25
+      '@types/node': 20.19.43
     optional: true
 
   shebang-command@2.0.0:
@@ -5764,7 +5764,7 @@ snapshots:
     dependencies:
       punycode: 2.3.1
 
-  viem@2.58.2(@typescript/typescript6@6.0.2)(zod@4.6.7):
+  viem@2.58.4(@typescript/typescript6@6.0.2)(zod@4.6.7):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
@@ -5781,7 +5781,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  vite@8.3.8(@types/node@20.19.25)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15):
+  vite@8.3.8(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -5789,13 +5789,13 @@ snapshots:
       rolldown: 1.2.19
       tinyglobby: 0.2.17
     optionalDependencies:
-      '@types/node': 20.19.25
+      '@types/node': 20.19.43
       esbuild: 0.28.2
       fsevents: 2.3.3
       jiti: 2.7.0
       tsx: 4.23.15
 
-  vitest@5.1.1(@types/node@20.19.25)(vite@8.3.8(@types/node@20.19.25)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)):
+  vitest@5.1.1(@types/node@20.19.43)(vite@8.3.8(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/mocker': 5.1.1(vite@8.3.8(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
@@ -5809,10 +5809,10 @@ snapshots:
       tinybench: 6.2.5
       tinyexec: 1.4.0
       tinyglobby: 0.2.17
-      vite: 8.3.8(@types/node@20.19.25)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
+      vite: 8.3.8(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
       why-is-node-running: 3.2.1
     optionalDependencies:
-      '@types/node': 20.19.25
+      '@types/node': 20.19.43
     transitivePeerDependencies:
       - msw
 

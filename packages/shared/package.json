@@ -10,7 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "viem": "^2.21.0"
+    "viem": "^2.58.4"
   },
   "devDependencies": {
     "typescript": "npm:@typescript/typescript6@6.0.2",
