@@ -9,6 +9,15 @@ type Props = { params: Promise<{ botId: string }> };
 
 export const revalidate = 60;
 
+const FAILED = {
+  not_live: {
+    title: "Bot pages aren't live yet",
+    text: "Every bot gets a public page: holdings, every call with its reason, every trade with its oracle round and tx, versions and trust score. Check back soon.",
+  },
+  busy: { title: "Lots of people are looking", text: "Too many requests right now. Try again in a minute. Every trade is on QIE mainnet either way." },
+  error: { title: "We couldn't load this bot", text: "The record didn't come back. Try again in a minute. Every trade is on QIE mainnet either way." },
+};
+
 // Only the numeric id goes into metadata: the name is LLM output from user text (#159).
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { botId } = await params;
@@ -32,12 +41,8 @@ export default async function BotPage({ params }: Props) {
           <BotPageView page={result.page} />
         ) : (
           <section className="rounded-r3 border border-line bg-surface p-4 shadow-card">
-            <h1 className="font-display text-2xl font-extrabold">{result.kind === "not_live" ? "Bot pages aren't live yet" : "We couldn't load this bot"}</h1>
-            <p className="mt-2 text-muted">
-              {result.kind === "not_live"
-                ? "Every bot gets a public page: holdings, every call with its reason, every trade with its oracle round and tx, versions and trust score. Check back soon."
-                : "The record didn't come back. Try again in a minute. Every trade is on QIE mainnet either way."}
-            </p>
+            <h1 className="font-display text-2xl font-extrabold">{FAILED[result.kind].title}</h1>
+            <p className="mt-2 text-muted">{FAILED[result.kind].text}</p>
             <Link href="/" className="mt-4 inline-flex min-h-11 items-center font-semibold text-accent-ink">
               Make your own bot
             </Link>

@@ -97,7 +97,7 @@ export interface BotPage {
   decisions: BotDecision[];
 }
 
-export type BotPageResult = { kind: "ok"; page: BotPage } | { kind: "not_found" } | { kind: "not_live" } | { kind: "error" };
+export type BotPageResult = { kind: "ok"; page: BotPage } | { kind: "not_found" } | { kind: "not_live" } | { kind: "busy" } | { kind: "error" };
 
 const UINT = /^\d{1,78}$/;
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -141,7 +141,10 @@ export function parseBotPage(json: unknown): BotPage | null {
   };
 }
 
-/** No worker URL or the worker says 503 → "not live yet"; 404 → not found; anything else that fails → error. */
+/**
+ * No worker URL or the worker says 503 → "not live yet"; 404 → not found; 429 → busy (the worker's per-IP limit
+ * sees every server-side read from Vercel as one caller, #156); anything else that fails → error.
+ */
 export async function fetchBotPage(
   botId: string,
   base: string | null = workerBase(process.env.NEXT_PUBLIC_RELAY_URL),
@@ -156,6 +159,7 @@ export async function fetchBotPage(
     } as RequestInit);
     if (res.status === 404) return { kind: "not_found" };
     if (res.status === 503) return { kind: "not_live" };
+    if (res.status === 429) return { kind: "busy" };
     if (!res.ok) return { kind: "error" };
     const page = parseBotPage(await res.json());
     return page ? { kind: "ok", page } : { kind: "error" };

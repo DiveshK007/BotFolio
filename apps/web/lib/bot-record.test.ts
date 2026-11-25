@@ -34,6 +34,7 @@ describe("fetchBotPage", () => {
     expect(await fetchBotPage("abc", base, reply({}))).toEqual({ kind: "not_found" });
     expect(await fetchBotPage("7", base, reply({ ok: false }, 404))).toEqual({ kind: "not_found" });
     expect(await fetchBotPage("7", base, reply({ ok: false }, 503))).toEqual({ kind: "not_live" });
+    expect(await fetchBotPage("7", base, reply({ ok: false }, 429))).toEqual({ kind: "busy" });
     expect(await fetchBotPage("7", base, reply({ ok: false }, 500))).toEqual({ kind: "error" });
     expect(await fetchBotPage("7", base, reply({ ok: true, page: {} }))).toEqual({ kind: "error" });
     expect(await fetchBotPage("7", base, vi.fn<typeof fetch>(async () => Promise.reject(new Error("down"))))).toEqual({ kind: "error" });
