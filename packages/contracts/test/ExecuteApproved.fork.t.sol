@@ -270,6 +270,18 @@ contract ExecuteApprovedForkTest is LedgerFixture {
         assertEq(_tradesToday(aliceBot), 1);
     }
 
+    /// #151: a zero answer or a reverting feed is "price too old" as well, so the app says "try again",
+    /// and the orderId stays unused for that retry.
+    function test_unusableFeedRevertsAsTooOld() public {
+        IPaperLedger.ApprovedOrder memory o = _bigMove();
+        bytes memory tooOld = abi.encodeWithSelector(IPaperLedger.PriceTooOld.selector, ETH);
+        _setPrice(ETH, 0, block.timestamp);
+        _expectApproveRevert(o, _runnerSig(o), tooOld);
+        vm.mockCallRevert(FEEDS[ETH], abi.encodeCall(IAggregatorV3.latestRoundData, ()), "down");
+        _expectApproveRevert(o, _runnerSig(o), tooOld);
+        assertFalse(ledger.usedOrder(ledger.orderIdOf(o.decisionId, o.actionIndex)));
+    }
+
     function test_overCapReverts() public {
         IPaperLedger.ApprovedOrder memory o = _bigMove();
         o.bps = 5001;
