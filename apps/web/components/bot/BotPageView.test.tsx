@@ -18,6 +18,7 @@ it("shows value in ₹, holdings with oracle round and age, trust factors, calls
   expect(html).toContain(`https://mainnet.qie.digital/tx/0x${"ab".repeat(32)}`);
   expect(html).toContain("Config hash");
   expect(html).toContain("Replay this season");
+  expect(html).toContain(`href="/proof#replay"`);
   expect(html).not.toMatch(/trustless|decentrali[sz]ed/i);
 });
 

@@ -4,7 +4,6 @@ import { OraclePrice } from "@/components/ui/OraclePrice";
 import { ageAtCall, bpsPct, callLabel, formatUnits, istTime, weightPct, type BotPage } from "@/lib/bot-record";
 import { assetName, formatE8, shortHex } from "@/lib/format";
 
-const REPLAY_DOCS = "https://github.com/DiveshK007/BotFolio/blob/main/scripts/replay/README.md";
 const FACTORS = [
   ["fRules", "Follows its rules"],
   ["fDrawdown", "Drawdown control"],
@@ -255,7 +254,7 @@ export function BotPageView({ page }: { page: BotPage }) {
         <p className="mt-1 text-sm text-muted">
           Each season&apos;s replay file recomputes every call, the risk gate and every trade, and checks them against QIE&apos;s official mainnet oracle.
         </p>
-        <a href={REPLAY_DOCS} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-11 items-center rounded-full bg-accent px-4 font-semibold text-on-accent">
+        <a href="/proof#replay" className="mt-3 inline-flex min-h-11 items-center rounded-full bg-accent px-4 font-semibold text-on-accent">
           Replay this season
         </a>
       </section>
