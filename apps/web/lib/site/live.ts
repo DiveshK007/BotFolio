@@ -8,6 +8,7 @@ import { fetchLeaderboards, type Leaderboards } from "@/lib/leaderboards";
 import type { Racer } from "@/components/site/arcade";
 import type { DexBot, RaceSeries } from "@/components/site/extras";
 import { SAMPLE_BOTS } from "./sample";
+import { seasonRace } from "./replay";
 
 export type Live<T> = { example: boolean; data: T };
 
@@ -50,7 +51,26 @@ export async function dexBots(): Promise<Live<DexBot[]>> {
 }
 
 export const RACE_LABELS = ["Open · Nov 26 00:00", "Nov 26 09:00", "Nov 26 13:00", "Nov 26 17:00", "Nov 26 21:00", "Nov 27 09:00", "Nov 27 13:00", "Nov 27 17:00", "Close · Nov 27 21:00"];
-/** EXAMPLE until the season replay file is served (SPEC §6.5); then build from its per-slot marks. */
+/**
+ * Real replay when a season has closed on chain and its file checks out against the data root (lib/site/replay.ts),
+ * else the labelled EXAMPLE race. `season` = the one the page shows; null = the worker's current season.
+ */
+export async function seasonReplay(season: number | null): Promise<Live<{ series: RaceSeries[]; labels: string[] }> & { season?: number }> {
+  const base = getWorkerUrl();
+  if (base) {
+    try {
+      const a = await fetchLeaderboards(base, season, AbortSignal.timeout(8000));
+      const b = a.boards;
+      const names = new Map<string, { name: string; isHouse: boolean }>();
+      for (const e of [...b.topReturns, ...b.mostTrusted, ...b.bestRiskAdjusted, ...b.coachVsBot]) names.set(e.botId, { name: e.name, isHouse: e.isHouse });
+      const race = await seasonRace(season ?? a.currentSeason, names);
+      if (race) return { example: false, data: { series: race.series, labels: race.labels }, season: race.season };
+    } catch { /* fall through to the labelled example */ }
+  }
+  return { example: true, data: { series: raceSeries().data, labels: RACE_LABELS } };
+}
+
+/** EXAMPLE race, labelled on the page. */
 export function raceSeries(): Live<RaceSeries[]> {
   const finals: [number, number][] = [[21, 5.1], [3, 4.2], [12, 3.42], [58, 2.3], [1, 1.85], [41, 1.2], [2, 0.95], [33, 0.6], [52, -0.8], [7, -12.4]];
   return { example: true, data: finals.map(([id, fin]) => { const bot = SAMPLE_BOTS[id]; let s = h(bot.name); const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; const pts = [0]; for (let i = 1; i < 8; i++) pts.push(fin * (i / 8) + (r() - 0.5) * Math.abs(fin + 2) * 0.6); pts.push(fin); return { id: String(id), name: bot.name, isHouse: bot.isHouse, points: pts }; }) };
