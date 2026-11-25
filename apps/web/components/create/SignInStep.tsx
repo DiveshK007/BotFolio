@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { PrimaryButton } from "./controls";
 
@@ -43,6 +44,12 @@ export function SignInStep({ blocked, busy, onSignIn }: SignInStepProps) {
         {busy ? "Waiting for your passkey…" : "Continue with passkey"}
       </PrimaryButton>
       <p className="text-center text-xs text-muted">No seed phrase, no gas. You never pay.</p>
+      <p className="text-center text-xs text-muted">
+        We keep your wallet address and login ID, not your email.{" "}
+        <Link href="/privacy" target="_blank" rel="noopener" className="underline">
+          Privacy policy
+        </Link>
+      </p>
     </section>
   );
 }
