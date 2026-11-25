@@ -116,3 +116,41 @@ describe("markSeasonsClosing", () => {
     expect(await status(1)).toBe("open");
   });
 });
+
+describe("the seeded calendar across the sprint → weekly switch (#179)", () => {
+  const day = (start: string, plus: number) => new Date(Date.parse(`${start}T00:00:00Z`) + plus * 86_400_000).toISOString().slice(0, 10);
+
+  it("closes S5 on Sun Dec 6, opens S6 on Mon Dec 7, then one season a week through S18's close", async () => {
+    await run(openDueSeasons, "2026-12-04T00:00:00"); // S0-S5
+    await pglite.exec("update seasons set status = 'closed' where id < 5");
+
+    // The scheduler's two daily checks (SPEC §6.1), every IST day from S5's open to S18's close (Sun Mar 7).
+    // Stops there: S19 is the last seeded row, so the Mar 8 open check finds no S20 row and throws.
+    const events: string[] = [];
+    for (let d = 0; d <= 93; d++) {
+      const date = day("2026-12-04", d);
+      for (const id of await run(openDueSeasons, `${date}T00:00:00`)) events.push(`${date} open S${id}`);
+      for (const id of await run(markSeasonsClosing, `${date}T21:30:00`)) events.push(`${date} close S${id}`);
+    }
+
+    const expected = ["2026-12-06 close S5"];
+    for (let id = 6; id <= 18; id++) {
+      const week = 7 * (id - 6);
+      expected.push(`${day("2026-12-07", week)} open S${id}`, `${day("2026-12-13", week)} close S${id}`);
+    }
+    expect(events).toEqual(expected);
+    expect(events.at(-1)).toBe("2027-03-07 close S18");
+
+    // Each season went on-chain with its own row's IST times: Monday 00:00 to Sunday 21:30.
+    expect(chain.opened[5]).toEqual({ n: 5, start: ist("2026-12-04T00:00:00").toISOString(), end: ist("2026-12-06T21:30:00").toISOString() });
+    expect(chain.opened[6]).toEqual({ n: 6, start: ist("2026-12-07T00:00:00").toISOString(), end: ist("2026-12-13T21:30:00").toISOString() });
+
+    const { rows } = await pglite.query(
+      "select id, kind::text as kind, provisional_min_trades as n, trust_rules_version as rules from seasons where id in (5, 6) order by id",
+    );
+    expect(rows).toEqual([
+      { id: 5, kind: "sprint", n: 8, rules: "trust-v1-sprint" },
+      { id: 6, kind: "weekly", n: 20, rules: "trust-v1" },
+    ]);
+  });
+});
