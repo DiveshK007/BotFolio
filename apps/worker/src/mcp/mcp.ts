@@ -3,7 +3,7 @@ import type { Hex } from "viem";
 import { BodyError, readJson } from "../auth/http";
 import { Throttle } from "../auth/throttle";
 import type { Queryable } from "../scheduler/db";
-import { leaderboards } from "../season/leaderboards";
+import { currentSeason, leaderboards } from "../season/leaderboards";
 import { sendJson, type Routes } from "../server";
 import { botRecord, findBots } from "./record";
 import type { TradeCheck } from "./verify-trade";
@@ -222,13 +222,7 @@ async function getLeaderboard(source: McpSource, args: Record<string, unknown>, 
   if (typeof board !== "string" || !Object.hasOwn(BOARDS, board)) return toolError(`board must be one of ${Object.keys(BOARDS).join(", ")}.`);
   let season = args.season;
   if (season === undefined) {
-    const { rows } = await source.db.query<{ id: number | null }>(
-      `select coalesce(
-         (select max(id) from seasons where status <> 'closed' and starts_at <= $1::timestamptz),
-         (select max(id) from seasons where status = 'closed')) as id`,
-      [now.toISOString()],
-    );
-    season = rows[0]?.id ?? null;
+    season = await currentSeason(source.db, now);
     if (season === null) return toolError("No season has started yet.");
   }
   if (typeof season !== "number" || !Number.isSafeInteger(season) || season < 0) return toolError("season must be a season number.");

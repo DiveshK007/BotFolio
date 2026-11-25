@@ -154,7 +154,28 @@ describe("GET /leaderboards", () => {
     expect(fresh.leaderboards.topReturns[0]!.botId).toBe("7");
 
     expect((await fetch(`${url}?season=9`)).status).toBe(404);
-    for (const q of ["", "?season=x", "?season=01", "?season=-1"]) expect((await fetch(`${url}${q}`)).status).toBe(400);
+    for (const q of ["?season=", "?season=x", "?season=01", "?season=-1"]) expect((await fetch(`${url}${q}`)).status).toBe(400);
+  });
+
+  it("serves the current season when none is given, and says which is current", async () => {
+    await seedClosedSeason();
+    let clock = ist("2026-11-28T12:00:00").getTime(); // season 2 hasn't started: the latest closed one is current
+    const url = await start({ source: { db, startCashE8: startCash }, origins: new Set(), clientIp: () => "1.2.3.4", now: () => clock });
+    type Body = { currentSeason: number; leaderboards: { season: number; live: boolean } };
+
+    const before = (await (await fetch(url)).json()) as Body;
+    expect(before).toMatchObject({ currentSeason: 1, leaderboards: { season: 1, live: false } });
+
+    clock = ist("2026-11-29T12:00:00").getTime() + LEADERBOARDS_CACHE_MS; // season 2 is open now
+    const during = (await (await fetch(url)).json()) as Body;
+    expect(during).toMatchObject({ currentSeason: 2, leaderboards: { season: 2, live: true } });
+    expect(((await (await fetch(`${url}?season=1`)).json()) as Body).currentSeason).toBe(2);
+  });
+
+  it("is 404 when no season has started", async () => {
+    await pg.exec("delete from seasons");
+    const url = await start({ source: { db, startCashE8: startCash }, origins: new Set(), clientIp: () => "1.2.3.4" });
+    expect((await fetch(url)).status).toBe(404);
   });
 
   it("is 503 when not configured", async () => {
