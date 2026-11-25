@@ -99,7 +99,7 @@ QIE's feeds sometimes stop updating: gold for more than 6 h, crypto for more tha
 
 **Fix:** decide with Divesh whether to raise `LLM_MONTHLY_BUDGET_USD`. If yes, set it in Render and restart. The budget resets on the 1st of the month (UTC).
 
-**Not built yet:** the 80 % alert to Telegram/email (SPEC §10). Today it is only the log line and `/healthz`. Check `/healthz` daily until it exists.
+**Alert:** the worker posts to the alert webhook when spend passes 80 % (kind `llm_budget_alert`) and again when it is used up (`llm_budget_resting`), once per month each (see §5b for the webhook). `/healthz` and the `llm.budget` log line still show the state.
 
 **Who:** Gokul for the switch. Divesh for budget and provider keys.
 
@@ -131,7 +131,7 @@ The three hot wallets are separate keys: relayer (`RELAYER_PRIVATE_KEY`, pays fo
 
 **Float and alert threshold:** keep **10 QIE** in each. Top up below **2 QIE** (`LOW_BALANCE_ALERT_QIE=2`, SPEC §4.10). At the sizes in [`gas.md`](gas.md) (100 bots) 10 QIE lasts the relayer about 310 days and the runner about 260 days at 1.125 gwei.
 
-**Not built yet:** the automatic low-balance alert. `LOW_BALANCE_ALERT_QIE` and `ALERT_WEBHOOK_URL` are in `.env.example`, but no code reads them. Until it exists, Divesh checks the three balances once a day with `cast balance` and writes them in the team chat.
+**Alert:** the worker checks the relayer, runner and committer balances every 10 minutes (only wallets whose key is set on that deploy). Below `LOW_BALANCE_ALERT_QIE` (default 2) it posts `Low balance: <label> wallet <address> has <n> QIE` to the alert webhook, kind `low_balance:<label>`, at most once an hour per wallet while it stays low. An unreadable balance logs `alerts.balance_unreadable`; a non-numeric `LOW_BALANCE_ALERT_QIE` turns the check off (`alerts.balance_check_off`). Setup and test: see §5b.
 
 **Symptom, relayer empty:** user actions fail with `INTERNAL` ("Something went wrong on our side. Nothing was sent."). The logs show `{"event":"relay.refused","code":"INTERNAL",...,"cause":"broadcast_rejected"}`. The node refused the tx with "insufficient funds". **UNVERIFIED**: the exact refusal wording on QIE nodes, and whether the refusal can come earlier as `RPC_UNAVAILABLE`.
 
@@ -150,6 +150,20 @@ The three hot wallets are separate keys: relayer (`RELAYER_PRIVATE_KEY`, pays fo
 - A gas price above 25 gwei is refused in code (`gas_price_above_cap`), so a bad RPC quote can't drain a wallet.
 
 **Who:** Divesh tops up. Gokul investigates a fast drain.
+
+
+## 5b. Alert webhook
+
+Code: `apps/worker/src/alerts`. Set `ALERT_WEBHOOK_URL` in Render (https only; it holds the hook's token, so it is never logged). If it is unset or not https the worker logs `alerts.disabled` once and sends nothing. Every alert is logged as `alerts.notify` with `kind` and `sent`; a failed POST logs `alerts.send_failed` and is retried on the next check.
+
+**What alerts, checked every 10 minutes:**
+- Low balance per relayer/runner/committer wallet (see section 5).
+- LLM budget at 80 % and at 100 %, once per month each (section 3c).
+- A scheduled job that failed (once per failed run) or never started. Routine stale-oracle holds do not alert.
+
+**Payload:** `POST` JSON `{"text", "content", "kind", "at"}`. Same kind repeats at most once an hour. `text` is ours only: addresses, balances, job names. **UNVERIFIED:** that Slack incoming webhooks (read `text`) and Discord webhooks (read `content`) accept this payload; test against the real hook before relying on it.
+
+**Send a test alert:** in Render set `LOW_BALANCE_ALERT_QIE` to a number above the wallets' balances (for example `1000000`) and redeploy. Within one check (10 minutes at most, the first runs at start) expect a `low_balance` message per wallet in the channel and `alerts.notify` lines with `sent:true`. Then set `LOW_BALANCE_ALERT_QIE` back to `2` and redeploy.
 
 ## 6. Key rotation
 
