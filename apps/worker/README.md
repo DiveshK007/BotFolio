@@ -100,6 +100,12 @@ Take `reason` and `roast` from `GateResult.output`, never from the raw model out
 - `POST /big-moves/shrink {orderId}`: ends the 2 h window now, so the next sweep (≤ 10 min) sends the safe-size order under the same orderId. `usedOrder` lets only one of the two execute.
 - Block is the owner's signed correction with chip "blocked"; when it is indexed, the decision's pending big moves become `blocked` and the sweep leaves them alone.
 
+### Daily Call, the owner's side (SPEC §2.2, §6.4.1, `src/daily-call/route.ts`)
+- `POST /daily-call` (signed in): today's state for each of the owner's active bots, plus the IST `day` and the 20:00 `closesAt`. No bot view in it.
+  - `waiting`: the bot's 09:00 (or debut) decision hasn't run yet; `open`: a signed view exists and it's before 20:00; `called`: the owner's call is indexed; `closed`: 20:00 or later.
+  - `joins_tomorrow`: the bot decided since 09:00 without a view, e.g. a late bot whose debut decision left `daily_call` out or was invalid. The app hides Daily Call and shows "Your bot joins tomorrow's call".
+- `POST /daily-call/view {botId}`: only while `open`, the runner-signed `SignedDailyCallBotView`. The app asks after the user picks, then relays `DailyCall.call(botId, userUp, botUp, botSig)`. `bot_up_sig` is never anon-readable and the view is never logged.
+
 ### Cards (SPEC §9, `src/cards`)
 - Payloads follow the frozen `packages/shared/src/cards.ts`. Each card's id comes from what it is about, so it is written once:
   - `trade-<bot>`: the first trade;

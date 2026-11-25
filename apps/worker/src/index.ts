@@ -23,6 +23,7 @@ import { leaderboardRoutes } from "./season/route";
 import { mcpRoutes } from "./mcp/mcp";
 import { verifyTrade } from "./mcp/verify-trade";
 import { bigMoveRoutes } from "./big-moves/route";
+import { dailyCallRoutes } from "./daily-call/route";
 import { createCardChain } from "./cards/build";
 import { cardJobs, startCardSweeper } from "./cards/jobs";
 import { TARGET_ABIS } from "./relay/abis";
@@ -96,6 +97,7 @@ async function main(): Promise<void> {
     ...personaRoutes({ origins, auth: auth.authenticator, clientIp, log: consoleLog, service: persona.service }),
     ...trustRoutes({ db: reads, origins, clientIp }),
     ...bigMoveRoutes({ origins, auth: auth.authenticator, log: consoleLog, db: reads }),
+    ...dailyCallRoutes({ origins, auth: auth.authenticator, log: consoleLog, db: reads }),
     ...leaderboardRoutes({ source: boards, origins, clientIp }),
     ...mcpRoutes({
       source: boards && { ...boards, verifyTrade: (tx) => verifyTrade(client, paperLedger as Address, tx) },
