@@ -1,10 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
+import { HealthState } from "../../src/health";
+import { createWorkerServer } from "../../src/server";
+import { fetchUsdInr } from "../../../web/lib/usd-inr";
+import { serve } from "../relay/helpers/http";
 import {
   parseUsdInr,
   USD_INR_FALLBACK,
   USD_INR_REFRESH_MS,
   USD_INR_RETRY_MS,
   usdInrCache,
+  usdInrRoutes,
 } from "../../src/fx/usd-inr";
 
 const live = (rate: number) => ({ amount: 1, base: "USD", date: "2026-11-24", rates: { INR: rate } });
@@ -85,5 +90,16 @@ describe("usdInrCache", () => {
     cache.get();
     await cache.settled();
     expect(cache.get()).toEqual({ rate: USD_INR_FALLBACK, fetchedAt: null, source: "fallback" });
+  });
+});
+
+describe("GET /fx/usd-inr", () => {
+  it("answers in the shape apps/web's fetchUsdInr accepts, fallback then live", async () => {
+    const { cache } = setup(async () => live(92.92));
+    const routes = usdInrRoutes({ cache, origins: new Set() });
+    const base = await serve(createWorkerServer({ health: new HealthState({ provider: "fake", capUsd: null }), routes }));
+    expect(await fetchUsdInr(base)).toBe(USD_INR_FALLBACK); // before the first fetch lands
+    await cache.settled();
+    expect(await fetchUsdInr(base)).toBe(92.92);
   });
 });

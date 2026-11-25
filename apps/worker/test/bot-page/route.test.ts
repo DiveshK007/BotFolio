@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { BOT_PAGE_PER_IP_PER_MINUTE, botPageRoutes, type BotPageRouteOptions } from "../../src/bot-page/route";
 import { parseHoldings, type BotPage } from "../../src/bot-page/page";
 import { HealthState } from "../../src/health";
+import { fetchBotPage } from "../../../web/lib/bot-record";
 import type { Queryable } from "../../src/scheduler/db";
 import { createWorkerServer } from "../../src/server";
 import { testDb } from "../decisions/helpers";
@@ -100,6 +101,32 @@ describe("GET /bot-page", () => {
     const byTx = Object.fromEntries(page.trades.map((t) => [t.tx_hash, t]));
     expect(byTx[TX]).toMatchObject({ round_id: "77", owner_signed: false, oracle_updated_at: ist("2026-11-26T08:58:00").toISOString(), decision_id: page.decisions[1]!.id });
     expect(byTx[TX2]).toMatchObject({ round_id: "6", owner_signed: true, oracle_updated_at: null });
+  });
+
+  it("answers in the shape apps/web's fetchBotPage accepts, no row dropped", async () => {
+    await start();
+    const base = url.replace(/\/bot-page$/, "");
+    const raw = ((await (await fetch(`${url}?bot=7`)).json()) as { page: BotPage }).page;
+    const result = await fetchBotPage("7", base);
+    expect(result.kind).toBe("ok");
+    if (result.kind !== "ok") return;
+    const { page } = result;
+    // parseBotPage drops a bad row quietly, so compare counts against what the worker sent.
+    expect(page.bot.id).toBe("7");
+    expect(page.versions).toHaveLength(raw.versions.length);
+    expect(page.trades).toHaveLength(raw.trades.length);
+    expect(page.decisions).toHaveLength(raw.decisions.length);
+    expect(page.mark!.holdings).toHaveLength(raw.mark!.holdings.length);
+    expect(page.mark!.prices).toHaveLength(raw.mark!.prices.length);
+    expect(page.trades.length).toBeGreaterThan(0);
+  });
+
+  it("maps the worker's 404 and 503 onto apps/web's results", async () => {
+    await start();
+    expect(await fetchBotPage("404", url.replace(/\/bot-page$/, ""))).toEqual({ kind: "not_found" });
+    await new Promise<void>((done) => server!.close(() => done()));
+    await start({ source: null });
+    expect(await fetchBotPage("7", url.replace(/\/bot-page$/, ""))).toEqual({ kind: "not_live" });
   });
 
   it("a bot with no marks or calls yet still has a page", async () => {
