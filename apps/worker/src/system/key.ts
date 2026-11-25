@@ -3,7 +3,7 @@ import { secret, type Env } from "../auth/env";
 
 /** SPEC §11: each of these is a separate key. */
 const WALLET_KEYS = ["RELAYER_PRIVATE_KEY", "RUNNER_PRIVATE_KEY", "COMMITTER_PRIVATE_KEY", "DEPLOYER_PRIVATE_KEY"] as const;
-export type SystemKey = "RUNNER_PRIVATE_KEY" | "COMMITTER_PRIVATE_KEY";
+export type SystemKey = "RELAYER_PRIVATE_KEY" | "RUNNER_PRIVATE_KEY" | "COMMITTER_PRIVATE_KEY";
 
 const normalise = (key: string | undefined) => key?.trim().toLowerCase().replace(/^0x/, "") ?? "";
 
