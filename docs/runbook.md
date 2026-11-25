@@ -108,7 +108,7 @@ QIE's feeds sometimes stop updating: gold for more than 6 h, crypto for more tha
 **Symptom:**
 - `/healthz` reasons `<ASSET> feed unreadable` for all five assets.
 - `POST /relay` answers `RPC_UNAVAILABLE` ("Can't reach QIE right now. Nothing was sent.").
-- Indexer logs `tick failed, retrying` or `no new blocks for a minute`.
+- Indexer logs `[indexer] tick failed, retrying` or `[indexer] no new blocks for a minute`.
 - `runner.bot_failed` or `scheduler.job_failed` during a slot.
 
 **What the system already does:** every client tries the URLs in `QIE_RPC_URLS` in a fixed order: rpc3 → rpc4 → rpc5 → rpc1 → rpc2. rpc1 and rpc2 go last because they drop TLS sometimes. Each URL has a 10 s timeout. Reads move to the next URL on any error. One working RPC is enough.
