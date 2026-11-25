@@ -5,9 +5,11 @@ import { JudgesTour } from "@/components/site/interactive";
 import { Attract } from "@/components/site/extras";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SAMPLE_BOTS } from "@/lib/site/sample";
+import { arenaRacers } from "@/lib/site/live";
+import { judgesActivity, judgesTrades } from "@/lib/site/judges";
 import { ActivityPanel, ContractsTable, LatestTrades } from "@/components/site/proof";
 import { Badge, Icon, Placeholder } from "@/components/site/ui";
-import { getActivity, getContracts, getLatestTrades } from "@/lib/site/data";
+import { getContracts } from "@/lib/site/data";
 
 export const metadata: Metadata = { title: "For judges: the 90-second tour", description: "What BotFolio is, live QIE mainnet proof, QIE components used, and user-signed traction." };
 export const revalidate = 60;
@@ -24,8 +26,12 @@ const COMPS: [string, string, "verified" | "coming", string][] = [
 ];
 
 export default async function Judges() {
-  const [trades, stats] = await Promise.all([getLatestTrades(), getActivity()]);
-  const march = [3, 12, 7, 1, 2, 21, 41, 52, 58, 33].map(id => ({ id: String(id), name: SAMPLE_BOTS[id].name }));
+  // Worker reads (HANDOFF #2): GET /stats for traction, /leaderboards + /bot-page for trades.
+  const [trades, stats, racers] = await Promise.all([judgesTrades(), judgesActivity(), arenaRacers()]);
+  // The attract march is decoration: real bots from the board when there are any, else the example cast.
+  const march = racers.example
+    ? [3, 12, 7, 1, 2, 21, 41, 52, 58, 33].map(id => ({ id: String(id), name: SAMPLE_BOTS[id].name }))
+    : racers.data.map(r => ({ id: String(r.id), name: r.name }));
   return (
     <>
       <SiteHeader current="/judges" />
