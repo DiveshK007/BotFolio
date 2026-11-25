@@ -3,6 +3,8 @@ import { loadWorkerConfig } from "./config";
 import { createQiePublicClient } from "./chain";
 import { committerSender, dailyCallJobs } from "./daily-call";
 import { HealthState, startOracleMonitor } from "./health";
+import { createAlerts, hotWallets, lowBalanceWei, startAlertMonitor } from "./alerts";
+import { consoleLog as jsonLog } from "./scheduler/log";
 import { startIndexer } from "./indexer";
 import { startScheduler } from "./scheduler";
 import { seasonJobs } from "./seasons";
@@ -34,6 +36,18 @@ async function main(): Promise<void> {
   const client = createQiePublicClient(cfg);
   const health = new HealthState({ provider: cfg.llm.provider, capUsd: cfg.llm.monthlyBudgetUsd });
   const stopOracle = startOracleMonitor(client, cfg.feeds, health, cfg.oracleRefreshMs);
+  // Low balance, LLM budget and job failures to ALERT_WEBHOOK_URL, checked every 10 min (issue #66).
+  const stopAlerts = startAlertMonitor(
+    {
+      alerts: createAlerts({ env: process.env, log: jsonLog }),
+      health,
+      wallets: hotWallets(process.env),
+      minWei: lowBalanceWei(process.env),
+      getBalance: (address) => client.getBalance({ address }),
+      log: jsonLog,
+    },
+    10 * 60_000,
+  );
   const indexer = startIndexer({ rpcUrls: cfg.rpcUrls });
   const committer = committerSender(process.env, cfg.rpcUrls);
   // For v2 proposals at season close. Without a working provider every bot gets the deterministic fallback.
@@ -112,6 +126,7 @@ async function main(): Promise<void> {
   const shutdown = (signal: string) => {
     console.log(`[worker] ${signal} — shutting down`);
     stopOracle();
+    stopAlerts();
     // Let a broadcast and an indexer batch in progress finish, then close.
     void Promise.allSettled([relayer.stop(), indexer?.stop(), scheduler?.stop(), persona.stop(), (stopCards?.() ?? Promise.resolve()).then(() => reads?.close())]).then(() => server.close(() => process.exit(0)));
     setTimeout(() => process.exit(1), 10_000).unref();
