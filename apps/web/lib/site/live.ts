@@ -9,6 +9,7 @@ import type { Racer } from "@/components/site/arcade";
 import type { DexBot, RaceSeries } from "@/components/site/extras";
 import { SAMPLE_BOTS } from "./sample";
 import { seasonRace } from "./replay";
+import { fetchBots } from "@/lib/bots";
 
 export type Live<T> = { example: boolean; data: T };
 
@@ -40,7 +41,14 @@ export async function botOfWeek(): Promise<Live<{ id: string; name: string; line
 const DEX_NAMES = ["Paneer Bull", "Monsoon Mode", "Filter Kaapi", "Auto Rickshaw", "Dosa Dynamo", "Biryani Bear", "Lassi Lion", "Metro Mouse", "Cricket Chirp", "Rangoli Robo", "Pani Puri Pro", "Idli Ion", "Mango Mode", "Tiffin Titan", "Jugaad Jet", "Vada Vortex", "Kulfi Kid", "Masala Mech", "Bus Stop Bot", "Sambar Sage"];
 const h = (s: string) => { let x = 2166136261; for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619); } return x >>> 0; };
 export async function dexBots(): Promise<Live<DexBot[]>> {
-  const b = await boards();
+  const worker = getWorkerUrl();
+  const [b, all] = await Promise.all([boards(), worker ? fetchBots(worker) : Promise.resolve(null)]);
+  // Every bot from GET /bots (HANDOFF #6), with this season's return where the board has one.
+  if (all && all.length) {
+    const ret = new Map((b?.topReturns ?? []).map(e => [e.botId, e.returnBps / 100]));
+    return { example: false, data: all.map(x => ({ id: x.botId, name: x.name, isHouse: x.isHouse, returnPct: ret.get(x.botId) ?? null, version: x.version })) };
+  }
+  // Older worker without /bots: the bots on the boards.
   if (b) {
     const seen = new Map<string, DexBot>();
     for (const e of [...b.topReturns, ...b.mostTrusted, ...b.bestRiskAdjusted, ...b.coachVsBot]) if (!seen.has(e.botId)) seen.set(e.botId, { id: e.botId, name: e.name, isHouse: e.isHouse, returnPct: "returnBps" in e ? (e as { returnBps: number }).returnBps / 100 : null });
