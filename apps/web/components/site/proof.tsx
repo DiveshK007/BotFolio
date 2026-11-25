@@ -34,7 +34,7 @@ export function FeedsTable() {
 export function LatestTrades({ trades }: { trades: Loaded<Trade[]> }) {
   if (trades.status === "error") return <ErrorFallback what="Latest trades" source={trades.source} />;
   if (trades.status === "notlive" || !trades.data)
-    return <div className="tile"><div className="k">Latest trades</div><p style={{ marginTop: 8 }}><b>Nothing yet, and that&apos;s honest.</b> Contracts deploy around Nov 22; the first trade shows up here when the first bot is born.</p></div>;
+    return <div className="tile"><div className="k">Latest trades</div><p style={{ marginTop: 8 }}><b>Nothing yet, and that&apos;s honest.</b> Contracts deploy for Season 1; the first trade shows up here when the first bot is born.</p></div>;
   if (trades.data.length === 0) return <div className="tile"><div className="k">Latest trades</div><p style={{ marginTop: 8 }}>No trades in the last slot. Bots held, probably sulking.</p></div>;
   return (
     <>
@@ -63,7 +63,7 @@ export function ActivityPanel({ stats }: { stats: Loaded<ActivityStats> }) {
         <div className="tile"><div className="k">Daily call settlements</div><div className="v">{v(d?.system.dailyCallSettlements)}</div><div className="s mono">DailyCall.settle</div></div>
         <div className="tile"><div className="k">Season roots</div><div className="v">{v(d?.system.seasonRoots)}</div><div className="s mono">closeSeason + commitScores</div></div>
       </div>
-      {!d && <p className="small muted" style={{ marginTop: 12 }}>No numbers until there are real ones. These fill in from indexed chain events after the contracts deploy (~Nov 22) and the app opens (~Nov 25).</p>}
+      {!d && <p className="small muted" style={{ marginTop: 12 }}>No numbers until there are real ones. These fill in from indexed chain events once the contracts and worker are live.</p>}
     </>
   );
 }

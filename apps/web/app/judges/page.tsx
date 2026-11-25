@@ -16,8 +16,8 @@ export const revalidate = 60;
 const SENTENCE = "Raise an AI trader in one sentence, coach it every season, and let QIE keep score.";
 
 // QIE components: flip `coming` to `verified` only after WS D confirms each in docs/qie-components.md (SPEC §0.6).
-const COMPS: [string, string, "verified" | "coming", string][] = [
-  ["QIE mainnet", "All 7 contracts live here (chain 1990). Chain facts checked Nov 19; contracts deploy ~Nov 22.", "verified", "CHAIN VERIFIED"],
+const makeComps = (allLive: boolean): [string, string, "verified" | "coming", string][] => [
+  ["QIE mainnet", allLive ? "All 7 contracts live on chain 1990. Chain facts checked Nov 19." : "All 7 contracts target chain 1990. Chain facts checked Nov 19; deploying for Season 1.", "verified", "CHAIN VERIFIED"],
   ["QIE Oracles", "5 feeds read inside PaperLedger and DailyCall at trade time. Prices are never passed in.", "verified", "FEEDS VERIFIED"],
   ["QIE Wallet connect", "Second login next to passkey. Same signed requests, still zero gas.", "coming", "COMING"],
   ["QIE ID / .qie names", "Show name.qie instead of 0x… on bot pages, boards and cards.", "coming", "COMING"],
@@ -26,6 +26,10 @@ const COMPS: [string, string, "verified" | "coming", string][] = [
 ];
 
 export default async function Judges() {
+  const contracts = getContracts();
+  const deployed = contracts.filter(c => c.address !== null).length;
+  const allLive = deployed === contracts.length;
+  const comps = makeComps(allLive);
   // Worker reads (HANDOFF #2): GET /stats for traction, /leaderboards + /bot-page for trades.
   const [trades, stats, racers] = await Promise.all([judgesTrades(), judgesActivity(), arenaRacers()]);
   // The attract march is decoration: real bots from the board when there are any, else the example cast.
@@ -45,14 +49,14 @@ export default async function Judges() {
         <div className="card" style={{ background: "var(--paper)" }}><p className="small muted" style={{ marginBottom: 8 }}>The hero moment <Badge kind="example">EXAMPLE</Badge></p><p style={{ font: "800 clamp(22px,2.6vw,30px)/1.15 var(--f-display)" }}>You said &quot;too risky&quot; 3× → max per coin 40% → 25%</p><p className="mono small muted" style={{ marginTop: 12 }}>config hash committed on QIE</p></div>
       </div></section>
       <section className="tour-sec" id="t2"><div className="wrap stack">
-        <p className="kicker"><b>2</b>Live mainnet proof</p><h2>Real contracts on QIE mainnet, deploying ~Nov 22</h2>
-        <p className="lede">The 7 contracts deploy and get verified around Nov 22. Until then, this panel says so rather than showing anything made up.</p>
-        <ContractsTable contracts={getContracts()} />
+        <p className="kicker"><b>2</b>Live mainnet proof</p><h2>{allLive ? "Real contracts live on QIE mainnet" : deployed > 0 ? `${deployed} of ${contracts.length} contracts live on QIE mainnet` : "Real contracts on QIE mainnet, deploying for Season 1"}</h2>
+        <p className="lede">{allLive ? "All 7 contracts are deployed on chain 1990. Each address below links to its record on the explorer." : "The 7 contracts deploy and get verified for Season 1. Until an address is set in env, this panel says so rather than showing anything made up."}</p>
+        <ContractsTable contracts={contracts} />
         <LatestTrades trades={trades} />
       </div></section>
       <section className="tour-sec" id="t3"><div className="wrap stack">
         <p className="kicker"><b>3</b>QIE pieces used, and where</p><h2>Oracles at the core. The rest labelled honestly.</h2>
-        <div className="comp-list">{COMPS.map(([n, w, b, l]) => <div className="comp" key={n}><h4>{n}</h4><Badge kind={b}>{l}</Badge><p className="w">{w}</p></div>)}</div>
+        <div className="comp-list">{comps.map(([n, w, b, l]) => <div className="comp" key={n}><h4>{n}</h4><Badge kind={b}>{l}</Badge><p className="w">{w}</p></div>)}</div>
       </div></section>
       <section className="tour-sec" id="t4"><div className="wrap stack">
         <p className="kicker"><b>4</b>User-signed traction</p><h2>We count people by who signed, not by how many txs our bots sent</h2>
