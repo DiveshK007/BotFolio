@@ -17,7 +17,7 @@ interface PublicEnv {
  * NEXT_PUBLIC_RELAY_URL (SPEC §10) reads as either the Render service URL or the full /relay URL, so accept both.
  * Plain http only for local dev, because we send a bearer token to it.
  */
-function workerBase(raw: string | undefined): string | null {
+export function workerBase(raw: string | undefined): string | null {
   if (!raw) return null;
   try {
     const url = new URL(raw);
