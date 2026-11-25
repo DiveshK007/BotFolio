@@ -3,16 +3,14 @@ import type { Hex } from "viem";
 import { authedRoute } from "../auth/middleware";
 import type { Log } from "../auth/log";
 import type { Authenticator } from "../auth/types";
+import { callsCloseAt } from "../decisions/secrecy";
 import type { Queryable } from "../scheduler/db";
 import type { Routes } from "../server";
 
 export const DAILY_CALL_PATH = "/daily-call";
 export const DAILY_CALL_VIEW_PATH = "/daily-call/view";
 
-const DAY_S = 86_400;
-const IST_OFFSET_S = 19_800;
-const NINE_S = 9 * 3_600; // the 09:00 slot signs the day's views
-const CUTOFF_S = 20 * 3_600; // DailyCall.call reverts from 20:00 IST (SPEC §4.7)
+const NINE_BEFORE_CUTOFF_S = 11 * 3_600; // the 09:00 slot, which signs the day's views, is 11 h before 20:00
 
 /**
  * - `waiting`: no view yet, but the bot's 09:00 (or debut) decision hasn't run, so one may still come.
@@ -51,9 +49,8 @@ interface Row {
 /** The IST day, its 09:00 and its 20:00 cutoff, all from one clock reading. */
 function today(now: Date) {
   const seconds = Math.floor(now.getTime() / 1000);
-  const day = istDay(seconds);
-  const start = day * DAY_S - IST_OFFSET_S;
-  return { day, seconds, nine: start + NINE_S, cutoff: start + CUTOFF_S };
+  const cutoff = callsCloseAt(now).getTime() / 1000; // DailyCall.call reverts from 20:00 IST (SPEC §4.7)
+  return { day: istDay(seconds), seconds, nine: cutoff - NINE_BEFORE_CUTOFF_S, cutoff };
 }
 
 function stateOf(row: Row, t: ReturnType<typeof today>): DailyCallState {
