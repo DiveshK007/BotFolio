@@ -28,6 +28,7 @@ import { verifyTrade } from "./mcp/verify-trade";
 import { bigMoveRoutes } from "./big-moves/route";
 import { DEFAULT_USDINR_SOURCE_URL, usdInrCache, usdInrRoutes } from "./fx/usd-inr";
 import { dailyCallRoutes } from "./daily-call/route";
+import { statusRoutes } from "./status/route";
 import { createCardChain } from "./cards/build";
 import { cardJobs, startCardSweeper } from "./cards/jobs";
 import { TARGET_ABIS } from "./relay/abis";
@@ -119,6 +120,7 @@ async function main(): Promise<void> {
     ...dailyCallRoutes({ origins, auth: auth.authenticator, log: consoleLog, db: reads }),
     ...leaderboardRoutes({ source: boards, origins, clientIp }),
     ...usdInrRoutes({ cache: usdInr, origins }),
+    ...statusRoutes({ health, origins, clientIp }),
     ...botPageRoutes({ source: boards, origins, clientIp }),
     ...mcpRoutes({
       source: boards && { ...boards, verifyTrade: (tx) => verifyTrade(client, paperLedger as Address, tx) },
