@@ -1,6 +1,7 @@
 # docs
 - [`anvil-fork.md`](anvil-fork.md) — local mainnet-fork staging (Anvil)
 - [`decisions.md`](decisions.md) — decision log
+- [`public-api.md`](public-api.md) — public read API (`/api/v1`)
 - [`rollback.md`](rollback.md) — rollback: Vercel, Render, contract-address switch
 - [`runbook.md`](runbook.md) — incidents: restart, stale oracle, LLM down, RPC down, wallet top-up, key rotation
 
