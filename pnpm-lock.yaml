@@ -13,6 +13,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@botfolio/llm':
+        specifier: workspace:*
+        version: link:../../packages/llm
       '@botfolio/shared':
         specifier: workspace:*
         version: link:../../packages/shared

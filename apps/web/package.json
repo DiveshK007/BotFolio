@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@botfolio/llm": "workspace:*",
     "@botfolio/shared": "workspace:*",
     "next": "15.5.29",
     "react": "19.3.1",

@@ -7,7 +7,7 @@
 export const EXAMPLE_SENTENCES = [
   "Careful like my dad, loves gold",
   "YOLO Bitcoin maxi, never sells",
-  "Buys dips on SOL and XRP, takes profit fast",
+  "Buys dips on SOL and XRP, sells fast on the way up",
 ] as const;
 
 /**
