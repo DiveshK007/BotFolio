@@ -23,7 +23,11 @@ const ul = "mt-1 list-disc space-y-1 pl-5 text-sm text-muted";
  * UNVERIFIED: what Privy, Vercel, Render, Supabase and xAI log on their side (their own policies apply).
  * UNVERIFIED: the web app's Privy sign-in isn't wired yet (#71); re-check this page when it is.
  * UNVERIFIED: Sentry (#161) and analytics (#164) aren't in the code yet; update section 6 before either ships.
+ * - Notes in replay: slot/decide.ts passes recent notes into decisions.input_json, which season/replay-file.ts publishes.
+ * - Deletion: apps/worker/src/me/delete.ts (POST /me/delete, #174) does exactly the list in section 9.
+ * UNVERIFIED: Privy's delete-user endpoint and that it removes the embedded wallet (#71).
  * TODO(#172): add a contact for deletion requests once the team picks one.
+ * TODO(#174): add the "Delete my data" button once the app has sign-in (#71); it calls POST /me/delete { confirm: true }.
  */
 export default function PrivacyPage() {
   return (
@@ -64,7 +68,9 @@ export default function PrivacyPage() {
         <p className={p}>
           Your bot and its activity are shown on BotFolio and recorded on QIE mainnet with your wallet address (and your
           .qie name, if your wallet has one). On-chain records can&apos;t be deleted by anyone, including us. A correction
-          note stays off-chain; only its hash goes on-chain, and the note isn&apos;t shown publicly.
+          note stays off-chain; only its hash goes on-chain, and the note isn&apos;t shown on the site. Your bot reads
+          your latest notes when it decides, so they are part of its decision records in the season&apos;s public replay
+          file.
         </p>
 
         <h2 className={h2}>5. What you write (xAI)</h2>
@@ -96,8 +102,32 @@ export default function PrivacyPage() {
 
         <h2 className={h2}>9. Deleting your data</h2>
         <p className={p}>
-          We can delete what we hold off-chain (your user row, drafts and notes). We can&apos;t delete anything on QIE
-          mainnet. A contact for deletion requests will be added here before public launch.
+          When you ask us to delete your data while signed in, it happens straight away. We:
+        </p>
+        <ul className={ul}>
+          <li>
+            delete your user record: wallet address, Privy ID, login method, sign-up, 18+ and last-seen times, and the
+            AI-written personalities you didn&apos;t launch;
+          </li>
+          <li>delete our copy of your .qie name (it is public on QIE, so it can show up again next to your bot);</li>
+          <li>erase your correction notes (their hashes on QIE mainnet stay);</li>
+          <li>blank your bot&apos;s personality text on BotFolio (its hash on QIE mainnet stays);</li>
+          <li>
+            if you signed in with a passkey, delete your Privy account. That also deletes the wallet Privy keeps for you,
+            so nobody can sign for that wallet or your bot again.
+          </li>
+        </ul>
+        <p className={p}>
+          We keep what is tied to QIE mainnet: your bot and its name, versions, decisions, trades, Daily Calls,
+          challenges, season results, trust scores and share cards. We also keep the log of actions we relayed for you,
+          because rate limits and our public activity counts are built from it. These are public on-chain records or are
+          sealed into a season&apos;s replay file, and the leaderboards and proofs are rebuilt from them. Your bot stays
+          on QIE mainnet and keeps playing. Text already in a past decision&apos;s record, such as an earlier personality
+          or note, stays in that season&apos;s replay file.
+        </p>
+        <p className={p}>
+          A &quot;Delete my data&quot; button in the app and a contact for deletion requests will be added before public
+          launch.
         </p>
 
         <h2 className={h2}>10. Changes</h2>
