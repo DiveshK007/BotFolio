@@ -54,7 +54,7 @@ A real deploy is issue #25, run by a person with the signer on the command line.
 
 Contract-to-contract roles: PaperLedger grants `REGISTRY_ROLE` to BotRegistry, and BotRegistry grants `SEASON_LEDGER_ROLE` to SeasonLedger. The two contracts know each other through immutables. The ledger is given the registry's CREATE address before the registry exists, and the script checks that it matched.
 
-**Start cash:** 1,078 play USDT per bot, about INR 1,00,000. USD/INR was 92.68 (frankfurter.dev, Nov 20 2026) and 92.89 (open.er-api.com, Nov 22 2026). Recheck on deploy day; it can't change after the deploy. The display is a ratio (SPEC §3), so it shows exactly INR 1,00,000 at the start either way.
+**Start cash:** 1,078 play USDT per bot. It can't change after the deploy. The display is a ratio (SPEC §3), so every bot shows exactly $100,000 at the start.
 
 ## Admin scripts
 `script/Admin.s.sol` has three. None reads a private key. The commands below only simulate (`--sender` stands in for the signer). A person does the real run by adding their signer and `--broadcast`.

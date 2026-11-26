@@ -71,7 +71,7 @@ describe("bannedRules(): real-money advice", () => {
     "Play money, no real money harmed",
     "Cashing out of ETH into cash",
     "AlphaWolf is sulking in cash after Tuesday's gold mess",
-    "Lost ₹12,400 going all-in on gold at 2 AM. Roast him.",
+    "Lost $12,400 going all-in on gold at 2 AM. Roast him.",
     "Trend up, so I bought ETH.",
   ])("leaves %j alone", (text) => {
     expect(bannedRules(text)).toEqual([]);

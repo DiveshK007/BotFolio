@@ -17,7 +17,7 @@ describe("$ display rule (SPEC §3)", () => {
     expect(displayMoney(0n, start)).toBe(0);
   });
 
-  it("rounds to whole rupees, half away from zero", () => {
+  it("rounds to whole dollars, half away from zero", () => {
     // 100000 × 1 / 3 = 33333.33 → 33333; 100000 × 2 / 3 = 66666.67 → 66667
     expect(displayMoney(1n, 3n)).toBe(33_333);
     expect(displayMoney(2n, 3n)).toBe(66_667);

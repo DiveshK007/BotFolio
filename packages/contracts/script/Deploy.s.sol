@@ -45,9 +45,7 @@ contract Deploy is Script {
 
     uint256 internal constant QIE_CHAIN_ID = 1990;
 
-    /// 1,078 play USDT is about INR 1,00,000: USD/INR was 92.68 (frankfurter.dev, Nov 20 2026) and 92.89
-    /// (open.er-api.com, Nov 22 2026). Recheck on deploy day. The UI shows exactly INR 1,00,000 at the
-    /// start whatever this is, because the display is a ratio (SPEC §3).
+    /// The UI shows exactly $100,000 at the start whatever this is, because the display is a ratio (SPEC §3).
     uint256 public constant DEFAULT_START_CASH_E8 = 1078e8;
 
     error WrongChain(uint256 chainId);
