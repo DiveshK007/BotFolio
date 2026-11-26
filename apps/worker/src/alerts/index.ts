@@ -2,6 +2,7 @@ import { formatEther, parseEther, type Address } from "viem";
 import type { Env } from "../auth/env";
 import type { HealthState } from "../health";
 import { errorLabel, type Log } from "../scheduler/log";
+import { lastSlotTime, SLOT_WINDOW_MS } from "../scheduler/times";
 import { systemAccount, type SystemKey } from "../system/key";
 
 /** A stuck condition repeats at most this often per kind. */
@@ -92,11 +93,21 @@ export interface AlertCheckDeps {
   log: Log;
 }
 
+/** A slot with no run this long after its window closed alerts as missed. */
+export const MISSED_SLOT_AFTER_MS = 25 * 60_000;
+
+/** The boot alert: a deploy reached Render, and which commit (Render sets RENDER_GIT_COMMIT). */
+export function startedText(env: Env): string {
+  const commit = env.RENDER_GIT_COMMIT?.trim() ?? "";
+  return /^[0-9a-f]{7,40}$/i.test(commit) ? `worker_started ${commit.slice(0, 12)}` : "worker_started";
+}
+
 /**
  * One pass over what needs a human: hot wallets under the float, the LLM budget past 80 % or used up
- * (as HealthState has it from src/budget), and jobs that failed or never started. Routine stale-oracle holds
- * are not failures and don't alert. `seen` keeps one-off events from repeating: each failed run, each
- * budget state per month and each start problem alert once.
+ * (as HealthState has it from src/budget), jobs that failed, whatever didn't start (a job, the indexer, the
+ * relay and so on), and a scheduled slot that never ran. Routine stale-oracle holds are not failures and
+ * don't alert. `seen` keeps one-off events from repeating: each failed run, each budget state per month,
+ * each start problem and each missed slot alert once.
  */
 export async function checkAlerts(deps: AlertCheckDeps, seen: Map<string, string>, now: Date = new Date()): Promise<void> {
   const { alerts, health, log } = deps;
@@ -115,12 +126,25 @@ export async function checkAlerts(deps: AlertCheckDeps, seen: Map<string, string
     sends.push(once("llm_budget", `${month}:${budget}`, `llm_budget_${budget}`, text));
   }
 
+  // A job that can't run is one of these too (scheduler.ts), with its reason.
+  for (const problem of health.problemsAtStart()) {
+    sends.push(once(`start:${problem}`, "1", `not_started:${problem}`, `Not running: ${problem}`));
+  }
+
   for (const [name, job] of Object.entries(snap.jobs)) {
-    if (job.state === "not_started") {
-      sends.push(once(`not_started:${name}`, "1", `job_not_started:${name}`, `${name} job not started: ${job.detail ?? "unknown"}`));
-    }
     const run = job.lastRun;
     if (run?.problem) sends.push(once(`job:${name}`, run.at, `job_failed:${name}`, `${name} job ${run.problem} at ${run.at}`));
+  }
+
+  // Only a slot this process could have run: a deploy after its window isn't a miss.
+  const slot = lastSlotTime(new Date(now.getTime() - SLOT_WINDOW_MS - MISSED_SLOT_AFTER_MS));
+  const slotJob = snap.jobs.slot;
+  // A run that threw is no slot run, but the failure alert above already covers it.
+  const since = (iso: string | undefined) => iso !== undefined && Date.parse(iso) >= slot.getTime();
+  const tried = since(snap.lastSlotRun?.slotTime) || since(slotJob?.lastRun?.at);
+  if (slotJob?.state === "scheduled" && Date.parse(snap.startedAt) < slot.getTime() + SLOT_WINDOW_MS && !tried) {
+    const at = slot.toISOString();
+    sends.push(once("missed_slot", at, "missed_slot", `slot job missed the ${at} slot: no run recorded`));
   }
 
   if (deps.minWei !== null) {

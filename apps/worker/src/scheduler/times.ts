@@ -8,6 +8,8 @@ const SLOT_MINUTES_UTC = [3, 7, 11, 15].map((hour) => hour * 60 + 30);
 const RETRY_EVERY_MS = 5 * MINUTE_MS;
 /** +5, +10, +15 min (SPEC §5 rule 4). */
 const LAST_ATTEMPT = 3;
+/** A slot runs from its time to just before this much later (the last retry starts at +15 min). */
+export const SLOT_WINDOW_MS = (LAST_ATTEMPT + 1) * RETRY_EVERY_MS;
 
 export interface SlotMoment {
   /** The slot's scheduled time, also on a retry. */
@@ -28,6 +30,13 @@ export function slotAt(now: Date): SlotMoment | null {
     if (attempt >= 0 && attempt <= LAST_ATTEMPT) return { time: new Date(time), attempt };
   }
   return null;
+}
+
+/** The last slot time at or before `at`. */
+export function lastSlotTime(at: Date): Date {
+  const midnightUtc = at.getTime() - (at.getTime() % DAY_MS);
+  const today = SLOT_MINUTES_UTC.map((minutes) => midnightUtc + minutes * MINUTE_MS).filter((time) => time <= at.getTime());
+  return new Date(today.at(-1) ?? midnightUtc - DAY_MS + SLOT_MINUTES_UTC.at(-1)! * MINUTE_MS);
 }
 
 /** The IST day a settle run is for: from 21:00 that day, earlier the day before (the next-09:00 retry). */
