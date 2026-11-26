@@ -347,7 +347,7 @@ curl localhost:10000/healthz   # "reasons" lists what is still degraded
 - [x] Owner screens: /me, corrections, Approve Big Move, Daily Call, season v2 approve, challenges (PR #323)
 - [x] Deploy kit: mainnet deploy/verify/role-check scripts, Render blueprint, runbook ([docs/deploy.md](docs/deploy.md), PR #320)
 - [ ] Demo video, deck and submission ([#116](https://github.com/DiveshK007/BotFolio/issues/116), [#117](https://github.com/DiveshK007/BotFolio/issues/117), [#121](https://github.com/DiveshK007/BotFolio/issues/121))
-- [ ] Weekly seasons from Dec 7 ([#179](https://github.com/DiveshK007/BotFolio/issues/179))
+- [ ] Weekly seasons from S6, Dec 7 ([#179](https://github.com/DiveshK007/BotFolio/issues/179))
 
 ## Documentation
 
