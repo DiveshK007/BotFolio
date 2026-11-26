@@ -99,6 +99,18 @@ describe("HealthState", () => {
     expect(s.llm).toMatchObject({ month: "2026-11", spentUsd: 0.8, capUsd: 1, budget: "alert" });
   });
 
+  it("keeps persona spend when the decisions log refreshes the total", () => {
+    const h = new HealthState({ provider: "xai", capUsd: 1 });
+    const at = new Date("2026-11-27T12:00:00Z");
+    h.recordUnloggedLlmUsage("grok-4.20-0309-non-reasoning", { inTok: 600_000, outTok: 0 }, at); // $0.75
+    h.setLlmSpend(0.3, at);
+    expect(h.snapshot(at).llm.spentUsd).toBe(1.05);
+    expect(h.budget(at)).toBe("resting");
+    h.setLlmSpend(0.1, at);
+    expect(h.budget(at)).toBe("alert");
+    expect(h.budget(new Date("2026-12-01T00:00:00Z"))).toBe("ok");
+  });
+
   it("resets spend at the start of a new month", () => {
     const h = new HealthState({ provider: "xai", capUsd: 1 });
     h.recordLlmUsage("grok-4.20-0309-non-reasoning", { inTok: 1_000_000, outTok: 0 }, new Date("2026-11-30T12:00:00Z"));
