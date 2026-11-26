@@ -116,3 +116,31 @@ describe("POST /api/site/event", () => {
     log.mockRestore();
   });
 });
+
+describe("GET /api/site/cards", () => {
+  afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+  const get = async (bot: string) => (await import("../cards/route")).GET(new Request(`http://x/api/site/cards?bot=${bot}`));
+  it("turns away a bad bot id before any read", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    expect((await get("0")).status).toBe(400);
+    expect((await get("7%26limit%3D999")).status).toBe(400);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("lists the newest 5 readable cards of the bot, and 502s on a failed read", async () => {
+    const { MOCK_CARDS } = await import("../../card/fixtures");
+    vi.stubEnv("SUPABASE_URL", "https://db.example");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon");
+    const fetch = vi.fn(async () => Response.json([
+      { id: "trade-7", payload: MOCK_CARDS.trade, created_at: "2026-11-27T04:00:00Z" },
+      { id: "junk", payload: { kind: "trade" }, created_at: "2026-11-27T03:00:00Z" },
+    ]));
+    vi.stubGlobal("fetch", fetch);
+    const j = await (await get("7")).json();
+    expect(String((fetch.mock.calls[0] as unknown[])[0])).toBe("https://db.example/rest/v1/site_cards?bot_id=eq.7&select=id,payload,created_at&order=created_at.desc&limit=5");
+    expect(j.cards).toHaveLength(1);
+    expect(j.cards[0]).toMatchObject({ id: "trade-7", createdAt: "2026-11-27T04:00:00Z", headline: expect.any(String) });
+    fetch.mockResolvedValueOnce(new Response("", { status: 500 }));
+    expect((await get("7")).status).toBe(502);
+  });
+});

@@ -132,6 +132,22 @@ export async function getStoredCard(cardId: string): Promise<StoredCard | null> 
   return row && isStoredCard(row.payload) ? row.payload : null;
 }
 
+export interface BotCardLink { id: string; headline: string; createdAt: string }
+
+/** A bot's newest 5 cards for /me, newest first (cards_bot_created_idx). A row we can't read is dropped. Throws on a failed read. */
+export async function getBotCards(botId: string): Promise<BotCardLink[]> {
+  const rows = await supa<{ id: string; payload: unknown; created_at: string }[]>(
+    `site_cards?bot_id=eq.${encodeURIComponent(botId)}&select=id,payload,created_at&order=created_at.desc&limit=5`,
+  );
+  return rows.flatMap((r) => {
+    try {
+      return isStoredCard(r.payload) ? [{ id: r.id, headline: toSiteCard(r.payload).headline, createdAt: r.created_at }] : [];
+    } catch {
+      return []; // e.g. a non-numeric money string in an old payload
+    }
+  });
+}
+
 export async function getCard(cardId: string): Promise<Loaded<CardPayload>> {
   // The /card/example-* demo links work in every mode; they carry the EXAMPLE badge and example hashes.
   const sample = Object.hasOwn(SAMPLE_CARDS, cardId) ? SAMPLE_CARDS[cardId] : undefined;
