@@ -7,7 +7,7 @@ import { PrimaryButton } from "@/components/create/controls";
 import type { OwnerConfig } from "@/lib/config";
 import { userMessage } from "@/lib/errors";
 import { saveCorrectionNote, shortCode } from "@/lib/owner";
-import { CHIPS, createChainClient, SEASON_LEDGER_ABI } from "@/lib/relay-call";
+import { CHIPS, createChainClient, joinableSeason } from "@/lib/relay-call";
 import type { WalletSession } from "@/lib/wallet";
 import { ActionStatus, NotLive, useRelay } from "./relay-ui";
 
@@ -117,6 +117,7 @@ export function CorrectCall({ ctx, botId, decisionUuid }: { ctx: OwnerCtx; botId
 export function ChallengeButton({ ctx, botId }: { ctx: OwnerCtx; botId: string }) {
   const relay = useRelay(ctx.config, ctx.session);
   const [copied, setCopied] = useState(false);
+  const [nextUp, setNextUp] = useState(false);
   const event = relay.phase.name === "done" ? relay.phase.event : null;
   const link = event?.eventName === "ChallengeCreated" ? `${window.location.origin}/challenge/${shortCode(event.args.code)}` : null;
   const { Challenges, SeasonLedger } = ctx.config.targets;
@@ -125,7 +126,9 @@ export function ChallengeButton({ ctx, botId }: { ctx: OwnerCtx; botId: string }
   async function create() {
     let season: number;
     try {
-      season = await createChainClient().readContract({ address: SeasonLedger!, abi: SEASON_LEDGER_ABI, functionName: "currentSeason" });
+      const joinable = await joinableSeason(createChainClient(), SeasonLedger!);
+      season = joinable.season;
+      setNextUp(joinable.next);
     } catch {
       relay.fail("Can't reach QIE right now. Nothing was sent. Please try again.");
       return;
@@ -157,7 +160,7 @@ export function ChallengeButton({ ctx, botId }: { ctx: OwnerCtx; botId: string }
           Challenge a friend
         </button>
       )}
-      <ActionStatus phase={relay.phase} done="Challenge on QIE." onRecheck={relay.recheck} />
+      <ActionStatus phase={relay.phase} done={nextUp ? "Challenge on QIE, for next season." : "Challenge on QIE."} onRecheck={relay.recheck} />
     </div>
   );
 }

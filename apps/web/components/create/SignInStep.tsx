@@ -1,10 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PrimaryButton } from "./controls";
 
 export type SignInKind = "passkey" | "qie";
+
+export const SLOW_PASSKEY_MS = 12_000;
+export const SLOW_PASSKEY_TEXT = "Creating a passkey the first time can take up to a minute.";
+
+/** Mount while the passkey sheet is open: after 12 s it says the wait is normal (Android took ~60 s, #93). */
+export function SlowPasskeyNote() {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setSlow(true), SLOW_PASSKEY_MS);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <p role="status" className="text-center text-xs text-muted">
+      {slow ? SLOW_PASSKEY_TEXT : ""}
+    </p>
+  );
+}
 
 interface SignInStepProps {
   /** Why sign-in can't work right now, or null when it can. */
@@ -57,6 +74,7 @@ export function SignInStep({ blocked, busy, options, onSignIn }: SignInStepProps
           <PrimaryButton disabled={locked} onClick={() => onSignIn("passkey")}>
             {busy === "passkey" ? "Waiting for your passkey…" : "Continue with passkey"}
           </PrimaryButton>
+          {busy === "passkey" && <SlowPasskeyNote />}
           <p className="text-center text-xs text-muted">New here? This creates your account with Face ID or your fingerprint.</p>
         </>
       )}
