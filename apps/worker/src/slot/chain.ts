@@ -36,6 +36,14 @@ export interface RunnerChain {
   executeBatch(orders: readonly LedgerOrder[]): Promise<Hex>;
 }
 
+/**
+ * #337: QIE once estimated ~22k for a 1-order batch that needs ~120k, and all 4 tries ran out of gas.
+ * A too-low limit can also starve the oracle staticcall, which the ledger treats as a stale skip, not a revert.
+ * docs/gas.md: ~40k + ~83k per order; 171k for 1 order on a 5-holding portfolio. QIE bills ≥ half the limit,
+ * so this floor stays below the real cost of a full batch.
+ */
+export const executeBatchMinGas = (orders: number) => 60_000n + 130_000n * BigInt(orders);
+
 export function createRunnerChain(opts: {
   client: PublicClient;
   registry: Address;
@@ -101,7 +109,7 @@ export function createRunnerChain(opts: {
 
     async executeBatch(orders) {
       const args = [orders.map(({ botId, asset, buy, bps, decisionId, actionIndex }) => ({ botId, asset, buy, bps, decisionId, actionIndex }))];
-      return (await sender.write({ address: ledger, abi: ledgerAbi, functionName: "executeBatch", args })).transactionHash;
+      return (await sender.write({ address: ledger, abi: ledgerAbi, functionName: "executeBatch", args, minGas: executeBatchMinGas(orders.length) })).transactionHash;
     },
   };
 }

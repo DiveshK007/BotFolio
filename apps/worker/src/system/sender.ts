@@ -9,6 +9,8 @@ export interface ContractWrite {
   abi: Abi;
   functionName: string;
   args: readonly unknown[];
+  /** Lowest gas limit to send, whatever the estimate says (#337). */
+  minGas?: bigint;
 }
 
 export interface SystemSender {
@@ -18,6 +20,12 @@ export interface SystemSender {
 
 const RECEIPT_TIMEOUT_MS = 90_000;
 const GAS_MARGIN = 15_000n;
+
+/** Estimate + 25 % + margin, never below `minGas`. */
+export const gasLimit = (estimate: bigint, minGas = 0n) => {
+  const padded = estimate + estimate / 4n + GAS_MARGIN;
+  return padded > minGas ? padded : minGas;
+};
 
 /**
  * A runner or committer wallet: the system txs, which are never user activity (SPEC §11).
@@ -43,7 +51,7 @@ export function createSystemSender(opts: { rpcUrls: readonly string[]; account: 
   let queue: Promise<unknown> = Promise.resolve();
   let chainChecked = false;
 
-  async function send(call: ContractWrite): Promise<TransactionReceipt> {
+  async function send({ minGas, ...call }: ContractWrite): Promise<TransactionReceipt> {
     if (!chainChecked) {
       if ((await reader.getChainId()) !== QIE_CHAIN_ID) throw new InternalFailure("wrong_chain");
       chainChecked = true;
@@ -57,7 +65,7 @@ export function createSystemSender(opts: { rpcUrls: readonly string[]; account: 
       ...call,
       account,
       chain: qieMainnet,
-      gas: estimate + estimate / 4n + GAS_MARGIN,
+      gas: gasLimit(estimate, minGas),
       maxFeePerGas: fees.maxFeePerGas,
       maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
     });
