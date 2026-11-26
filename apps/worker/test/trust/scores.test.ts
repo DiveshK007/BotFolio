@@ -206,6 +206,11 @@ describe("GET /trust/proof", () => {
     expect(verifyMerkleProof(body.score.proof as `0x${string}`[], body.score.root as `0x${string}`, body.score.leaf as `0x${string}`)).toBe(true);
 
     expect((await fetch(`${url}?season=1&bot=9`)).status).toBe(404);
+    // S0, the hidden test season, has scores but serves none (#219).
+    await db.query(`insert into seasons (id, starts_at, ends_at, kind, provisional_min_trades) values (0, '2026-11-01', '2026-11-02', 'sprint', 8)`);
+    await db.query(`insert into trust_scores select 0, bot_id, rules_version, f_rules, f_drawdown, f_consistency, f_explains, total, provisional, leaf_hash
+                    from trust_scores where season_id = 1`);
+    expect((await fetch(`${url}?season=0&bot=7`)).status).toBe(404);
     for (const q of ["", "?season=1", "?season=01&bot=7", "?season=1&bot=0", "?season=-1&bot=7", "?season=1&bot=7x"]) {
       expect((await fetch(`${url}${q}`)).status).toBe(400);
     }

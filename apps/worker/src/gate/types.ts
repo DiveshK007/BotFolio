@@ -49,7 +49,9 @@ export type DropReason =
   | "trade_limit"
   | "coin_cap"
   | "zero"
-  | "min_order";
+  | "min_order"
+  /** A second big move in one decision (#219). Not the bot's fault: no F1 penalty. */
+  | "one_big_move";
 
 /**
  * What `PaperLedger.executeBatch` would emit in `OrderSkipped.reason` for an order whose only problem is
@@ -66,6 +68,7 @@ export const LEDGER_EQUIVALENT: Readonly<Record<DropReason, SkipReason | null>> 
   coin_cap: "LIMIT",
   zero: "ZERO",
   min_order: null,
+  one_big_move: null,
 };
 
 interface EventBase {

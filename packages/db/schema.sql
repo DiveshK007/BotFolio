@@ -83,7 +83,7 @@ create table seasons (
   scores_tx              tx_hash,
   -- v1.1
   kind                   season_kind not null,
-  provisional_min_trades int not null,                      -- 8 during sprint seasons, 20 from S6 (§7)
+  provisional_min_trades int not null,                      -- 8 during sprint seasons, 20 from S5 (§7)
   check (ends_at > starts_at)
 );
 comment on table seasons is 'Season boundaries and the on-chain roots committed at close. Sprint vs weekly is data, not code.';
@@ -175,7 +175,7 @@ comment on table decisions is 'One row per bot per slot, incl. HOLD / skipped / 
 create table trades (
   id            bigint generated always as identity primary key,
   decision_id   uuid not null references decisions(id),
-  action_index  int not null check (action_index between 0 and 2),   -- position in the decision's actions[] (max 3)
+  action_index  int not null check (action_index between 0 and 4),   -- position in actions[]: max 3 (LLM), 5 (house bot)
   order_id      bytes32 not null unique,                    -- keccak256(abi.encode(decisionId, actionIndex)) (§3)
   bot_id        bigint not null references bots(id),
   asset         asset_id not null,
@@ -286,7 +286,7 @@ comment on table relay_log is 'Every POST /relay attempt. Rate limits (30/user/d
 create table big_moves (
   id            bigint generated always as identity primary key,
   decision_id   uuid not null references decisions(id),
-  action_index  int not null check (action_index between 0 and 2),
+  action_index  int not null check (action_index between 0 and 4),
   order_id      bytes32 not null unique,                    -- same orderId the clipped fallback reuses (§6.4 step 10)
   bot_id        bigint not null references bots(id),
   asset         asset_id not null,
@@ -448,12 +448,14 @@ where id > 0;                                               -- S0 is the hidden 
 
 create view site_season_results as
 select season_id, bot_id, start_value_e8, end_value_e8, return_bps, sortino, max_dd_bps, trades, battle_rank
-from season_results;
+from season_results
+where season_id > 0;                                        -- S0 is the hidden test season (#219)
 
 create view site_trust_scores as
 select season_id, bot_id, rules_version, f_rules, f_drawdown, f_consistency, f_explains, total,
        provisional, leaf_hash
-from trust_scores;
+from trust_scores
+where season_id > 0;                                        -- S0 is the hidden test season (#219)
 
 create view site_cards as
 select id, bot_id, kind, payload, created_at

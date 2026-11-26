@@ -1,8 +1,9 @@
 import type { IncomingHttpHeaders } from "node:http";
-import type { RelayResponse, RelayTargetAddresses } from "@botfolio/shared";
-import type { Address } from "viem";
+import { istDay, type RelayResponse, type RelayTargetAddresses } from "@botfolio/shared";
+import { decodeFunctionData, type Address, type Hex } from "viem";
 import { errorLabel, type Log } from "../auth/log";
 import type { Authenticator } from "../auth/types";
+import { TARGET_ABIS } from "./abis";
 import { RelayRefusal } from "./errors";
 import { checkPolicy } from "./policy";
 import type { RelayAttempt, RelayChain, RelayGuard, RelaySender, Reservation } from "./ports";
@@ -45,8 +46,18 @@ export function createRelay(deps: RelayDeps) {
         throw new RelayRefusal("SIGNER_MISMATCH");
       }
       // From here on the wallet is proven, so it may be written to relay_log.
-      attempt = { wallet: request.from, target: request.to, selector: selectorOf(request.data), action: null, ip };
+      attempt = {
+        wallet: request.from,
+        target: request.to,
+        selector: selectorOf(request.data),
+        action: null,
+        ip,
+        userWallets: identity.wallets,
+      };
       attempt.action = checkPolicy(request, deps.targets, now());
+      // The 18+ tick is enforced here, not only in the app (#219).
+      if (!(await deps.guard.hasAcceptedTerms(identity))) throw new RelayRefusal("TERMS_NOT_ACCEPTED");
+      if (attempt.action.contract === "DailyCall") await checkDailyCallPick(deps.guard, request.data, now());
 
       reservation = await deps.guard.reserve(attempt);
       const call = await deps.chain.prepare(request);
@@ -75,3 +86,14 @@ export function createRelay(deps: RelayDeps) {
 }
 
 export type Relay = ReturnType<typeof createRelay>;
+
+/**
+ * Daily Call secrecy (#219 item 21): the bot view is served only after the pick is stored, so the call must carry
+ * that same pick. Otherwise a user could read botUp and then sign the other way. DailyCall.call uses the IST day of
+ * block.timestamp; at a midnight boundary this reads the wrong day and refuses, which is the safe side.
+ */
+async function checkDailyCallPick(guard: RelayGuard, data: Hex, nowSeconds: number): Promise<void> {
+  const { args } = decodeFunctionData({ abi: TARGET_ABIS.DailyCall, data });
+  const [botId, userUp] = args as readonly [bigint, boolean, boolean, Hex];
+  if ((await guard.dailyCallPick(botId, istDay(nowSeconds))) !== userUp) throw new RelayRefusal("PICK_MISMATCH");
+}

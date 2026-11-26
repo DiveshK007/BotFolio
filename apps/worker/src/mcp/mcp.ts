@@ -231,6 +231,7 @@ async function getLeaderboard(source: McpSource, args: Record<string, unknown>, 
     if (season === null) return toolError("No season has started yet.");
   }
   if (typeof season !== "number" || !Number.isSafeInteger(season) || season < 0) return toolError("season must be a season number.");
+  if (season === 0) return toolError("There is no season 0."); // the hidden test season (#219)
 
   const boards = await leaderboards(source.db, season, source.startCashE8);
   if (!boards) return toolError(`There is no season ${season}.`);

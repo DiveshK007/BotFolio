@@ -64,8 +64,10 @@ function stateOf(row: Row, t: ReturnType<typeof today>): DailyCallState {
  * The owner's side of Daily Call (SPEC §2.2, §6.4.1, #190). Signed in:
  *  - POST /daily-call `{}` → `{ ok, day, closesAt, bots: DailyCallBot[] }`: today's state for each of the owner's
  *    active bots. No bot view in here.
- *  - POST /daily-call/view `{ botId }` → `{ ok, view: SignedDailyCallBotView }`, only while `open`. The app asks
- *    after the user picks, reveals `botUp`, and relays `DailyCall.call(botId, userUp, botUp, botSig)`.
+ *  - POST /daily-call/view `{ botId, userUp }` → `{ ok, view: SignedDailyCallBotView }`, only while `open`. The
+ *    user's pick comes first and is stored, so the view is only served after the pick and the pick can't change
+ *    (409 PICK_LOCKED). The app reveals `botUp` and relays `DailyCall.call(botId, userUp, botUp, botSig)`; the
+ *    relay refuses a call whose userUp isn't the stored pick.
  * `bot_up_sig` is never anon-readable, and the view is never logged (#254).
  */
 export function dailyCallRoutes({ origins, auth, log, db, now = () => new Date() }: DailyCallRouteOptions): Routes {
@@ -114,6 +116,8 @@ export function dailyCallRoutes({ origins, auth, log, db, now = () => new Date()
         if (typeof botId !== "string" || !/^[1-9]\d{0,18}$/.test(botId)) {
           return refusal(400, "BAD_REQUEST", "Which bot? Send its botId.");
         }
+        const userUp = (body as { userUp?: unknown }).userUp;
+        if (typeof userUp !== "boolean") return refusal(400, "BAD_REQUEST", "Pick first: send userUp, true for up.");
         const t = today(now());
         const [row] = await rows(db, identity.wallets, t, botId);
         if (!row) return refusal(404, "NOT_FOUND", "That isn't one of your active bots.");
@@ -123,11 +127,16 @@ export function dailyCallRoutes({ origins, auth, log, db, now = () => new Date()
         if (state === "called") return refusal(409, "ALREADY_CALLED", "You already made today's call.");
         if (state === "closed") return refusal(409, "CLOSED", "Today's call closed at 20:00. Back tomorrow.");
 
+        // The pick is stored before the view leaves, and can't change after (#219 item 21). The relay only sends a
+        // DailyCall.call with this same pick. The indexer overwrites user_up from the event either way.
         const { rows: view } = await db.query<{ bot_up: boolean; sig: Hex }>(
-          `select bot_up, '0x' || encode(bot_up_sig, 'hex') as sig from daily_calls where bot_id = $1::bigint and day = $2::int`,
-          [botId, t.day],
+          `update daily_calls set user_up = $3::boolean
+           where bot_id = $1::bigint and day = $2::int and (user_up is null or user_up = $3::boolean)
+           returning bot_up, '0x' || encode(bot_up_sig, 'hex') as sig`,
+          [botId, t.day, userUp],
         );
-        const signed: SignedDailyCallBotView = { botId, day: t.day, botUp: view[0]!.bot_up, botSig: view[0]!.sig };
+        if (!view[0]) return refusal(409, "PICK_LOCKED", "You already picked the other way today. A pick can't change.");
+        const signed: SignedDailyCallBotView = { botId, day: t.day, botUp: view[0].bot_up, botSig: view[0].sig };
         return { status: 200, body: { ok: true, view: signed } };
       },
     }),

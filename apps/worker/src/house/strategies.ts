@@ -18,7 +18,7 @@ export const HOUSE_MODEL = "house-rules";
 export const HOUSE_RULES_VERSION = "house-rules-v1";
 
 const STEADY_SAM_WEIGHT_BPS = 2000; // 20 % in each of the 5
-const GOLD_GRANNY_WEIGHT_BPS = 6000; // 60 % Gold, 40 % cash
+const GOLD_GRANNY_WEIGHT_BPS = 5000; // 50 % Gold, 50 % cash: createHouseBot caps a coin at 50 % (#219 item 9)
 const MOMENTUM_WEIGHT_BPS = 2500; // up to 25 % each
 const MOMENTUM_THRESHOLD_PCT = 2; // strictly more than +2 %, strictly less than −2 %
 const MIN_ORDER_BPS = 100n; // the gate's 1 %: don't propose what it would drop
@@ -44,6 +44,13 @@ export interface HouseContext {
    * again would be skipped on-chain and throw off the sizes of the buys after them.
    */
   alreadyTraded?: readonly AssetId[];
+  /**
+   * Steady Sam and Gold Granny: assets this season's rebalance has not traded yet because their price was too
+   * old (#219 item 19). Each later scheduled slot of the season tries them again until they trade. The runner
+   * works it out from the bot's previous decision in the season (`pendingRebalanceOf`) and logs it with the
+   * input, so the decision stays a pure function of what is logged.
+   */
+  pendingRebalance?: readonly AssetId[];
 }
 
 /** SPEC §8: "rebalanced at the first 09:00 slot of each season". */
@@ -51,6 +58,24 @@ export function isRebalanceSlot(slot: HouseContext["slot"], seasonStart: Date | 
   if (!seasonStart || slot.kind !== "scheduled" || !isNineAmSlot(slot.time)) return false;
   const sinceOpen = slot.time.getTime() - seasonStart.getTime();
   return sinceOpen >= 0 && sinceOpen < 86_400_000;
+}
+
+/** This slot rebalances `asset`: the season's first 09:00 slot, or a later one retrying a stale asset. */
+function rebalances(ctx: Pick<HouseContext, "slot" | "seasonStart" | "pendingRebalance">, asset: AssetId): boolean {
+  if (isRebalanceSlot(ctx.slot, ctx.seasonStart)) return true;
+  return ctx.slot.kind === "scheduled" && ctx.seasonStart !== null && (ctx.pendingRebalance ?? []).includes(asset);
+}
+
+/**
+ * The assets a decision's rebalance left on a stale price, from its logged input and outcome. Empty when the
+ * decision wasn't a rebalance (Momentum Max, or a plain hold).
+ */
+export function staleRebalanceAssets(
+  input: Pick<HouseContext, "strategy" | "slot" | "seasonStart" | "pendingRebalance">,
+  staleAssets: readonly AssetId[],
+): AssetId[] {
+  if (input.strategy === "momentum_max") return [];
+  return staleAssets.filter((asset) => rebalances(input, asset));
 }
 
 /** Where a strategy wants one asset. `buyOnly` tops up without trimming a winner. */
@@ -63,9 +88,9 @@ function targetFor(ctx: HouseContext, asset: AssetId): Target | null {
   if (ctx.alreadyTraded?.includes(asset)) return null;
   switch (ctx.strategy) {
     case "steady_sam":
-      return isRebalanceSlot(ctx.slot, ctx.seasonStart) ? { weightBps: STEADY_SAM_WEIGHT_BPS } : null;
+      return rebalances(ctx, asset) ? { weightBps: STEADY_SAM_WEIGHT_BPS } : null;
     case "gold_granny":
-      return isRebalanceSlot(ctx.slot, ctx.seasonStart) ? { weightBps: GOLD_GRANNY_WEIGHT_BPS } : null;
+      return rebalances(ctx, asset) ? { weightBps: GOLD_GRANNY_WEIGHT_BPS } : null;
     case "momentum_max": {
       const change = ctx.chg24hPct[asset];
       if (change === null || change === undefined) return null;
@@ -142,7 +167,7 @@ export function houseDecision(ctx: HouseContext): HouseOutput {
   const lines: string[] = [];
   if (trading.length > 0) {
     if (ctx.strategy === "steady_sam") lines.push(`Steady Sam moved ${names(trading)} toward 20% each.`);
-    if (ctx.strategy === "gold_granny") lines.push("Gold Granny moved Gold toward 60%, the rest in cash.");
+    if (ctx.strategy === "gold_granny") lines.push("Gold Granny moved Gold toward 50%, the rest in cash.");
     if (ctx.strategy === "momentum_max") {
       const did = [bought.length ? `bought ${names(bought)}` : "", sold.length ? `sold ${names(sold)}` : ""];
       lines.push(`Momentum Max ${did.filter(Boolean).join(", ")} on the 24h move.`);
@@ -158,9 +183,10 @@ function names(actions: readonly HouseAction[]): string {
   return actions.map((a) => (a.asset === "GOLD" ? "Gold" : a.asset)).join(", ");
 }
 
-function holdLine({ strategy, slot, seasonStart }: HouseContext): string {
+function holdLine(ctx: HouseContext): string {
+  const { strategy } = ctx;
   if (strategy === "momentum_max") return "Momentum Max has nothing new to chase. Holding.";
-  const rebalancing = isRebalanceSlot(slot, seasonStart);
+  const rebalancing = UNIVERSE[strategy].some((asset) => rebalances(ctx, asset));
   if (strategy === "steady_sam") {
     return rebalancing
       ? "Steady Sam is already balanced. Holding."

@@ -68,16 +68,16 @@ describe("gate() SPEC §6.4 step 9: big-move split, BUY", () => {
   it("looks at the clipped order: a cap under 30 % means no big move", () => {
     const r = run(input({ bot: { maxPerCoinBps: 2500 } }), buy("BTC", 90));
     expect(r.bigMoves).toEqual([]);
-    expect(r.orders[0]!.bps).toBe(2500);
+    expect(r.orders[0]!.bps).toBe(2490); // the cap less the 10 bps margin
   });
 
   it("is not a gate event (no F1 penalty)", () => {
     expect(run(input(), buy("GOLD", 35)).events).toEqual([]);
   });
 
-  it("carries a clip through: 80 % asked, 40 % cap → a 40 % big move", () => {
+  it("carries a clip through: 80 % asked, 40 % cap → a 39.9 % big move", () => {
     const r = run(input({ bot: { maxPerCoinBps: 4000 } }), buy("GOLD", 80));
-    expect(r.bigMoves[0]!.order.bps).toBe(4000);
+    expect(r.bigMoves[0]!.order.bps).toBe(3990);
     expect(r.events).toMatchObject([{ kind: "clip", reason: "coin_cap" }]);
   });
 });
@@ -92,6 +92,17 @@ describe("gate() SPEC §6.4 step 9: big-move split, SELL", () => {
 
   it("a full exit is big", () => {
     expect(run(holding(), sell("ETH", 100)).bigMoves[0]).toMatchObject({ order: { bps: 10000 }, postWeightBps: 0 });
+  });
+
+  it("is cumulative per asset (#219): two SELLs of 40 % are 64 %, so the second needs approval", () => {
+    const r = run(holding(), sell("ETH", 40), sell("ETH", 40));
+    expect(r.orders.map((o) => o.actionIndex)).toEqual([0]);
+    expect(r.bigMoves).toEqual([expect.objectContaining({ order: expect.objectContaining({ actionIndex: 1, buy: false, bps: 4000 }) })]);
+    // 30 % and then 20 % of what is left is 44 %: no approval.
+    expect(run(holding(), sell("ETH", 30), sell("ETH", 20)).bigMoves).toEqual([]);
+    // Other assets don't add up.
+    const two = input({ portfolio: portfolio({ ETH: 20, BTC: 20 }) });
+    expect(run(two, sell("ETH", 40), sell("BTC", 40)).bigMoves).toEqual([]);
   });
 });
 
@@ -120,8 +131,8 @@ describe("gate() SPEC §6.4 step 9: next to the rest of the decision", () => {
   it("re-clips a big BUY to the room the batch leaves", () => {
     const i = input();
     const r = run(i, buy("GOLD", 40), buy("GOLD", 20));
-    // Batch puts 20 % in Gold, so 30 % of room is left: 3750 bps of the 800 cash.
-    expect(r.bigMoves[0]!.order.bps).toBe(3750);
+    // Batch puts 20 % in Gold, so 29.9 % of room is left (the cap less 10 bps): 3737 bps of the 800 cash.
+    expect(r.bigMoves[0]!.order.bps).toBe(3737);
     const after = executeBatch(i.bot, i.portfolio, i.prices, [...r.orders, r.bigMoves[0]!.order]);
     expect(after.skips).toEqual([]);
   });
@@ -143,8 +154,16 @@ describe("gate() SPEC §6.4 step 9: next to the rest of the decision", () => {
 
   it("reads the thresholds and the TTL from env", () => {
     const bigMove = loadBigMoveConfig({ BIG_MOVE_BUY_WEIGHT_BPS: "2000", BIG_MOVE_SELL_BPS: "2500", BIG_MOVE_TTL_MIN: "30" });
-    const r = run(input({ bigMove, portfolio: portfolio({ ETH: 20 }) }), buy("BTC", 25), sell("ETH", 25));
-    expect(r.bigMoves.map((m) => m.order.deadline)).toEqual([BigInt(NOW + 1800), BigInt(NOW + 1800)]);
+    const r = run(input({ bigMove, portfolio: portfolio({ ETH: 20 }) }), sell("ETH", 25));
+    expect(r.bigMoves.map((m) => m.order.deadline)).toEqual([BigInt(NOW + 1800)]);
+    expect(run(input({ bigMove }), buy("BTC", 25)).bigMoves).toHaveLength(1);
+  });
+
+  it("one big move per decision (#219): a second is dropped without an F1 penalty or a used trade", () => {
+    const r = run(input({ portfolio: portfolio({ ETH: 20 }), bot: { maxTradesPerDay: 2 } }), buy("GOLD", 40), sell("ETH", 60), buy("BTC", 10));
+    expect(r.bigMoves.map((m) => m.order.actionIndex)).toEqual([0]);
+    expect(r.events).toEqual([{ actionIndex: 1, asset: "ETH", action: "SELL", kind: "drop", reason: "one_big_move", countsForF1: false }]);
+    expect(r.orders.map((o) => o.actionIndex)).toEqual([2]);
   });
 
   it("only BTC and ETH fresh: a stale big move is dropped, a fresh one still asks", () => {
@@ -231,7 +250,7 @@ describe("shrinkBigMove() SPEC §6.4 step 10: expiry fallback", () => {
   it("re-checks the per-coin cap as it is now", () => {
     const s = goldBuy();
     const r = shrinkBigMove({ ...s, bot: { ...s.bot, maxPerCoinBps: 2000 } });
-    expect(r).toMatchObject({ outcome: "execute", order: { bps: 2000 } });
+    expect(r).toMatchObject({ outcome: "execute", order: { bps: 1990 } }); // the cap less the 10 bps margin
   });
 
   it("re-checks trades per day", () => {
@@ -263,7 +282,8 @@ describe("shrinkBigMove() SPEC §6.4 step 10: expiry fallback", () => {
 
   it("chains several shrinks for one bot", () => {
     const i = input();
-    const moves = run(i, buy("GOLD", 40), buy("BTC", 40)).bigMoves;
+    // One big move per decision, so two decisions.
+    const moves = [...run(i, buy("GOLD", 40)).bigMoves, ...run({ ...i, decisionId: `0x${"cd".repeat(32)}` }, buy("BTC", 40)).bigMoves];
     const base = { ...i, nowSeconds: LATE, orderUsed: false, trigger: "expired" as const };
     const a = shrinkBigMove({ ...base, pending: moves[0]!.order });
     if (a.outcome !== "execute") throw new Error(a.outcome);
@@ -303,7 +323,8 @@ describe("big moves over 3,000 random decisions", () => {
         const s = shrinkBigMove({ ...i, bot, portfolio: sim, pending: order, orderUsed: false, trigger: "owner" });
         if (s.outcome !== "execute") continue;
         const trade = { asset: ASSET_IDS[order.asset]!, buy: order.buy, bps: s.order.bps };
-        expect(isBigMove(i, sim, trade)).toBe(false);
+        // A shrink is judged on the holding when it runs (shrink.ts), not the one the decision started with.
+        expect(isBigMove({ ...i, portfolio: sim }, sim, trade)).toBe(false);
         expect(tradeAmounts(sim, i.prices, trade).cashE8).toBeGreaterThan(0n);
         expect(executeBatch(bot, sim, i.prices, [s.order]).skips).toEqual([]);
       }

@@ -50,6 +50,8 @@ export function leaderboardRoutes({ source, origins, clientIp, now = Date.now }:
     const latest = await current.season;
     const season = raw === null ? latest : Number(raw);
     if (season === null) return sendJson(res, 404, { ok: false, error: { code: "NOT_FOUND", message: "No season has started yet." } });
+    // S0 is the hidden test season (#219).
+    if (season === 0) return sendJson(res, 404, { ok: false, error: { code: "NOT_FOUND", message: "No such season." } });
 
     let hit = cache.get(season);
     if (!hit || now() - hit.at >= LEADERBOARDS_CACHE_MS) {

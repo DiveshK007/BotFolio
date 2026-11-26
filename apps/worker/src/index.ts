@@ -24,6 +24,7 @@ import { trustRoutes } from "./trust/route";
 import { leaderboardRoutes } from "./season/route";
 import { botPageRoutes } from "./bot-page/route";
 import { statsRoutes } from "./stats/route";
+import { botsRoutes } from "./bots/route";
 import { mcpRoutes } from "./mcp/mcp";
 import { verifyTrade } from "./mcp/verify-trade";
 import { bigMoveRoutes } from "./big-moves/route";
@@ -130,6 +131,7 @@ async function main(): Promise<void> {
     ...statusRoutes({ health, origins, clientIp }),
     ...botPageRoutes({ source: boards, origins, clientIp }),
     ...statsRoutes({ db: reads, origins, clientIp }),
+    ...botsRoutes({ db: reads, origins, clientIp }),
     ...mcpRoutes({
       source: boards && { ...boards, verifyTrade: (tx) => verifyTrade(client, paperLedger as Address, tx) },
       clientIp,

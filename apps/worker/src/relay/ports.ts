@@ -1,5 +1,6 @@
 import type { ForwardRequest, RelayAllowlisted } from "@botfolio/shared";
 import type { Address, Hex } from "viem";
+import type { Identity } from "../auth/types";
 import type { PreparedCall } from "./chain";
 
 /** A relay by a wallet that proved it is request.from. */
@@ -10,6 +11,11 @@ export interface RelayAttempt {
   /** null until the request passed the allowlist. */
   action: RelayAllowlisted | null;
   ip: string;
+  /**
+   * Every wallet of the signed-in user (a Privy user can have several). The 30/day limit counts them together
+   * (#219). Defaults to `[wallet]`.
+   */
+  userWallets?: readonly Address[];
 }
 
 /** `cancelled` = a no-op replaced the tx. It is never a user action and never `confirmed`. */
@@ -30,6 +36,10 @@ export interface RelayGuard {
   reserve(attempt: RelayAttempt): Promise<Reservation>;
   /** Logs a refusal that never got a reservation. */
   recordRefusal(attempt: RelayAttempt): Promise<void>;
+  /** The user has a `users` row, which is only written with `terms_accepted_at` (18+ and Terms, SPEC §11). */
+  hasAcceptedTerms(identity: Pick<Identity, "wallets" | "privyDid">): Promise<boolean>;
+  /** The Daily Call pick POST /daily-call/view stored for this bot and IST day, or null if none (#219). */
+  dailyCallPick(botId: bigint, day: number): Promise<boolean | null>;
 }
 
 export interface RelayChain {

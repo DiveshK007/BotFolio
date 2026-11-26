@@ -75,7 +75,7 @@ describe("a stored decision is enough to replay it", () => {
     const slot = await addSlot(pg, "2026-11-24T09:00:00");
     const output: HouseOutput = {
       actions: [{ asset: "GOLD", action: "BUY", bps: 5000 }],
-      reason: "Gold Granny moved Gold toward 60%, the rest in cash.",
+      reason: "Gold Granny moved Gold toward 50%, the rest in cash.",
       reason_tag: "rebalance",
       roast: "",
     };

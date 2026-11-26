@@ -68,6 +68,10 @@ describe.skipIf(!anvilReady)("relayer end to end on a QIE mainnet fork (#40)", (
     };
     const { db, pg } = await testDb();
     sql = pg;
+    // /relay needs the 18+ and Terms row (#219), which POST /persona writes in the app.
+    for (let i = 1; i <= 80; i++) {
+      await pg.query("insert into users (wallet_address, terms_accepted_at) values ($1, now())", [lower(testAccount(i).address)]);
+    }
     auth = setUpAuth(env);
     service = setUpRelayer({ env, auth, rpcUrls: [url], log, openDatabase: () => ({ ...db, close: async () => {} }) });
     service.start();

@@ -152,12 +152,12 @@ export default function ProofPage() {
               <tbody>
                 <tr className="border-t border-line">
                   <td className="p-3 font-mono text-xs">trust-v1-sprint</td>
-                  <td className="p-3">S0 to S5</td>
+                  <td className="p-3">S0 to S4</td>
                   <td className="p-3">8 trades + 1 season</td>
                 </tr>
                 <tr className="border-t border-line">
                   <td className="p-3 font-mono text-xs">trust-v1</td>
-                  <td className="p-3">S6 onwards</td>
+                  <td className="p-3">S5 onwards</td>
                   <td className="p-3">20 trades + 1 season</td>
                 </tr>
               </tbody>

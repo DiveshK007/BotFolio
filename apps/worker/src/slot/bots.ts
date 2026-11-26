@@ -1,8 +1,10 @@
 import type { AssetId } from "@botfolio/shared";
 import { InternalFailure } from "../auth/log";
-import type { HouseStrategy } from "../house/strategies";
+import { staleRebalanceAssets, type HouseStrategy } from "../house/strategies";
 import type { Queryable } from "../scheduler/db";
+import type { Slot } from "../scheduler/slots";
 import type { ChainBot } from "./chain";
+import { staleIndexes, type StoredDecision } from "./stored";
 
 export interface BotProfile {
   name: string;
@@ -38,6 +40,36 @@ const HOUSE: Readonly<Record<string, HouseStrategy>> = {
 export function houseStrategy(name: string): HouseStrategy {
   if (!Object.hasOwn(HOUSE, name)) throw new InternalFailure("unknown_house_bot");
   return HOUSE[name]!;
+}
+
+/**
+ * `HouseContext.pendingRebalance` for a scheduled slot (#219 item 19): the assets the bot's previous decision in
+ * the same season meant to rebalance but couldn't, because their price was still too old after the +15 min retry.
+ * A retry slot only targets those assets, so following the chain one decision back is enough.
+ */
+export async function pendingRebalanceOf(db: Queryable, botId: bigint, slot: Slot): Promise<AssetId[]> {
+  if (slot.kind !== "scheduled" || !slot.season) return [];
+  const { rows } = await db.query<{ id: string; raw: unknown; input: unknown; gate_result: unknown }>(
+    `select d.id::text as id, d.raw_output_json as raw, d.input_json as input, d.gate_result
+     from decisions d join slots s on s.id = d.slot_id
+     where d.bot_id = $1::bigint and s.season_id = $2::int and s.kind = 'scheduled' and s.slot_time < $3::timestamptz
+     order by s.slot_time desc limit 1`,
+    [botId.toString(), slot.season.id, slot.time.toISOString()],
+  );
+  const row = rows[0];
+  if (!row?.raw) return [];
+  const input = row.input as { strategy: HouseStrategy; slot: { kind: Slot["kind"]; time: string }; seasonStart: string | null; pendingRebalance?: AssetId[] };
+  const actions = (row.raw as { actions: { asset: AssetId }[] }).actions;
+  const decision: StoredDecision = { id: row.id, botId, raw: row.raw, input: row.input, gateResult: (row.gate_result ?? {}) as StoredDecision["gateResult"] };
+  return staleRebalanceAssets(
+    {
+      strategy: input.strategy,
+      slot: { kind: input.slot.kind, time: new Date(input.slot.time) },
+      seasonStart: input.seasonStart ? new Date(input.seasonStart) : null,
+      pendingRebalance: input.pendingRebalance,
+    },
+    staleIndexes(decision).map((i) => actions[i]!.asset),
+  );
 }
 
 /** Average entry price of what is held, from the indexed trades. A sell doesn't move it. */

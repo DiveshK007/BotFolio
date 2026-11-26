@@ -4,7 +4,7 @@
 ## Files
 - `schema.sql` — the full current schema: domains, enums, tables, indexes, and the `site_*` views/functions that are the web's only public read surface (SPEC §3, §11). Frozen interface: change only through one announced PR.
 - `migrations/NNNN_short_name.sql` — the same schema as ordered steps. Four-digit prefix, applied in filename order, never edited after merge. `0001_init.sql` is `schema.sql` at freeze time.
-- `seeds/seasons.sql` — the season rows from SPEC §1 (S0–S19). Safe to run again.
+- `seeds/seasons.sql` — the season rows from SPEC §1 (S0–S18). Safe to run again: it moves only rows nothing has used yet.
 
 ## Changing the schema
 1. Add the next migration (`0002_…sql`) with only the change.
