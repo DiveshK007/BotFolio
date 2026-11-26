@@ -18,7 +18,7 @@ export const HOUSE_MODEL = "house-rules";
 export const HOUSE_RULES_VERSION = "house-rules-v1";
 
 const STEADY_SAM_WEIGHT_BPS = 2000; // 20 % in each of the 5
-const GOLD_GRANNY_WEIGHT_BPS = 6000; // 60 % Gold, 40 % cash
+const GOLD_GRANNY_WEIGHT_BPS = 5000; // 50 % Gold, 50 % cash: createHouseBot caps a coin at 50 % (#219 item 9)
 const MOMENTUM_WEIGHT_BPS = 2500; // up to 25 % each
 const MOMENTUM_THRESHOLD_PCT = 2; // strictly more than +2 %, strictly less than −2 %
 const MIN_ORDER_BPS = 100n; // the gate's 1 %: don't propose what it would drop
@@ -142,7 +142,7 @@ export function houseDecision(ctx: HouseContext): HouseOutput {
   const lines: string[] = [];
   if (trading.length > 0) {
     if (ctx.strategy === "steady_sam") lines.push(`Steady Sam moved ${names(trading)} toward 20% each.`);
-    if (ctx.strategy === "gold_granny") lines.push("Gold Granny moved Gold toward 60%, the rest in cash.");
+    if (ctx.strategy === "gold_granny") lines.push("Gold Granny moved Gold toward 50%, the rest in cash.");
     if (ctx.strategy === "momentum_max") {
       const did = [bought.length ? `bought ${names(bought)}` : "", sold.length ? `sold ${names(sold)}` : ""];
       lines.push(`Momentum Max ${did.filter(Boolean).join(", ")} on the 24h move.`);

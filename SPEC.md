@@ -498,7 +498,7 @@ Computed at each season close (and refreshed after every slot for "live" view). 
 4. **Coach vs Bot (v1.1):** Daily Call win rate this season (min 2 calls during sprint seasons, 4 weekly). Shows the human's score, not the bot's.
 - **Season battle:** your bot vs 3 house bots ranked by season R (plus any accepted challenges, §2.5). House bots (deterministic, no LLM, created by admin):
   - *Steady Sam* — equal 20 % in all 5 assets, rebalanced at the first 09:00 slot of each season.
-  - *Gold Granny* — 60 % Gold, 40 % cash, rebalanced at the first 09:00 slot of each season.
+  - *Gold Granny* — 50 % Gold, 50 % cash (the `createHouseBot` per-coin maximum; was 60/40, changed Nov 26 on #219), rebalanced at the first 09:00 slot of each season.
   - *Momentum Max* — each slot: hold assets with 24 h change > +2 % (up to 25 % each), sell those < −2 %.
 - House bots appear on leaderboards with a "house" badge; excluded from rank #1 display ("Top human-raised bot").
 - No prizes; recognition only (Bot of the Week post).
