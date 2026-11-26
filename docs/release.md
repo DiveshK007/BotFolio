@@ -23,7 +23,7 @@ Locally, from the repo root, the same checks: `pnpm typecheck`, `pnpm test`, `pn
 - [ ] `pnpm audit --audit-level high` has no open findings, or each is logged in `docs/decisions.md`
 - [ ] No frozen file changed outside an announced PR: `packages/shared/*`, `packages/contracts/abi/*`, `packages/db/schema.sql`
 - [ ] No secret in the diff, and none in any `NEXT_PUBLIC_*` variable
-- [ ] A PR that touches `apps/worker`, `packages/db`, `packages/llm`, `packages/shared` or `render.yaml` is merged **outside the no-merge windows** in section 8 (merging to `main` redeploys the worker)
+- [ ] Merged **outside the no-merge windows** in section 8. Every merge to `main` redeploys the worker, docs-only PRs included
 
 ## 2. Environment
 
@@ -109,7 +109,7 @@ Rollback if a freeze merge breaks production: [`rollback.md`](rollback.md).
 
 ## 8. No-merge windows (worker auto-deploy)
 
-`render.yaml` has `autoDeploy: true`, so every merge to `main` that changes the worker restarts it on Render. A restart is safe by design (`runbook.md` section 1), but one in the middle of a slot or a close costs a retry or a whole night. So PRs that touch the worker are **not merged** in these windows, every day (IST):
+`render.yaml` has `autoDeploy: true` and no `buildFilter`, so **every** merge to `main` rebuilds and restarts the worker on Render, even a docs-only one. A restart is safe by design (`runbook.md` section 1), but one in the middle of a slot or a close costs a retry or a whole night. So **no PR is merged** in these windows, every day (IST):
 
 | Window (IST) | What runs then |
 |---|---|
@@ -118,7 +118,7 @@ Rollback if a freeze merge breaks production: [`rollback.md`](rollback.md).
 | 16:55–17:25 | 17:00 slot and retries |
 | **20:55–00:20** | 21:00 slot and retries, Daily Call settle (21:00 to 23:50), season close (21:30), recap (21:35), season open (00:00) |
 
-- Docs-only and web-only PRs (`apps/web`, `docs/`) don't redeploy the worker and can merge at any time. Vercel still rebuilds the site.
-- Batch worker merges into about one deploy per open window. After each deploy, check `/healthz` (`startedAt` is new, `reasons` holds nothing new) and the boot alert, if it is set up.
+- A `buildFilter` in `render.yaml` (paths `apps/worker/**`, `packages/**`, `pnpm-lock.yaml`, `render.yaml`) would let docs and web-only PRs merge at any time. That is a WS B change in its own PR (#375), and is not made here. Until then, the windows apply to every PR. **UNVERIFIED**: whether a build filter was set in the Render dashboard instead.
+- Batch merges into about one deploy per open window. After each deploy, check `/healthz` (`startedAt` is new, `reasons` holds nothing new) and the boot alert, if it is set up.
 - The season-close nights are the strictest: Sat Nov 28 (S0), Mon Nov 30 (S1), Wed Dec 2 (S2), Fri Dec 4 (S3), Sun Dec 6 (S4), and Mon Dec 7 around 00:00 (weekly S5 opens). The last Wave A worker merge is Sat Nov 28 20:50.
 - An emergency fix inside a window is the on-call person's call. Write it in `docs/decisions.md` with the reason.

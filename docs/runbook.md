@@ -506,5 +506,5 @@ Calendar from `packages/db/seeds/seasons.sql`. Every day also runs the four slot
 Every day the on-call person:
 - reads `/healthz` after the 09:00 slot: `lastSlotRun` is today's 09:00, and every entry in `reasons` is understood;
 - watches the alert channel (section 5b) and tops up any wallet below 2 QIE (section 5);
-- doesn't merge worker PRs inside the no-merge windows ([`release.md`](release.md) section 8). Close nights are 20:55–00:20;
+- doesn't merge any PR inside the no-merge windows (every merge redeploys the worker) ([`release.md`](release.md) section 8). Close nights are 20:55–00:20;
 - writes every manual action in `docs/decisions.md`.
