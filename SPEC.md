@@ -169,7 +169,7 @@ Checked Nov 20 2026. QIE Wallet `signTypedData` on chain 1990 is still to be tes
 4. **Tap "Launch"** → one EIP-712 signature (passkey) → relayer submits `BotRegistry.createBot` via forwarder (≤ 4 s on a 3.6 s chain).
 5. **First trade** immediately: runner runs an out-of-schedule "debut" decision for that bot → `PaperLedger.executeBatch` reads oracles on-chain → card shows "Bought $25,000 of Gold at $3,730.84 (QIE oracle round 14811) · View on explorer".
 
-Stopwatch target ≤ 30 s total; measured on Nov 27 with 20 people (§12).
+Stopwatch target ≤ 30 s total; to be measured on real phones Nov 27–28 (teammates, then the soft launch; §12, stopwatch sheet in [`docs/launch-copy.md`](docs/launch-copy.md)). UNVERIFIED until then: the first Android passkey sign-up alone took about 60 s.
 
 ### 2.2 Daily
 - Notification channel = in-app feed + optional web push (PWA) — if push slips, the feed + email-free "come back" share cards are enough.
@@ -654,20 +654,22 @@ Four workstreams run in parallel using Claude Code (§16). Until Sunday Nov 22 n
 
 ### 12.3 Timeline
 
+Rows up to Wed Nov 25 are the original plan. The deploy moved to Nov 26 and the season calendar was re-seeded that day ([`docs/decisions.md`](docs/decisions.md), Nov 26; [`packages/db/seeds/seasons.sql`](packages/db/seeds/seasons.sql)), so the season events in those rows moved to the dates shown, and the rows from Thu Nov 26 are the current plan (updated Nov 27). The day-by-day working plan is [`docs/master-plan.md`](docs/master-plan.md).
+
 | Day | A — Chain | B — Runner | C — App | D — Growth & ecosystem | Gate (must be true to move on) |
 |---|---|---|---|---|---|
 | **Fri Nov 20** | Repo scaffold (monorepo §16.1); interfaces; contracts written | DB schema; Render + xAI + Supabase accounts; `LlmClient` | Next.js scaffold; **passkey spike on 2 phones (iOS Safari + Android Chrome) → EIP-712 sig on 1990** | Register team on hackathon.qie.digital + QIE wallet address; fund deployer/relayer/runner wallets; apply for QIE Pass partner creds; check QIE Wallet + Wallet MCP (§0.6) | Interfaces frozen; passkey sig on 1990 works on both phones (else switch to thirdweb) |
 | **Sat Nov 21** | Fork tests green (stale, limits, cap, batch-skip, forwarder `_msgSender`, `executeApproved` sig + replay guard, DailyCall, Challenges); gas report | Relayer + allowlist + rate limits against the local fork ([`docs/anvil-fork.md`](docs/anvil-fork.md)); persona + decision calls with strict schema; gate incl. big-move split | S1 landing + S2 create (mocked relay); $ display; price-age component | Card renderer for trade/roast/recap with mock data; domain bought | All tests green with `evm_version=shanghai`; gas per call known |
 | **Sun Nov 22** | **Mainnet deploy + verify all 7**; addresses into env; seed 3 house bots | Indexer → Postgres; 4-slot scheduler; debut trade; executeBatch on mainnet | Real passkey → createBot → first trade on mainnet; S3 `/me`; S4 public bot page | `.qie` reverse lookup working or fallback; Verify-on-QIE panel | **End-to-end on mainnet: landing → first trade ≤ 30 s on a phone** |
 | **Mon Nov 23** | Support B/C; admin scripts (open/close season, publish rules) | Corrections, big-move flow + expiry fallback, DailyCall settle, season open/close checks | Correct-a-call, Approve Big Move sheet, Daily Call sheet (S11) | Public API `/api/v1/bots/:id/record`; `/stats` user-signed vs system split | A real big move approved by a user executes on mainnet with the user as signer |
-| **Tue Nov 24** | Replay script checks on-chain events | v2 proposal + Approve → `commitVersion`; season data root; trust score + `commitScores`; leaderboards (4 boards). **S0 test season opens** | S5 season close + v2 diff; S6 leaderboards; S10 challenge page; QIE Wallet connect | Battle/season/evolution/challenge/call cards; WhatsApp + X unfurl tests | All flows work in S0 |
-| **Wed Nov 25** | Security pass on contracts (roles, keys, allowlist) | BotFolio MCP server (§10.1); load test 200 relays; alerts | Polish at 360 px; error/empty states; `/proof`, `/about` | **S0 closes 21:30 — check results, cards, v2 diffs.** Soft launch to 20 people at ~22:00 so they're in for S1 | S0 closed cleanly; ≥ 15/20 soft-launch users finish in < 30 s |
-| **Thu Nov 26** | Fix list | Fix list; replay S0 exactly | Fix top 5 soft-launch frictions | **S1 opens.** First public posts (WhatsApp groups, coding club) | Replay reproduces S0 balances + root |
-| **Fri Nov 27** | — | Watch S1 close 21:30 | Polish | **S1 closes.** Public launch: X thread from real roast + evolution cards; challenge links in groups | S1 results + cards live |
-| **Sat Nov 28** | README contract docs | Monitoring; QIE float top-up | Final UI pass | Record the demo video (real S1 data); deck draft | Video final |
-| **Sun Nov 29** | — | — | — | **S2 closes 21:30.** Traction screenshots from `/stats`; README, architecture diagram, trust-rules doc, replay guide; deck final | Repo public; fresh-clone README works |
-| **Mon Nov 30** | All | All | All | **Submit by evening IST** (form + video + docs + deck). Night = buffer before 04:29 IST Dec 1 | Submission confirmed |
-| **Dec 1–5** | On call | Keep runner healthy | — | Demo week: present with live S3/S4 results and the MCP demo | — |
+| **Tue Nov 24** | Replay script checks on-chain events | v2 proposal + Approve → `commitVersion`; season data root; trust score + `commitScores`; leaderboards (4 boards). ~~S0 test season opens~~ (moved to Fri Nov 27) | S5 season close + v2 diff; S6 leaderboards; S10 challenge page; QIE Wallet connect | Battle/season/evolution/challenge/call cards; WhatsApp + X unfurl tests | All flows work on the local mainnet fork ([`docs/anvil-fork.md`](docs/anvil-fork.md)) |
+| **Wed Nov 25** | Security pass on contracts (roles, keys, allowlist) | BotFolio MCP server (§10.1); load test 200 relays; alerts | Polish at 360 px; error/empty states; `/proof`, `/about` | ~~S0 closes 21:30; soft launch to 20 people~~ (moved to Sat Nov 28) | (moved to Sat Nov 28) |
+| **Thu Nov 26** | **Mainnet deploy + verify all 7** (done); `publishRules` for both versions + 3 house bots (done) | Worker live on Render; system-tx gas estimate fix | Live mode on Vercel; passkey sign-up on Android | — | 28/28 role checks pass; first user bot created with the user signing and the relayer paying gas |
+| **Fri Nov 27** | — | **S0 (hidden test season) opens 00:00** (on-chain 00:24); first scheduled slots 09:00 / 13:00 / 17:00 / 21:00; first Daily Call settle 21:00; first recap 21:35 | Newcomer fixes; phone tests (iPhone Safari, Android) | Launch copy drafted ([`docs/launch-copy.md`](docs/launch-copy.md)); team registration checked | A debut trade and a slot trade on mainnet (UNVERIFIED until seen) |
+| **Sat Nov 28** | Manual season fallback ready ([`docs/runbook.md`](docs/runbook.md) §9) | Last worker merge 20:50. **S0 closes 21:30**: results, trust scores, replay file, `closeSeason`, v2 proposals | Final UI pass | Soft launch to 5–15 people before S1 opens | S0 closed cleanly (`seasonState(0) == 2`); soft-launch stopwatch times written down |
+| **Sun Nov 29** | — | **S1 opens 00:00; code freeze starts.** Replay S0 exactly | — | Demo video (S0 data plus EXAMPLE labels); deck final; README, architecture, trust-rules, replay guide | Replay reproduces the S0 root; repo public; fresh-clone README works |
+| **Mon Nov 30** | All | Watch the **S1 close 21:30** | All | `/stats` screenshots after the S1 close. **Submit ~22:00 IST** (fallback 23:00). Deadline 04:29 IST Dec 1 | Submission confirmed |
+| **Dec 1–7** | On call | Keep the runner healthy: S2 Dec 1 → Dec 2 21:30, S3 Dec 3 → Dec 4 21:30, S4 Dec 5 → Dec 6 21:30, weekly S5 opens Mon Dec 7 00:00 | — | Demo week: present with S1 and S2 results (plus S3 if presenting after Dec 4 21:30) and the MCP demo. On-call table in [`docs/runbook.md`](docs/runbook.md) §10 | — |
 
 ### 12.4 Traction seeding (for the 90-day milestones; demo week Dec 1–5, winners Dec 10, then 90 days)
 - First 100 users: CIT hostel/class WhatsApp groups ("Sharma ji's son" line), 5-minute coding-club demo, X thread of real roast cards, **challenge links** ("my bot vs yours, this season").
@@ -694,7 +696,7 @@ Four workstreams run in parallel using Claude Code (§16). Until Sunday Nov 22 n
 - [ ] Be ready to explain architecture to judges (AI-assisted dev allowed only if you understand your code)
 - [ ] (v1.1) Every team member can explain their own workstream and answer: "walk me through the forwarder", "what happens when gold's price is stale?", "how does Approve Big Move stop double execution?", "why blockchain?" (§1.1)
 - [ ] (v1.1) QIE components listed in README + deck with where each is used: Oracles, QIE Wallet, QIE ID / `.qie`, QIE Wallet MCP, QIE Pass (if live)
-- [ ] (v1.1) `/stats` screenshots with user-signed vs system txs, and at least S1 + S2 closed with results
+- [ ] (v1.1) `/stats` screenshots with user-signed vs system txs, and S1 closed with results (S0 is the hidden test season; S2 closes Dec 2 21:30, after the deadline, so it is shown in demo week)
 
 **Tracks:** DeFi & Financial Infrastructure · AI + Autonomous Agents · Consumer Apps & Social · Commerce & Real World · Developer Infrastructure & Tooling. Prizes: $5k / $3k / $2k overall, $500 per category, special awards Most Traction $2,500, Community Choice $1,000, Best Student Team $1,000. 50 % paid Dec 10, 50 % after *"any 3 traction milestones within 90 days"*.
 
