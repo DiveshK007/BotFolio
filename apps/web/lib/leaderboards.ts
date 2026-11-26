@@ -112,7 +112,9 @@ export async function fetchLeaderboards(workerUrl: string, season: number | null
   if (signal?.aborted) abort();
   signal?.addEventListener("abort", abort);
   try {
-    const res = await fetch(url, { credentials: "omit", signal: controller.signal, next: { revalidate: 60 } });
+    // `next` is Next's server cache hint (the browser ignores it); typed loosely so the worker's tests compile this too.
+    const init: RequestInit & { next?: { revalidate: number } } = { credentials: "omit", signal: controller.signal, next: { revalidate: 60 } };
+    const res = await fetch(url, init);
     const json: unknown = await res.json().catch(() => null);
     if (res.ok) {
       const answer = parseLeaderboards(json);
