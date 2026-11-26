@@ -10,7 +10,8 @@ const ist = (time: string) => new Date(`${time}+05:30`);
 
 let pglite: PGlite;
 let db: Queryable;
-let chain: SeasonChain & { opened: { n: number; start: string; end: string }[]; lagging: boolean };
+// `closedOnChain` stands in for the close job: true means every opened season's close has landed.
+let chain: SeasonChain & { opened: { n: number; start: string; end: string }[]; lagging: boolean; closedOnChain: boolean };
 const log = { info: vi.fn(), warn: vi.fn() };
 
 beforeEach(async () => {
@@ -21,13 +22,18 @@ beforeEach(async () => {
   chain = {
     opened: [],
     lagging: false,
+    closedOnChain: true,
     async nextSeason() {
       return this.lagging ? 0 : this.opened.length;
     },
-    isClosed: async () => false,
+    async isClosed(n) {
+      return this.closedOnChain && n < this.opened.length;
+    },
     closeSeason: async () => {},
     async openSeason(n, startsAt, endsAt) {
-      if (n !== this.opened.length) throw new Error("BadSeason"); // as SeasonLedger does
+      // As SeasonLedger does.
+      if (n !== this.opened.length) throw new Error("BadSeason");
+      if (n > 0 && !(await this.isClosed(n - 1))) throw new Error("PreviousSeasonOpen");
       this.opened.push({ n, start: startsAt.toISOString(), end: endsAt.toISOString() });
     },
   };
@@ -58,6 +64,16 @@ describe("openDueSeasons", () => {
 
   it("a late deploy opens what it missed, in order, even a season that has already ended", async () => {
     expect(await run(openDueSeasons, "2026-11-28T10:00:00")).toEqual([0, 1, 2]);
+  });
+
+  it("stops, without sending, while the previous season isn't closed on-chain (#219)", async () => {
+    chain.closedOnChain = false;
+    expect(await run(openDueSeasons, "2026-11-28T10:00:00")).toEqual([0]);
+    expect(await run(openDueSeasons, "2026-11-29T00:00:00")).toEqual([]);
+    expect(log.warn).toHaveBeenCalledWith("seasons.previous_not_closed", { season: 1 });
+
+    chain.closedOnChain = true; // S0's close landed
+    expect(await run(openDueSeasons, "2026-11-30T00:00:00")).toEqual([1, 2, 3]);
   });
 
   it("follows a boundary that was moved in the table", async () => {
