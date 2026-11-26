@@ -66,6 +66,24 @@ describe("POST /relay pipeline (#37)", () => {
     expect(f.sender.send).not.toHaveBeenCalled();
   });
 
+  it("refuses a user who never confirmed 18+ and the Terms, before reserving or any RPC (#219)", async () => {
+    const f = fakeRelay();
+    f.guard.hasAcceptedTerms.mockResolvedValue(false);
+    const result = await f.relay(relayInput(await signedRequest()));
+    expect(result.status).toBe(403);
+    expect(code(result)).toBe("TERMS_NOT_ACCEPTED");
+    expect(f.guard.hasAcceptedTerms).toHaveBeenCalledWith(expect.objectContaining({ wallets: [lower(USER.address)] }));
+    expect(f.guard.reserve).not.toHaveBeenCalled();
+    expect(f.chain.prepare).not.toHaveBeenCalled();
+    expect(f.guard.recordRefusal).toHaveBeenCalledOnce();
+  });
+
+  it("passes every wallet of the signed-in user to the daily limit", async () => {
+    const f = fakeRelay({ auth: { authenticate: async () => ({ kind: "privy", wallets: [lower(USER.address), lower(OTHER.address)] }) } });
+    await f.relay(relayInput(await signedRequest()));
+    expect(f.guard.reserve).toHaveBeenCalledWith(expect.objectContaining({ userWallets: [lower(USER.address), lower(OTHER.address)] }));
+  });
+
   it.each(["RATE_LIMITED_USER", "RATE_LIMITED_GLOBAL"] as const)("%s stops before any RPC", async (limit) => {
     const f = fakeRelay();
     f.guard.reserve.mockRejectedValue(new RelayRefusal(limit, { retryAfterSeconds: 9 }));

@@ -1,5 +1,6 @@
 import type { Hex } from "viem";
 import { InternalFailure } from "../auth/log";
+import type { Identity } from "../auth/types";
 import { Throttle } from "../auth/throttle";
 import type { Db } from "./db";
 import { RelayRefusal } from "./errors";
@@ -24,14 +25,15 @@ const ATTEMPTS_PER_IP_PER_MINUTE = 300;
 const LOGGED_REFUSALS_PER_WALLET_PER_MINUTE = 20;
 
 /**
- * What counts toward 30/wallet/day and 2000/h: rows that were or may have been broadcast (submitted, confirmed,
+ * What counts toward 30/user/day and 2000/h: rows that were or may have been broadcast (submitted, confirmed,
  * reverted), over rolling windows. Refusals don't: otherwise someone already over a limit stays locked out by
- * retrying, and one wallet could use up the global limit with junk (open question in #219).
+ * retrying, and one wallet could use up the global limit with junk (#219: rejected relays don't count).
+ * The daily limit is per user: all wallets of a Privy user together ($2), so extra wallets don't add more.
  */
 const USAGE_SQL = `
   with wallet as (
     select count(*)::int as n, min(created_at) as oldest from relay_log
-    where user_wallet = $1 and status <> 'rejected' and created_at > now() - interval '24 hours'
+    where user_wallet = any($2::text[]) and status <> 'rejected' and created_at > now() - interval '24 hours'
   ), everyone as (
     select count(*)::int as n, min(created_at) as oldest from relay_log
     where status <> 'rejected' and created_at > now() - interval '1 hour'
@@ -107,7 +109,8 @@ export class PgRelayGuard implements RelayGuard {
         await tx.query("set local lock_timeout = '4s'");
         await tx.query("select pg_advisory_xact_lock($1)", [RESERVE_LOCK_KEY]);
         // Read committed: this statement's snapshot is taken after the lock, so it sees the previous holder's row.
-        const usage = (await tx.query<Usage>(USAGE_SQL, [wallet])).rows[0];
+        const wallets = [...new Set([wallet, ...(attempt.userWallets ?? [])].map((w) => w.toLowerCase()))];
+        const usage = (await tx.query<Usage>(USAGE_SQL, [wallet, wallets])).rows[0];
         if (!usage) throw new InternalFailure("usage_query_empty");
 
         if (usage.in_flight) {
@@ -151,6 +154,18 @@ export class PgRelayGuard implements RelayGuard {
       target,
       selector,
     ]);
+  }
+
+  async hasAcceptedTerms({ wallets, privyDid }: Pick<Identity, "wallets" | "privyDid">): Promise<boolean> {
+    const { rows } = await this.db.query<{ ok: boolean }>(
+      `select exists (
+         select 1 from users
+         where terms_accepted_at is not null
+           and (wallet_address = any($1::text[]) or (privy_did is not null and privy_did = $2::text))
+       ) as ok`,
+      [wallets.map((w) => w.toLowerCase()), privyDid ?? null],
+    );
+    return rows[0]?.ok === true;
   }
 
   /** Rows a previous process broadcast but didn't see mined, so their outcome can still be recorded. */

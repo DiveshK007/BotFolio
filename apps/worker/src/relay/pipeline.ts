@@ -45,8 +45,17 @@ export function createRelay(deps: RelayDeps) {
         throw new RelayRefusal("SIGNER_MISMATCH");
       }
       // From here on the wallet is proven, so it may be written to relay_log.
-      attempt = { wallet: request.from, target: request.to, selector: selectorOf(request.data), action: null, ip };
+      attempt = {
+        wallet: request.from,
+        target: request.to,
+        selector: selectorOf(request.data),
+        action: null,
+        ip,
+        userWallets: identity.wallets,
+      };
       attempt.action = checkPolicy(request, deps.targets, now());
+      // The 18+ tick is enforced here, not only in the app (#219).
+      if (!(await deps.guard.hasAcceptedTerms(identity))) throw new RelayRefusal("TERMS_NOT_ACCEPTED");
 
       reservation = await deps.guard.reserve(attempt);
       const call = await deps.chain.prepare(request);
