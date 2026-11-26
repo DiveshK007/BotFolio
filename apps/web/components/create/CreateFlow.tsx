@@ -11,11 +11,12 @@ import { readDraft } from "@/lib/draft";
 import { FlowError, userMessage } from "@/lib/errors";
 import type { BotLimits, PersonaDraft } from "@/lib/persona";
 import { checkSentence } from "@/lib/sentence";
-import { getWallet, type WalletSession } from "@/lib/wallet";
+import { getQieWallet, getWallet, type WalletSession } from "@/lib/wallet";
 import { requestPersona } from "@/lib/worker";
+import { DebutWait } from "./DebutWait";
 import { LimitSliders } from "./LimitSliders";
 import { PersonaCard } from "./PersonaCard";
-import { SignInStep } from "./SignInStep";
+import { SignInStep, type SignInKind } from "./SignInStep";
 import { ErrorNote, PrimaryButton } from "./controls";
 
 /**
@@ -27,7 +28,7 @@ import { ErrorNote, PrimaryButton } from "./controls";
  * "done" is only reachable from a verified on-chain receipt.
  */
 type Phase =
-  | { name: "signin"; busy: boolean }
+  | { name: "signin"; busy: SignInKind | null }
   | { name: "persona"; busy: boolean }
   | { name: "review" }
   | { name: "launching"; step: LaunchStep }
@@ -36,11 +37,14 @@ type Phase =
 
 const STEP_TEXT: Record<LaunchStep, string> = {
   checking: "Checking QIE…",
-  signing: "Confirm with your passkey…",
+  signing: "Confirm the signature…",
   relaying: "Launching. We pay the gas…",
 };
 
 const SLOW_PERSONA_MS = 5_000; // SPEC §2.1 target for the persona call
+
+/** The worker no longer accepts this sign-in (expired, or signed out elsewhere): sign in again, keep the card. */
+const needsSignIn = (e: unknown) => e instanceof FlowError && (e.code === "SIGNED_OUT" || e.code === "UNAUTHORIZED");
 
 // sessionStorage is browser-only and nothing changes it while this screen is open.
 const noSubscribe = () => () => {};
@@ -66,6 +70,7 @@ function PersonaLoading() {
 export function CreateFlow() {
   const [config] = useState(getCreateConfig);
   const [wallet] = useState(getWallet);
+  const [qieWallet] = useState(getQieWallet);
   // undefined on the server and while hydrating, null when there's no usable sentence.
   const stored = useSyncExternalStore<string | undefined>(noSubscribe, readDraft, noDraftOnServer);
   const check = stored === undefined ? undefined : checkSentence(stored); // storage is editable, so check again
@@ -73,7 +78,7 @@ export function CreateFlow() {
   const [session, setSession] = useState<WalletSession>();
   const [draft, setDraft] = useState<PersonaDraft>();
   const [limits, setLimits] = useState<BotLimits>();
-  const [phase, setPhase] = useState<Phase>({ name: "signin", busy: false });
+  const [phase, setPhase] = useState<Phase>({ name: "signin", busy: null });
   const [error, setError] = useState<string | null>(null);
   const personaCall = useRef<AbortController | null>(null);
 
@@ -93,21 +98,24 @@ export function CreateFlow() {
     } catch (e) {
       if (call.signal.aborted) return; // left the page
       setError(userMessage(e));
-      setPhase({ name: "persona", busy: false });
+      setPhase(needsSignIn(e) ? { name: "signin", busy: null } : { name: "persona", busy: false });
     }
   }
 
-  async function signIn() {
+  async function signIn(kind: SignInKind) {
     if (!sentence) return;
     setError(null);
-    setPhase({ name: "signin", busy: true });
+    setPhase({ name: "signin", busy: kind });
     try {
-      const signedIn = await wallet.signIn();
+      // Called synchronously from the tap (no await before it), which WebAuthn needs.
+      const signedIn = await (kind === "passkey" ? wallet : qieWallet).signIn();
       setSession(signedIn);
-      await loadPersona(signedIn, sentence);
+      // Signing in again after an expired session keeps the card and the sliders.
+      if (draft) setPhase({ name: "review" });
+      else await loadPersona(signedIn, sentence);
     } catch (e) {
       setError(userMessage(e));
-      setPhase({ name: "signin", busy: false });
+      setPhase({ name: "signin", busy: null });
     }
   }
 
@@ -149,8 +157,9 @@ export function CreateFlow() {
       });
       await confirm(txHash);
     } catch (e) {
+      // Cancelled, rate-limited, refused by the relayer or QIE unreachable: the worker's words, then Launch again.
       setError(userMessage(e));
-      setPhase({ name: "review" });
+      setPhase(needsSignIn(e) ? { name: "signin", busy: null } : { name: "review" });
     }
   }
 
@@ -183,13 +192,14 @@ export function CreateFlow() {
         <p>
           <ExplorerLink tx={phase.txHash} label="View on explorer" />
         </p>
+        <DebutWait botId={phase.botId.toString()} />
       </div>
     );
   }
 
   let blocked: string | null = null;
   if (!config) blocked = "BotFolio's contracts and relayer aren't connected to this site yet.";
-  else if (!wallet.available) blocked = "Passkey sign-in isn't switched on yet.";
+  else if (!wallet.available && !qieWallet.available) blocked = "Passkey sign-in isn't switched on yet.";
 
   const canEdit = phase.name === "signin" || phase.name === "persona" || phase.name === "review";
   const launching = phase.name === "launching";
@@ -215,7 +225,14 @@ export function CreateFlow() {
         )}
       </div>
 
-      {phase.name === "signin" && <SignInStep blocked={blocked} busy={phase.busy} onSignIn={signIn} />}
+      {phase.name === "signin" && (
+        <SignInStep
+          blocked={blocked}
+          busy={phase.busy}
+          options={{ passkey: wallet.available, qie: qieWallet.available }}
+          onSignIn={signIn}
+        />
+      )}
       {phase.name === "persona" && phase.busy && <PersonaLoading />}
 
       {draft && limits && (
