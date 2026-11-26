@@ -11,10 +11,46 @@ vi.mock("@/lib/bot-record", async () => {
   return { ...actual, fetchBotPage: vi.fn(async (id: string) => (id === "7" ? { kind: "ok", page: samplePage() } : { kind: "not_found" })) };
 });
 
+const loadStatus = vi.fn();
+vi.mock("@/lib/status", () => ({ loadStatus: () => loadStatus() }));
+
 const talkReq = (ip: string, botId = "7") => new Request("http://x/api/site/talk", { method: "POST", headers: { "x-forwarded-for": ip, "content-type": "application/json" }, body: JSON.stringify({ botId, messages: [{ role: "user", content: "zebra-banana-42" }] }) });
 
 describe("POST /api/site/talk", () => {
-  beforeEach(() => complete.mockReset());
+  beforeEach(() => {
+    complete.mockReset();
+    vi.stubEnv("TALK_ENABLED", "true");
+    loadStatus.mockResolvedValue({ staleFeeds: [], resting: false });
+  });
+  afterEach(() => vi.unstubAllEnvs());
+  it("is off unless TALK_ENABLED=true, before any fetch or LLM call", async () => {
+    vi.stubEnv("TALK_ENABLED", "");
+    const { fetchBotPage } = await import("@/lib/bot-record");
+    vi.mocked(fetchBotPage).mockClear();
+    const { POST } = await import("../talk/route");
+    const r = await POST(talkReq("6.6.6.6"));
+    expect(r.status).toBe(503);
+    expect(await r.json()).toEqual({ error: "talk_disabled" });
+    expect(fetchBotPage).not.toHaveBeenCalled();
+    expect(complete).not.toHaveBeenCalled();
+  });
+  it.each([["resting", { staleFeeds: [], resting: true }], ["unreadable", null]])("rests when the worker's status is %s", async (_name, status) => {
+    loadStatus.mockResolvedValue(status);
+    const { POST } = await import("../talk/route");
+    const r = await POST(talkReq("7.7.7.7"));
+    expect(r.status).toBe(503);
+    expect(complete).not.toHaveBeenCalled();
+  });
+  it("stops at the daily call cap across visitors", async () => {
+    vi.resetModules(); // a fresh cap for this test only
+    complete.mockResolvedValue({ output: { reply: "ok" } });
+    const { POST } = await import("../talk/route");
+    for (let i = 0; i < 300; i++) expect((await POST(talkReq(`10.0.${i >> 8}.${i & 255}`))).status).toBe(200);
+    const r = await POST(talkReq("10.9.9.9"));
+    expect(r.status).toBe(503);
+    expect(await r.json()).toMatchObject({ error: "busy" });
+    vi.resetModules();
+  });
   it("answers in character from the record", async () => {
     complete.mockResolvedValue({ output: { reply: "Bought a little BTC. Calmly." } });
     const { POST } = await import("../talk/route");

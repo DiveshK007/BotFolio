@@ -10,11 +10,12 @@ import { REGISTRY_ABI } from "@/lib/create-bot";
 import { userMessage } from "@/lib/errors";
 import { fetchBigMoves, fetchDailyCall, fetchOwner, type DailyCallToday, type OwnerBot, type PendingBigMove } from "@/lib/owner";
 import { createChainClient } from "@/lib/relay-call";
-import { useSession, type WalletSession } from "@/lib/wallet";
+import { shortHex } from "@/lib/format";
+import { signOut, useSession, type WalletSession } from "@/lib/wallet";
 import { BigMoveCard } from "./BigMoveCard";
 import { DailyCallCard } from "./DailyCallCard";
 import { ChallengeButton, CorrectCall, PauseToggle, type OwnerCtx } from "./OwnerActions";
-import { NotLive, SessionLoading, SignInCard } from "./relay-ui";
+import { NotLive, SessionLoading, SignInCard, type Wallets } from "./relay-ui";
 import { ThinkingFeed } from "./ThinkingFeed";
 
 export type MeData =
@@ -59,6 +60,19 @@ export async function loadMe(config: OwnerConfig, session: WalletSession): Promi
     daily: ok(daily),
     moves: (ok(moves) ?? []).filter((m) => m.botId === id),
   };
+}
+
+// The calendar in packages/db/seeds/seasons.sql, minus S0: it stays hidden (#219), so S1's close is the first anyone sees.
+const SPRINT_CLOSES = ["2026-11-30", "2026-12-02", "2026-12-04", "2026-12-06"].map((d) => Date.parse(`${d}T21:30:00+05:30`));
+const FIRST_WEEKLY_CLOSE = Date.parse("2026-12-13T21:30:00+05:30"); // then every Sunday 21:30 IST
+const WEEK_MS = 7 * 24 * 3_600_000;
+
+/** The next season close that shows a result (#360), as ISO. */
+export function nextVisibleClose(now: number): string {
+  const sprint = SPRINT_CLOSES.find((t) => t > now);
+  const weekly = now < FIRST_WEEKLY_CLOSE ? FIRST_WEEKLY_CLOSE : FIRST_WEEKLY_CLOSE + (Math.floor((now - FIRST_WEEKLY_CLOSE) / WEEK_MS) + 1) * WEEK_MS;
+  const close = sprint ?? weekly;
+  return new Date(close).toISOString();
 }
 
 function useNow(ms = 30_000) {
@@ -161,7 +175,7 @@ export function MeView({ data, ctx, now, onReload }: { data: MeData; ctx: OwnerC
             Season {season.season} result
           </Link>
         ) : (
-          <p className="text-sm text-muted">Your first season result comes at the next close (21:30 IST).</p>
+          <p className="text-sm text-muted">Your first season result comes at the next close, {istTime(nextVisibleClose(now))}.</p>
         )}
       </section>
       <section aria-labelledby="challenge" className={card}>
@@ -191,13 +205,22 @@ export function MeScreen() {
 
   const load = useCallback(() => {
     if (!config || !session) return;
-    loadMe(config, session).then(setData, (e: unknown) => setData({ kind: "error", message: userMessage(e) }));
+    let live = true; // a load still running after sign-out or a new sign-in must not show the old bot
+    loadMe(config, session).then(
+      (d) => live && setData(d),
+      (e: unknown) => live && setData({ kind: "error", message: userMessage(e) }),
+    );
+    return () => {
+      live = false;
+    };
   }, [config, session]);
   useEffect(load, [load]);
   const reload = () => {
     setData({ kind: "loading" });
     load();
   };
+  // shortcut: a failed Privy logout leaves them signed in with no message; they can tap again.
+  const out = () => void signOut().then(() => setData({ kind: "loading" }), () => {});
 
   if (!config) {
     return <NotLive>BotFolio&apos;s contracts and relayer aren&apos;t connected to this site yet.</NotLive>;
@@ -206,9 +229,43 @@ export function MeScreen() {
     return (
       <div className="flex flex-col gap-4">
         <h1 className="font-display text-3xl font-extrabold tracking-tight">Your bot</h1>
-        {loading ? <SessionLoading /> : <SignInCard why="Sign in to see your bot, answer its prompts and coach it." />}
+        {loading ? <SessionLoading /> : <MeSignIn />}
       </div>
     );
   }
-  return <MeView data={data} ctx={{ config, session }} now={now} onReload={reload} />;
+  return (
+    <div className="flex flex-col gap-4">
+      <SignedInAs address={session.address} onSignOut={out} />
+      <MeView data={data} ctx={{ config, session }} now={now} onReload={reload} />
+    </div>
+  );
+}
+
+/** New users go to the home page first: its sign-up has the 18+ / Terms tick that this card doesn't (#93). */
+export function MeSignIn({ wallets }: { wallets?: Wallets }) {
+  return (
+    <>
+      <section className={card}>
+        <h2 className={h2}>New here?</h2>
+        <p className="text-muted">Make your bot first. Describe it in one sentence on the home page.</p>
+        <Link href="/" className="inline-flex h-12 items-center justify-center rounded-full bg-accent px-6 font-semibold text-on-accent">
+          Make my bot
+        </Link>
+      </section>
+      <SignInCard why="Already have a bot? Sign in to see it, answer its prompts and coach it." wallets={wallets} />
+    </>
+  );
+}
+
+export function SignedInAs({ address, onSignOut }: { address: string; onSignOut: () => void }) {
+  return (
+    <p className="flex flex-wrap items-center justify-between gap-x-3 text-sm text-muted">
+      <span>
+        Signed in as <span className="font-mono" title={address}>{shortHex(address)}</span>
+      </span>
+      <button type="button" onClick={onSignOut} className="min-h-11 font-semibold text-accent-ink">
+        Sign out
+      </button>
+    </p>
+  );
 }

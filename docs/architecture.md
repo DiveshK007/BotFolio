@@ -1,6 +1,6 @@
 # Architecture
 
-Play money. Not investment advice. No prizes. Contract addresses are pending the mainnet deploy ([#25](https://github.com/DiveshK007/BotFolio/issues/25)), so none are listed here.
+Play money. Not investment advice. No prizes. The contracts have been deployed and verified on QIE mainnet since Nov 26 2026. Their addresses are in the [README](../README.md#contracts) and [`deployments/1990.env`](../packages/contracts/deployments/1990.env).
 
 ## Components
 
@@ -16,14 +16,14 @@ Play money. Not investment advice. No prizes. Contract addresses are pending the
 | Alerts | [`src/alerts`](../apps/worker/src/alerts) | POSTs to `ALERT_WEBHOOK_URL`; sends nothing when unset. |
 | Database | Supabase Postgres + Storage | Schema in [`packages/db/schema.sql`](../packages/db/schema.sql). Storage holds replay files (public bucket, `REPLAY_BUCKET`). |
 | Contracts | [`packages/contracts/src`](../packages/contracts/src), QIE mainnet, chain 1990 | `BotForwarder`, `BotRegistry`, `PaperLedger`, `SeasonLedger`, `TrustScoreRegistry`, `DailyCall`, `Challenges`. |
-| LLM | [`packages/llm`](../packages/llm) | `LlmClient` with xAI (Grok), OpenAI, Anthropic and fake providers, chosen by `LLM_PROVIDER`. |
+| LLM | [`packages/llm`](../packages/llm) | `LlmClient` with Anthropic, xAI (Grok), OpenAI and fake providers, chosen by `LLM_PROVIDER`. Production has run Claude Haiku 5.5 (`anthropic`) since Nov 26 (`docs/decisions.md`). |
 
 ```mermaid
 flowchart LR
     U["User on the web app<br/>(Next.js, Vercel)"] -- "signs EIP-712<br/>ForwardRequest" --> R["Relayer<br/>POST /relay"]
     subgraph W["Worker (one Render service)"]
         R
-        S["Scheduler<br/>4 slots a day"] --> L["LlmClient<br/>Grok via xAI"]
+        S["Scheduler<br/>4 slots a day"] --> L["LlmClient<br/>Claude Haiku 5.5"]
         L --> G["gate()<br/>deterministic risk rules"]
         I["Indexer<br/>10 s loop"]
         A["Read routes + MCP<br/>/bot-page, /leaderboards, /mcp"]
@@ -69,7 +69,7 @@ Create bot, correction, approve v2, Approve Big Move, Daily Call, challenge crea
 
 ### Season close
 
-1. `season_close` runs at 21:30 IST (`0 16 * * *` UTC) and handles each `closing` season ([`season/close.ts`](../apps/worker/src/season/close.ts)).
+1. `season_close` runs at 21:30 IST and every 15 min until 23:15 (`0,15,30,45 16-17 * * *` UTC) and handles each `closing` season. After a successful close it also runs the open check, so a late close doesn't hold the next season until the next `season_open` run ([`season/close.ts`](../apps/worker/src/season/close.ts)).
 2. It computes results and battle ranks, then trust scores and their root ([`trust/scores.ts`](../apps/worker/src/trust/scores.ts)), and commits them with `TrustScoreRegistry.commitScores`.
 3. It builds `season-<n>.jsonl` ([`replay-file.ts`](../apps/worker/src/season/replay-file.ts)), checks it with `verifyOffline`, uploads it to Supabase Storage and sends `SeasonLedger.closeSeason(season, root, uri)`.
 4. Challenges are settled or expired. Each step compares with the chain first, so a re-run sends nothing twice.
@@ -79,4 +79,4 @@ Anyone can then recompute the season: [replay.md](replay.md). Trust score rules:
 
 ## Not covered
 
-Privy passkey sign-in on chain 1990 is not wired yet ([#71](https://github.com/DiveshK007/BotFolio/issues/71)). UNVERIFIED: that the relayer, runner and committer are three separate wallets in production (the code reads three separate env vars; the deploy is pending). UNVERIFIED: the exact order of `commitScores` and `closeSeason` on-chain; it follows `closeSeasons` in the code, which commits scores first.
+Privy passkey sign-in on chain 1990 is live. By Nov 27 it was checked on Android; iPhone Safari is UNVERIFIED ([#71](https://github.com/DiveshK007/BotFolio/issues/71)). The relayer, runner and committer are three separate wallets in production: 0x5955…8004, 0x33b6…A181 and 0xd277…5D45 (`docs/decisions.md`, Nov 26). UNVERIFIED until the S0 close on Nov 28: the order of `commitScores` and `closeSeason` on-chain. In the code, `closeSeasons` commits the scores first.

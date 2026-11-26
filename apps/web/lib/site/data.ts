@@ -8,7 +8,8 @@
  * Switch: SITE_DATA_MODE = "example" (default until ~Nov 25) | "notlive" | "live".
  * Server-only env; never NEXT_PUBLIC_*.
  */
-import { ASSETS, type AssetId } from "@botfolio/shared";
+import { ASSETS, type AssetId, type CardPayload as StoredCard } from "@botfolio/shared";
+import { isStoredCard, toSiteCard } from "./card-adapter";
 import type { ActivityStats, BotRecord, CardPayload, ContractInfo, Leaderboards, Loaded, OracleRead, Trade } from "./types";
 import { SAMPLE_BOARDS, SAMPLE_CARDS, SAMPLE_RECORD_12, SAMPLE_TRADES } from "./sample";
 
@@ -124,13 +125,21 @@ export async function getBotRecord(botId: number): Promise<Loaded<BotRecord> & {
   } catch { return failed("https://mainnet.qie.digital"); }
 }
 
-/* ---------- share cards (WS D owns the payload; read from `cards`) ---------- */
+/* ---------- share cards (the worker writes the shared payload to `cards.payload`) ---------- */
+/** The stored payload for one card id, or null when there is none (or it isn't a shape we can read). Throws on a failed read. */
+export async function getStoredCard(cardId: string): Promise<StoredCard | null> {
+  const [row] = await supa<{ payload: unknown }[]>(`site_cards?id=eq.${encodeURIComponent(cardId)}&select=payload`);
+  return row && isStoredCard(row.payload) ? row.payload : null;
+}
+
 export async function getCard(cardId: string): Promise<Loaded<CardPayload>> {
-  if (SITE_MODE === "example") { const c = SAMPLE_CARDS[cardId] ?? SAMPLE_CARDS["example-roast"]; return wrap(c, "sample"); }
+  // The /card/example-* demo links work in every mode; they carry the EXAMPLE badge and example hashes.
+  const sample = Object.hasOwn(SAMPLE_CARDS, cardId) ? SAMPLE_CARDS[cardId] : undefined;
+  if (SITE_MODE === "example" || sample) return wrap(sample ?? SAMPLE_CARDS["example-roast"]!, "sample");
   if (SITE_MODE === "notlive") return notLive("/proof");
   try {
-    const [c] = await supa<CardPayload[]>(`site_cards?id=eq.${encodeURIComponent(cardId)}&select=*`);
+    const c = await getStoredCard(cardId);
     if (!c) return failed("/proof");
-    return { status: "live", data: c, updatedAt: now(), source: "/proof" };
+    return { status: "live", data: toSiteCard(c), updatedAt: c.createdAt, source: "/proof" };
   } catch { return failed("/proof"); }
 }

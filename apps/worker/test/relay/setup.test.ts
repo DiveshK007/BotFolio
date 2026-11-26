@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { generatePrivateKey } from "viem/accounts";
 import { setUpAuth } from "../../src/auth/setup";
 import type { Env } from "../../src/auth/env";
+import { POOL_MAX } from "../../src/database-url";
 import type { Db } from "../../src/relay/db";
 import { setUpRelayer } from "../../src/relay/setup";
 import { HealthState } from "../../src/health";
@@ -42,7 +43,10 @@ function setup(env: Env, rpcUrls = ["http://127.0.0.1:9"]) {
 
 describe("relayer wiring fails closed (#40)", () => {
   it("starts with a complete env", () => {
-    expect(setup(GOOD).service.relay).not.toBeNull();
+    const { service, openDatabase } = setup(GOOD);
+    expect(service.relay).not.toBeNull();
+    // #351: the relay's pool stays within its share of the session pooler.
+    expect(openDatabase).toHaveBeenCalledWith(expect.objectContaining({ max: POOL_MAX.relay }), expect.anything());
   });
 
   it.each([undefined, "", "false", "TRUE", "1", "yes"])("is off when RELAY_ENABLED is %j", (RELAY_ENABLED) => {

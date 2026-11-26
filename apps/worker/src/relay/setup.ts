@@ -2,6 +2,7 @@ import { privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 import { secret, type Env } from "../auth/env";
 import { errorLabel, type Log } from "../auth/log";
 import type { AuthSetup } from "../auth/setup";
+import { POOL_MAX } from "../database-url";
 import { loadRelayContracts } from "./allowlist";
 import { ForwarderChain } from "./chain";
 import { databaseConfig, openDb, type Db } from "./db";
@@ -53,7 +54,7 @@ export function setUpRelayer({ env, auth, rpcUrls, log, openDatabase = openDb }:
 
   let db: Db;
   try {
-    db = openDatabase(dbConfig, log);
+    db = openDatabase({ ...dbConfig, max: POOL_MAX.relay }, log);
   } catch (error) {
     log("relay.db_config_failed", { cause: errorLabel(error) });
     return off(["DATABASE_URL"]);

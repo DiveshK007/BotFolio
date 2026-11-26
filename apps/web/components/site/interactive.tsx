@@ -14,25 +14,30 @@ import type { BoardId, BoardRow, CardPayload, DataStatus, Leaderboards } from "@
 export function FlipCard({ card, status }: { card: CardPayload; status: DataStatus }) {
   const [flipped, setFlipped] = useState(false);
   const [run, setRun] = useState(0);
-  const gold = ASSETS.find(a => a.id === "GOLD")!;
-  const nodes: CustodyNode[] = card.kind === "challenge" ? [
+  const first = card.proofs[0];
+  const round = first?.oracle;
+  const feed = round && ASSETS.find(a => a.id === round.asset);
+  const nodes: CustodyNode[] = !first ? [
+    { tag: "CARD", title: "The card your friend sent", body: "An image anyone can screenshot. So we don't ask you to trust it." },
+    { tag: "TX", title: "No transaction to cite", body: "A quiet day: the bot made no trades, so there is nothing on-chain to point to yet." },
+  ] : card.kind === "challenge" ? [
     { tag: "CARD", title: "The challenge your friend sent", body: "A link with two bots on it. Here is what makes the matchup real." },
-    { tag: "TX", title: "Challenge created", body: <><TxChip hash={card.proofs[0].txHash} /> Challenges.create, signed by the challenger</> },
+    { tag: "TX", title: first.label, body: <><TxChip hash={first.txHash} /> {first.whatItProves}</> },
     { tag: "BLOCK", title: "Included on QIE mainnet", body: "Chain 1990 · ~3.6 s blocks" },
     { tag: "SEASON", title: "Season and versions locked", body: "Both bots race the next season on the versions they had when it was accepted" },
     { tag: "RESULT", title: "Settled at season close", body: "Higher season return wins, from oracle marks anyone can recompute. No stakes." },
   ] : card.kind === "evolution" ? [
     { tag: "CARD", title: "The card your friend sent", body: "An image anyone can screenshot. So we don't ask you to trust it." },
-    { tag: "TX", title: "Version commit", body: <><TxChip hash={card.proofs[0].txHash} /> SeasonLedger.commitVersion, signed by the owner</> },
+    { tag: "TX", title: "Version commit", body: <><TxChip hash={first.txHash} /> SeasonLedger.commitVersion, signed by the owner</> },
     { tag: "BLOCK", title: "Included on QIE mainnet", body: "Chain 1990 · ~3.6 s blocks" },
     { tag: "HASH", title: "Config hash for the new version", body: "The exact rules the bot runs now" },
     { tag: "WHY", title: "The coaching behind it", body: <>{card.proofs[1] && <TxChip hash={card.proofs[1].txHash} />} signed corrections</> },
   ] : [
     { tag: "CARD", title: "The card your friend sent", body: "An image anyone can screenshot. So we don't ask you to trust it." },
-    { tag: "TX", title: "The trade transaction", body: <><TxChip hash={card.proofs[0].txHash} /> PaperLedger records the trade and the price it used</> },
+    { tag: "TX", title: first.label, body: <><TxChip hash={first.txHash} /> {first.whatItProves}</> },
     { tag: "BLOCK", title: "Included on QIE mainnet", body: "Chain 1990 · ~3.6 s blocks" },
-    { tag: "ROUND", title: "The oracle round", body: card.proofs[0].whatItProves },
-    { tag: "FEED", title: "QIE's price feed", body: <><a className="tx" href={explorerAddress(gold.feed)} target="_blank" rel="noopener">{short(gold.feed)}</a> real feed, 8 decimals, QIE-operated</> },
+    ...(round ? [{ tag: "ROUND", title: `Oracle round ${round.roundId}`, body: "The contract read this round itself when the tx ran. The price was never passed in by us." }] : []),
+    ...(feed ? [{ tag: "FEED", title: `QIE's ${feed.label} price feed`, body: <><a className="tx" href={explorerAddress(feed.feed)} target="_blank" rel="noopener">{short(feed.feed)}</a> real feed, 8 decimals, QIE-operated</> }] : []),
   ];
   const back = useRef<HTMLHeadingElement>(null);
   useEffect(() => { if (flipped) setTimeout(() => back.current?.focus({ preventScroll: true }), 300); }, [flipped]);
@@ -47,7 +52,7 @@ export function FlipCard({ card, status }: { card: CardPayload; status: DataStat
         <div className="flip-inner">
           <div className="face-f" aria-hidden={flipped} inert={flipped}>
             <div className="share-card holo">
-              <div className="top"><div className="who"><BotHead size={52} bot={card.bot} mood={card.kind === "roast" ? "sad" : "smile"} /><div><b style={{ font: "800 20px var(--f-display)", color: "#fff" }}>{card.bot.name}</b><div className="score">Season {card.season} · trust {card.trust}</div></div></div><span className="kind">{kindLabel}</span></div>
+              <div className="top"><div className="who"><BotHead size={52} bot={card.bot} mood={card.kind === "roast" ? "sad" : "smile"} /><div><b style={{ font: "800 20px var(--f-display)", color: "#fff" }}>{card.bot.name}</b><div className="score">{[card.season !== null && `Season ${card.season}`, card.trust !== null && `trust ${card.trust}`].filter(Boolean).join(" · ")}</div></div></div><span className="kind">{kindLabel}</span></div>
               {card.kind === "challenge" && card.opponent && <div className="faceoff" aria-hidden="true"><BotHead size={96} bot={card.bot} mood="proud" /><span className="vs">VS</span><BotHead size={96} bot={card.opponent} version={2} /></div>}{card.kind === "evolution" && <div className="row" style={{ gap: 6 }} aria-hidden="true"><BotHead size={64} bot={card.bot} version={1} /><span style={{ font: "800 26px var(--f-display)", color: "#FFC93C" }}>→</span><BotHead size={64} bot={card.bot} version={2} mood="proud" /></div>}<p className="big">{card.headline}</p><p style={{ color: "#C9CEDA" }}>{card.line}</p>
               <div className="foot"><span>Settled against QIE&apos;s official mainnet oracle · play money · not advice</span><span>tx {short(card.proofs[0]?.txHash ?? "0x")}</span></div>
             </div>
@@ -56,6 +61,12 @@ export function FlipCard({ card, status }: { card: CardPayload; status: DataStat
             <div className="block-head"><h3 ref={back} tabIndex={-1}>Verify on QIE</h3>{status === "example" ? <Badge kind="example">EXAMPLE TXS</Badge> : <Badge kind="live">ON QIE</Badge>}</div>
             <p className="small muted">Follow the card all the way down to QIE&apos;s own price feed.</p>
             <CustodyTrace nodes={nodes} run={run} />
+            {card.proofs.length > 1 && <>
+              <p className="small muted" style={{ marginTop: 14 }}>Every transaction this card cites:</p>
+              <ul className="small" style={{ paddingLeft: 18 }}>
+                {card.proofs.map((p, i) => <li key={i}><TxChip hash={p.txHash} /> {p.label}{p.oracle && ` · ${p.oracle.asset} round ${p.oracle.roundId}`}: {p.whatItProves}</li>)}
+              </ul>
+            </>}
             <button className="btn sm" type="button" style={{ marginTop: 14, marginRight: 8 }} onClick={() => setRun(r => r + 1)}>Trace it again</button>
             <button className="btn ghost sm" type="button" style={{ marginTop: 14 }} onClick={() => setFlipped(false)}>Back to the card</button>
           </div>

@@ -38,6 +38,20 @@ Secret = must only ever be in the Render or Vercel dashboard (or your local `.en
 
 Optional, with safe defaults in code: `LLM_MODEL_DECISION`, `LLM_MODEL_PERSONA`, `LLM_MODEL_V2`, `LLM_TEMPERATURE`, `LLM_TIMEOUT_MS`, `PROMPT_VERSION`, `ORACLE_REFRESH_MS`, `BIG_MOVE_*`, `RELAY_MAX_PER_USER_PER_DAY`, `RELAY_MAX_GLOBAL_PER_HOUR`, `NEW_BOTS_PER_IP_PER_DAY`, and the kill switches `PERSONA_DISABLED`, `BIG_MOVES_DISABLED`, `DAILY_CALL_DISABLED`, `BOT_PAGE_DISABLED`, `LEADERBOARDS_DISABLED`, `STATS_DISABLED`, `TRUST_DISABLED` (`runbook.md`).
 
+**Database connections (#351).** The worker is the only database client. In session mode the Supabase pooler gives each client its own slot and refuses clients past its pool size with `EMAXCONNSESSION`. We assume that limit is 15, the small-tier default (**UNVERIFIED** for our project: Supabase → Database → Settings → Pool size). The worker's pools add up to exactly 15, and a unit test keeps them there. The caps are `POOL_MAX` in `apps/worker/src/database-url.ts`, not env variables:
+
+| Pool | Max |
+|---|---|
+| scheduler locks (one per running job) | 5 |
+| scheduler queries | 3 |
+| indexer | 2 |
+| public reads + card/.qie sweepers | 2 |
+| relay | 2 |
+| persona | 1 |
+| **total** | **15** |
+
+If the project's pool size is larger, raise `SESSION_POOLER_LIMIT` and the caps together. A local `psql` or a `scripts/` run also takes a slot while it is connected.
+
 ## Web (Vercel, project root `apps/web`)
 
 All of these are public (they end up in the browser bundle), so only addresses and URLs.
@@ -54,6 +68,7 @@ All of these are public (they end up in the browser bundle), so only addresses a
 | `SUPABASE_URL` | Supabase Project URL (server-side reads of the public `site_*` views in live mode) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → API Keys → Legacy → `anon` (public by design: RLS lets it read only the `site_*` views) |
 | `QIE_RPC_URLS` | optional, server-side reads (e.g. Verify any tx) |
+| `TALK_ENABLED` | optional, server-side. `true` turns on Talk to a bot (`/api/site/talk`), which also needs `LLM_PROVIDER` and its API key on Vercel. Off by default: these calls are outside the worker's `LLM_MONTHLY_BUDGET_USD`, so use a separate key with a hard spend limit set in the provider console, never the worker's key (#352) |
 
 ## Local only (never on a server)
 

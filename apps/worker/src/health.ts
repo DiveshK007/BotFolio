@@ -44,7 +44,8 @@ export class HealthState {
   private readonly jobs = new Map<string, JobHealth>();
   private oracleCheckedAt: Date | null = null;
   private oracleReadings: OracleReading[] = [];
-  private spend = { month: "", usd: 0 };
+  /** `usd` is decision spend, replaced by each refresh. `unloggedUsd` is calls with no table (persona), which a refresh must not wipe. */
+  private spend = { month: "", usd: 0, unloggedUsd: 0 };
 
   constructor(
     private readonly llm: { provider: string; capUsd: number | null },
@@ -74,14 +75,26 @@ export class HealthState {
 
   // Between two refreshes from the decisions log (src/budget/spend.ts), which is what survives a restart.
   recordLlmUsage(model: string, usage: LlmUsage, at: Date = new Date()): void {
-    const month = monthKey(at);
-    if (this.spend.month !== month) this.spend = { month, usd: 0 };
-    this.spend.usd += estimateCostUsd(model, usage);
+    this.monthSpend(at).usd += estimateCostUsd(model, usage);
   }
 
-  /** The month's spend as the decisions log has it (src/budget). Calls after this add to it. */
+  /**
+   * A call the decisions log never sees (persona), so setLlmSpend keeps it.
+   * shortcut: in memory, so a restart forgets it; persist it (a counter row monthSpendUsd reads) if persona spend grows.
+   */
+  recordUnloggedLlmUsage(model: string, usage: LlmUsage, at: Date = new Date()): void {
+    this.monthSpend(at).unloggedUsd += estimateCostUsd(model, usage);
+  }
+
+  /** The month's decision spend as the decisions log has it (src/budget). Calls after this add to it. */
   setLlmSpend(usd: number, at: Date = new Date()): void {
-    this.spend = { month: monthKey(at), usd };
+    this.monthSpend(at).usd = usd;
+  }
+
+  private monthSpend(at: Date) {
+    const month = monthKey(at);
+    if (this.spend.month !== month) this.spend = { month, usd: 0, unloggedUsd: 0 };
+    return this.spend;
   }
 
   budget(at: Date = new Date()): BudgetState {
@@ -89,7 +102,7 @@ export class HealthState {
   }
 
   private spentUsd(at: Date): number {
-    return this.spend.month === monthKey(at) ? this.spend.usd : 0;
+    return this.spend.month === monthKey(at) ? this.spend.usd + this.spend.unloggedUsd : 0;
   }
 
   snapshot(now: Date = new Date()): HealthPayload {

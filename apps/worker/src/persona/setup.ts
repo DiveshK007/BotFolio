@@ -2,6 +2,7 @@ import { createLlmClient } from "@botfolio/llm";
 import type { Env } from "../auth/env";
 import { errorLabel, type Log } from "../auth/log";
 import type { WorkerConfig } from "../config";
+import { POOL_MAX } from "../database-url";
 import type { HealthState } from "../health";
 import { databaseConfig, openDb } from "../relay/db";
 import type { PersonaRouteOptions } from "./route";
@@ -16,6 +17,8 @@ interface PersonaSetup {
 export function setUpPersona(opts: { env: Env; cfg: WorkerConfig; health: HealthState; log: Log }): PersonaSetup {
   const { env, cfg, health, log } = opts;
   const off = (problems: string[]): PersonaSetup => ({ service: null, problems, stop: async () => {} });
+  // The kill switch (docs/env.md, runbook): POST /persona answers PERSONA_DISABLED and no LLM call is made.
+  if (env.PERSONA_DISABLED?.trim() === "true") return off(["PERSONA_DISABLED"]);
 
   const problems: string[] = [];
   const database = databaseConfig(env.DATABASE_URL);
@@ -25,7 +28,7 @@ export function setUpPersona(opts: { env: Env; cfg: WorkerConfig; health: Health
 
   try {
     const llm = createLlmClient({ env });
-    const db = openDb(database, log);
+    const db = openDb({ ...database, max: POOL_MAX.persona }, log);
     return { service: { db, llm, config: cfg.llm, health }, problems: [], stop: () => db.close() };
   } catch (error) {
     log("persona.setup_failed", { cause: errorLabel(error) });
