@@ -27,6 +27,10 @@ interface PendingMove {
   actionIndex: number;
   orderId: Hex;
   deadline: number;
+  /** A SELL's units of the asset at the start of the gate that made the big move (#347). */
+  startUnitsE18?: bigint;
+  /** Its decision's season has ended: the replay root is committed without this trade (#355). */
+  seasonEnded: boolean;
 }
 
 type Status = "approved" | "shrunk" | "expired";
@@ -51,12 +55,26 @@ export async function sweepBigMoves(deps: RunnerDeps, signal: AbortSignal): Prom
     action_index: number;
     order_id: string;
     deadline: string;
+    start_units: string | null;
+    season_ended: boolean;
   }>(
-    `select id::text as id, decision_id::text as decision, bot_id::text as bot_id, asset::text as asset,
-            side::text as side, bps, action_index, '0x' || encode(order_id, 'hex') as order_id,
-            extract(epoch from deadline)::bigint::text as deadline
-     from big_moves where status = 'pending' and deadline < to_timestamp($1::float8)
-     order by bot_id, created_at, id`,
+    // start_units: the portfolio isBigMove() judged the SELL against, the retry's input if a stale retry made it.
+    `select m.id::text as id, m.decision_id::text as decision, m.bot_id::text as bot_id, m.asset::text as asset,
+            m.side::text as side, m.bps, m.action_index, '0x' || encode(m.order_id, 'hex') as order_id,
+            extract(epoch from m.deadline)::bigint::text as deadline,
+            case when m.side = 'SELL' then coalesce(
+              (select r -> 'input' -> 'portfolio' -> 'unitsE18' ->> m.asset::text
+               from jsonb_array_elements(coalesce(d.gate_result -> 'retries', '[]'::jsonb)) r
+               where coalesce(r -> 'result' -> 'bigMoves', '[]'::jsonb)
+                     @> jsonb_build_array(jsonb_build_object('orderId', '0x' || encode(m.order_id, 'hex')))
+               limit 1),
+              d.gate_result -> 'replay' -> 'input' -> 'portfolio' -> 'unitsE18' ->> m.asset::text) end as start_units,
+            coalesce((select se.ends_at <= to_timestamp($1::float8)
+                      from slots sl join seasons se on se.id = sl.season_id
+                      where sl.id = d.slot_id), false) as season_ended
+     from big_moves m join decisions d on d.id = m.decision_id
+     where m.status = 'pending' and m.deadline < to_timestamp($1::float8)
+     order by m.bot_id, m.created_at, m.id`,
     [chainNow],
   );
   const moves: PendingMove[] = rows.map((r) => ({
@@ -69,6 +87,8 @@ export async function sweepBigMoves(deps: RunnerDeps, signal: AbortSignal): Prom
     actionIndex: r.action_index,
     orderId: r.order_id as Hex,
     deadline: Number(r.deadline),
+    startUnitsE18: r.start_units === null ? undefined : BigInt(r.start_units),
+    seasonEnded: r.season_ended,
   }));
   if (moves.length === 0) return { shrunk: 0, expired: 0 };
 
@@ -94,6 +114,11 @@ export async function sweepBigMoves(deps: RunnerDeps, signal: AbortSignal): Prom
           await setStatus(move, (await shrinkLogged(deps, move)) ? "shrunk" : "approved");
           continue;
         }
+        if (move.seasonEnded) {
+          await setStatus(move, "expired");
+          expired++;
+          continue;
+        }
         const pending: ApprovedOrder = {
           botId,
           asset: ASSET_INDEX[move.asset],
@@ -112,7 +137,13 @@ export async function sweepBigMoves(deps: RunnerDeps, signal: AbortSignal): Prom
           tradesToday,
         };
         const input = { bot, portfolio, prices: market.prices, nowSeconds: chainNow, bigMove: deps.bigMove };
-        const result = shrinkBigMove({ ...input, pending, orderUsed: false, trigger: "expired" });
+        const result = shrinkBigMove({
+          ...input,
+          pending,
+          orderUsed: false,
+          trigger: "expired",
+          startUnitsE18: move.startUnitsE18,
+        });
 
         if (result.outcome === "execute") {
           await logShrink(deps, move, { ...input, decisionId: pending.decisionId }, market.readings, result);
@@ -158,7 +189,11 @@ async function shrinkLogged(deps: Pick<RunnerDeps, "db">, move: PendingMove): Pr
   return rows[0]?.logged ?? false;
 }
 
-/** Public like the rest of gate_result: the order, and the exact inputs to recompute it with shrinkBigMove. */
+/**
+ * Public like the rest of gate_result: the order, and the exact inputs to recompute it with shrinkBigMove.
+ * Replaces an earlier entry for the orderId (#346): we only get here while orderUsed is false, so that order never
+ * executed, and a re-shrink at new prices can differ. The entry is always the order last sent.
+ */
 async function logShrink(
   deps: Pick<RunnerDeps, "db">,
   move: PendingMove,
@@ -169,16 +204,23 @@ async function logShrink(
   const entry = {
     orderId: move.orderId,
     actionIndex: move.actionIndex,
-    pending: { asset: move.asset, buy: move.buy, bps: move.bps, deadline: move.deadline },
+    pending: {
+      asset: move.asset,
+      buy: move.buy,
+      bps: move.bps,
+      deadline: move.deadline,
+      ...(move.startUnitsE18 === undefined ? {} : { startUnitsE18: move.startUnitsE18.toString() }),
+    },
     input: storeGateInput(input),
     rounds: storeRounds(readings),
     order: result.order,
   };
   await deps.db.query(
     `update decisions
-     set gate_result = jsonb_set(gate_result, '{shrinks}', coalesce(gate_result -> 'shrinks', '[]'::jsonb) || jsonb_build_array($2::jsonb))
-     where id = $1::uuid
-       and not coalesce(gate_result -> 'shrinks', '[]'::jsonb) @> jsonb_build_array(jsonb_build_object('orderId', $3::text))`,
+     set gate_result = jsonb_set(gate_result, '{shrinks}',
+           coalesce((select jsonb_agg(e) from jsonb_array_elements(gate_result -> 'shrinks') e where e ->> 'orderId' <> $3::text), '[]'::jsonb)
+           || jsonb_build_array($2::jsonb))
+     where id = $1::uuid`,
     [move.decision, JSON.stringify(publicJson(entry)), move.orderId],
   );
 }

@@ -341,6 +341,44 @@ describe("limits and DB from env (#39)", () => {
     expect(await t.guard.hasAcceptedTerms({ wallets: [walletNo(77)] })).toBe(false);
   });
 
+  it("bigMoveSeasonEnded: only a big move whose decision's season has ended (#355)", async () => {
+    const t = await setup();
+    const zero = `\\x${"00".repeat(32)}`;
+    await t.pg.query("insert into bots (id, owner_wallet, name, emoji, persona_text, persona_hash) values (7, $1, 'B', 'b', 'p', $2)", [lower(USER.address), zero]);
+    await t.pg.query(
+      `insert into bot_versions (bot_id, version, rules_text, max_per_coin_bps, max_trades_per_day, config_json, config_hash, source)
+       values (7, 1, 'r', 2500, 4, '{}', $1, 'create')`,
+      [zero],
+    );
+    await t.pg.exec(`insert into seasons (id, starts_at, ends_at, kind, provisional_min_trades) values
+      (0, now() - interval '2 days', now() - interval '1 minute', 'sprint', 8),
+      (1, now() - interval '1 hour', now() + interval '1 day', 'sprint', 8)`);
+    const move = async (n: number, season: number | null) => {
+      const { rows: s } = await t.pg.query<{ id: string }>(
+        // A distinct time per slot: scheduled slot times are unique (slots_scheduled_time_uidx).
+        "insert into slots (slot_time, kind, season_id) values (now() + $2::int * interval '1 minute', 'scheduled', $1) returning id::text as id",
+        [season, n],
+      );
+      const { rows: d } = await t.pg.query<{ id: string }>(
+        `insert into decisions (bot_id, version, slot_id, prompt_version, model, input_json, input_hash, status)
+         values (7, 1, $1, 'p', 'm', '{}', $2, 'executed') returning id::text as id`,
+        [s[0]!.id, zero],
+      );
+      await t.pg.query(
+        `insert into big_moves (decision_id, action_index, order_id, bot_id, asset, side, bps, runner_sig, deadline)
+         values ($1, 0, decode($2, 'hex'), 7, 'GOLD', 'BUY', 3500, '\\x00', now() + interval '2 hours')`,
+        [d[0]!.id, hashNo(n).slice(2)],
+      );
+    };
+    await move(1, 0);
+    await move(2, 1);
+    await move(3, null);
+    expect(await t.guard.bigMoveSeasonEnded(hashNo(1))).toBe(true);
+    expect(await t.guard.bigMoveSeasonEnded(hashNo(2))).toBe(false);
+    expect(await t.guard.bigMoveSeasonEnded(hashNo(3))).toBe(false); // between seasons
+    expect(await t.guard.bigMoveSeasonEnded(hashNo(4))).toBe(false); // no row: the chain decides
+  });
+
   it("wants TLS for a remote database", () => {
     expect(databaseConfig("postgres://u:p@db.example:5432/app")).toMatchObject({ ssl: true });
     expect(databaseConfig("postgres://u:p@db.example/app?sslmode=verify-full")).not.toBeNull();

@@ -33,6 +33,14 @@ export interface PendingBigMove {
   signed: SignedApprovedOrder;
 }
 
+/**
+ * The big move `m`'s decision belongs to no season that has ended. After the end the season's replay root is
+ * committed without it, so it must not trade any more (#355). The sweep expires it at its deadline.
+ */
+export const SEASON_OPEN = `not exists (
+  select 1 from decisions sd join slots sl on sl.id = sd.slot_id join seasons se on se.id = sl.season_id
+  where sd.id = m.decision_id and se.ends_at <= now())`;
+
 const refusal = (status: number, code: string, message: string) => ({ status, body: { ok: false, error: { code, message } } });
 
 /**
@@ -61,7 +69,7 @@ export function bigMoveRoutes({ origins, auth, log, db }: BigMoveRouteOptions): 
                   m.bot_id::text as bot_id, b.name, m.asset::text as asset, m.side::text as side, m.bps,
                   '0x' || encode(m.runner_sig, 'hex') as sig, extract(epoch from m.deadline)::bigint::text as deadline, d.reason
            from big_moves m join bots b on b.id = m.bot_id join decisions d on d.id = m.decision_id
-           where b.owner_wallet = any($1::text[]) and m.status = 'pending' and m.deadline > now()
+           where b.owner_wallet = any($1::text[]) and m.status = 'pending' and m.deadline > now() and ${SEASON_OPEN}
            order by m.created_at, m.id`,
           [identity.wallets],
         );
@@ -112,7 +120,7 @@ export function bigMoveRoutes({ origins, auth, log, db }: BigMoveRouteOptions): 
           `update big_moves m set deadline = now() - interval '1 second'
            from bots b
            where m.order_id = decode($1::text, 'hex') and b.id = m.bot_id and b.owner_wallet = any($2::text[])
-             and m.status = 'pending' and m.deadline > now()
+             and m.status = 'pending' and m.deadline > now() and ${SEASON_OPEN}
            returning m.id`,
           [orderId.slice(2).toLowerCase(), identity.wallets],
         );

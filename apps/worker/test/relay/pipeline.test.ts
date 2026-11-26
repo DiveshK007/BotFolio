@@ -1,5 +1,5 @@
-import { istDay, RELAY_ERROR_HTTP_STATUS, type RelayErrorCode } from "@botfolio/shared";
-import { encodeFunctionData } from "viem";
+import { istDay, orderIdOf, RELAY_ERROR_HTTP_STATUS, type RelayErrorCode } from "@botfolio/shared";
+import { encodeFunctionData, type Hex } from "viem";
 import { describe, expect, it } from "vitest";
 import { InternalFailure } from "../../src/auth/log";
 import { TARGET_ABIS } from "../../src/relay/abis";
@@ -95,6 +95,24 @@ describe("POST /relay pipeline (#37)", () => {
 
     f.guard.dailyCallPick.mockResolvedValue(null); // never asked for the view
     expect(code(await f.relay(relayInput(await dailyCall(true))))).toBe("PICK_MISMATCH");
+  });
+
+  it("won't relay an Allow for a big move whose season has ended (#355)", async () => {
+    const decisionId = `0x${"0".repeat(32)}${"ab".repeat(16)}` as Hex;
+    const order = { botId: 5n, asset: 4, buy: true, bps: 3500, decisionId, actionIndex: 1, deadline: BigInt(NOW_S + 3600) };
+    const allow = () =>
+      signedRequest({
+        to: TARGETS.PaperLedger,
+        data: encodeFunctionData({ abi: TARGET_ABIS.PaperLedger, functionName: "executeApproved", args: [order, `0x${"11".repeat(65)}`] }),
+      });
+    const f = fakeRelay();
+    f.guard.bigMoveSeasonEnded.mockResolvedValue(true);
+    expect(code(await f.relay(relayInput(await allow())))).toBe("DEADLINE_EXPIRED");
+    expect(f.guard.bigMoveSeasonEnded).toHaveBeenCalledWith(orderIdOf(decisionId, 1));
+    expect(f.guard.reserve).not.toHaveBeenCalled();
+
+    f.guard.bigMoveSeasonEnded.mockResolvedValue(false);
+    expect((await f.relay(relayInput(await allow()))).body).toMatchObject({ ok: true });
   });
 
   it("passes every wallet of the signed-in user to the daily limit", async () => {

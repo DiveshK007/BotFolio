@@ -53,7 +53,7 @@ interface StoredResult {
   rulesVersion: string;
   replay?: { input: StoredGateInput };
   retries?: { indexes: number[]; input: StoredGateInput; output: unknown; result: Record<string, unknown> }[];
-  shrinks?: { orderId: Hex; actionIndex: number; pending: { asset: AssetId; buy: boolean; bps: number; deadline: number }; input: StoredGateInput; order: unknown }[];
+  shrinks?: { orderId: Hex; actionIndex: number; pending: { asset: AssetId; buy: boolean; bps: number; deadline: number; startUnitsE18?: string }; input: StoredGateInput; order: unknown }[];
   [key: string]: unknown;
 }
 
@@ -121,6 +121,8 @@ export function verifyOffline(text: string): OfflineResult {
         },
         orderUsed: false,
         trigger: "expired",
+        // Logged from #347 on; older shrinks have none and replay as they ran.
+        startUnitsE18: shrink.pending.startUnitsE18 === undefined ? undefined : BigInt(shrink.pending.startUnitsE18),
       });
       if (again.outcome !== "execute" || !same(publicJson(again.order), shrink.order)) at(`shrink of ${shrink.orderId} differs`);
     }
