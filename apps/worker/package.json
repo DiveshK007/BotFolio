@@ -10,6 +10,7 @@
     "build": "tsup",
     "start": "node dist/index.js",
     "house:seed": "tsx src/house/seed-cli.ts",
+    "llm:smoke": "tsx src/persona/smoke-cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:anvil": "RELAY_ANVIL=1 vitest run anvil --testTimeout=90000"

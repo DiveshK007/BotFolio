@@ -117,6 +117,16 @@ describe("AnthropicClient", () => {
     const body = JSON.parse((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body as string);
     expect(body.tool_choice).toEqual({ type: "tool", name: "answer_v1" });
     expect(body.tools[0].input_schema).toEqual(schema);
+    expect(body.thinking).toEqual({ type: "disabled" }); // a forced tool call needs thinking off on Haiku 5.5
+  });
+
+  it("sends no temperature unless one is set", async () => {
+    const fetchImpl = vi.fn(
+      async () => new Response(JSON.stringify({ content: [{ type: "tool_use", name: "answer_v1", input: { answer: 1 } }] })),
+    );
+    await new AnthropicClient({ apiKey: "k", fetchImpl }).complete({ ...req, temperature: undefined, model: "claude-haiku-5-5" });
+    const body = JSON.parse((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body as string);
+    expect("temperature" in body).toBe(false);
   });
 });
 
@@ -155,6 +165,13 @@ describe("config + factory", () => {
     expect(cfg.monthlyBudgetUsd).toBeNull();
   });
 
+  it("anthropic defaults to claude-haiku-5-5 with no temperature (Haiku 5.5 rejects a non-default one)", () => {
+    const cfg = loadLlmConfig({ LLM_PROVIDER: "anthropic" });
+    expect(cfg.models).toEqual({ decision: "claude-haiku-5-5", persona: "claude-haiku-5-5", v2: "claude-haiku-5-5" });
+    expect(cfg.temperature).toBeUndefined();
+    expect(loadLlmConfig({ LLM_PROVIDER: "anthropic", LLM_TEMPERATURE: "0.2" }).temperature).toBe(0.2);
+  });
+
   it("selects the provider from LLM_PROVIDER", () => {
     expect(createLlmClient({ env: { LLM_PROVIDER: "xai", XAI_API_KEY: "k" } }).provider).toBe("xai");
     expect(createLlmClient({ env: { LLM_PROVIDER: "openai", OPENAI_API_KEY: "k" } }).provider).toBe("openai");
@@ -179,6 +196,8 @@ describe("budget", () => {
 
   it("charges unknown models at the most expensive known rate", () => {
     expect(estimateCostUsd("mystery", { inTok: 1_000_000, outTok: 0 })).toBe(2);
+    // Haiku 5.5 at $0.10 / $0.50 per 1M: a 3,000-in / 400-out decision costs $0.0005.
+    expect(estimateCostUsd("claude-haiku-5-5", { inTok: 3000, outTok: 400 })).toBeCloseTo(0.0005, 10);
   });
 
   it("alerts at 80 % and rests at 100 %", () => {
