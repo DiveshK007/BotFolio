@@ -11,6 +11,12 @@ export interface ShrinkInput extends Pick<GateInput, "bot" | "portfolio" | "pric
   orderUsed: boolean;
   /** `expired`: no answer by the deadline. `owner`: the owner tapped Shrink, so don't wait. */
   trigger: "expired" | "owner";
+  /**
+   * A SELL's units of the asset when the gate that made the big move started (#347), so the shrink keeps the
+   * cumulative total under the threshold as isBigMove() judges it. Absent: judged on the holding now, as shrinks
+   * logged before #347 were, so they replay unchanged.
+   */
+  startUnitsE18?: bigint;
 }
 
 export type ShrinkResult =
@@ -34,8 +40,9 @@ export type ShrinkResult =
  * Call it when the next batch is built, with that moment's portfolio and prices.
  *
  * "Just under": a BUY may spend at most `floor((threshold × V − 1) / 10000) − held`, the largest amount
- * for which `(held + spend) × 10000 < threshold × V`. A SELL becomes `threshold − 1` bps. Neither ever
- * grows past what the bot asked for.
+ * for which `(held + spend) × 10000 < threshold × V`. A SELL becomes `threshold − 1` bps, and with
+ * `startUnitsE18` it also sells at most `floor(start × (threshold − 1) / 10000) − (start − held)` units, so this
+ * decision's SELLs of the asset stay under the threshold in total. Neither ever grows past what the bot asked for.
  */
 export function shrinkBigMove(input: ShrinkInput): ShrinkResult {
   const { pending, bot, portfolio, prices, bigMove } = input;
@@ -55,6 +62,13 @@ export function shrinkBigMove(input: ShrinkInput): ShrinkResult {
     bps = Math.min(bps, mostBps);
   } else {
     bps = Math.min(bps, bigMove.sellBps - 1);
+    const start = input.startUnitsE18;
+    if (start !== undefined) {
+      const held = portfolio.unitsE18[asset];
+      const allowed = (start * BigInt(bigMove.sellBps - 1)) / BPS - (start - held);
+      // bps ≤ 0 drops it as "zero" in checkTrade.
+      bps = allowed > 0n && held > 0n ? Math.min(bps, Number((allowed * BPS) / held)) : 0;
+    }
   }
 
   const result = checkTrade(input, portfolio, { asset, buy: pending.buy, bps }, bot.maxTradesPerDay - bot.tradesToday);
