@@ -1,0 +1,92 @@
+# Uptime probe (#162): the worker's /healthz, the web app and the relayer, every 10 minutes.
+# Down = /healthz or the site doesn't answer, or /relay's CORS preflight refuses the web origin. A
+# "degraded" /healthz (e.g. Gold more than 6 h old, which is common) is not an outage: the worker already
+# alerts on failed jobs and low balances itself (#66). This posts to the same webhook and keeps one open
+# "uptime" issue, closed again when everything answers.
+#
+# Setup (repo Settings → Secrets and variables → Actions):
+#   variables WORKER_URL (https://<service>.onrender.com) and WEB_URL (https://<app>.vercel.app)
+#   secret    ALERT_WEBHOOK_URL (optional; Slack/Discord incoming webhook)
+# Until WORKER_URL is set the job does nothing.
+# shortcut: GitHub runs schedules late by minutes and at most every 5 min, so this is not the "within
+# 2 min" of #162; use an external monitor on /healthz if that matters after the hackathon.
+name: uptime
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    if: ${{ vars.WORKER_URL != '' }}
+    timeout-minutes: 5
+    steps:
+      - name: Probe
+        id: probe
+        env:
+          WORKER_URL: ${{ vars.WORKER_URL }}
+          WEB_URL: ${{ vars.WEB_URL }}
+        run: |
+          problems=()
+          # Render's starter plan can take a few seconds on a cold TLS handshake: retry once.
+          get() { curl -fsS --max-time 20 --retry 1 --retry-delay 5 "$@"; }
+          if health=$(get "$WORKER_URL/healthz"); then
+            echo "healthz: $(echo "$health" | jq -c '{status, reasons}')"
+          else
+            problems+=("worker /healthz did not answer")
+          fi
+          # OPTIONS /relay answers the CORS preflight without spending anything.
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -X OPTIONS "$WORKER_URL/relay" -H "origin: ${WEB_URL:-https://example.invalid}" -H 'access-control-request-method: POST' || true)
+          case "$code" in 2*) ;; *) problems+=("relay preflight answered $code") ;; esac
+          if [ -n "$WEB_URL" ]; then
+            get -o /dev/null "$WEB_URL/" || problems+=("web $WEB_URL did not answer")
+          fi
+          {
+            echo "count=${#problems[@]}"
+            echo "text<<EOF"
+            printf -- '- %s\n' "${problems[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          printf '%s\n' "${problems[@]}"
+
+      - name: Open, update or close the uptime issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          COUNT: ${{ steps.probe.outputs.count }}
+          TEXT: ${{ steps.probe.outputs.text }}
+          WEBHOOK: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: |
+          open=$(gh issue list --label uptime --state open --json number -q '.[0].number')
+          if [ "$COUNT" != "0" ]; then
+            body=$(printf 'Uptime probe at %s UTC:\n\n%s\n\nRunbook: docs/runbook.md' "$(date -u +%H:%M)" "$TEXT")
+            if [ -z "$open" ]; then
+              gh label create uptime --color B60205 --description "Uptime probe (#162)" 2>/dev/null || true
+              gh issue create --title "Uptime: BotFolio is degraded or down" --label uptime --body "$body"
+              # Only the first failure pings the chat; later runs comment on the issue.
+              if [ -n "$WEBHOOK" ]; then
+                msg="BotFolio uptime: $(echo "$TEXT" | tr '\n' ' ')"
+                jq -n --arg t "$msg" '{text: $t, content: $t, kind: "uptime", at: (now | todate)}' \
+                  | curl -fsS --max-time 10 -H 'content-type: application/json' -d @- "$WEBHOOK" >/dev/null || true
+              fi
+            else
+              gh issue comment "$open" --body "$body"
+            fi
+            exit 1
+          elif [ -n "$open" ]; then
+            gh issue close "$open" --comment "Back up at $(date -u +%H:%M) UTC."
+            if [ -n "$WEBHOOK" ]; then
+              jq -n '{text: "BotFolio uptime: back up", content: "BotFolio uptime: back up", kind: "uptime", at: (now | todate)}' \
+                | curl -fsS --max-time 10 -H 'content-type: application/json' -d @- "$WEBHOOK" >/dev/null || true
+            fi
+          fi
