@@ -4,12 +4,12 @@
  * Names are LLM output from user text (#159): render as JSX text only.
  */
 import { getWorkerUrl } from "@/lib/config";
-import { fetchLeaderboards, type Leaderboards } from "@/lib/leaderboards";
+import { fetchLeaderboards, S1_STARTS, type Leaderboards } from "@/lib/leaderboards";
 import type { Racer } from "@/components/site/arcade";
 import type { DexBot, RaceSeries } from "@/components/site/extras";
 import { SAMPLE_BOTS } from "./sample";
 import { seasonRace } from "./replay";
-import { fetchBots } from "@/lib/bots";
+import { fetchBots, type PublicBot } from "@/lib/bots";
 
 export type Live<T> = { example: boolean; data: T };
 
@@ -25,16 +25,31 @@ const EX_RACERS: Racer[] = [
   { ...SAMPLE_BOTS[2], id: 2, ret: 0.95, vol: 0.18, lines: ["More gold. Always more gold.", "Gold dipped. Granny is unbothered."] },
   { ...SAMPLE_BOTS[7], id: 7, owner: SAMPLE_BOTS[7].ownerWallet, ret: -12.4, vol: 0.9, lines: ["35% in SOL. Inside my 40% cap. Barely.", "Bought the top like it was on sale."] },
 ];
-export async function arenaRacers(): Promise<Live<Racer[]>> {
-  const b = await boards();
-  if (!b || b.topReturns.length === 0) return { example: true, data: EX_RACERS };
-  return { example: false, data: b.topReturns.slice(0, 6).map(e => ({ id: e.botId, name: e.name, dnaSeed: e.dnaSeed ?? null, isHouse: e.isHouse, ret: e.returnBps / 100, vol: 0, lines: [e.returnBps >= 0 ? "Up this season." : "Down this season.", "Down this season."] })) };
+/**
+ * EXAMPLE racers only when no worker is configured. With a worker but no board (S0 stays hidden, #219), the real bots
+ * from GET /bots wait at the start line with the S1 start; never made-up bots in live mode (#371).
+ */
+export async function arenaRacers(
+  base: string | null = getWorkerUrl(),
+  loadBoards: () => Promise<Leaderboards | null> = boards,
+  loadBots: (base: string) => Promise<PublicBot[] | null> = fetchBots,
+): Promise<Live<Racer[]> & { note?: string }> {
+  if (!base) return { example: true, data: EX_RACERS };
+  const b = await loadBoards();
+  if (b && b.topReturns.length > 0) return { example: false, data: b.topReturns.slice(0, 6).map(e => ({ id: e.botId, name: e.name, dnaSeed: e.dnaSeed ?? null, isHouse: e.isHouse, ret: e.returnBps / 100, vol: 0, lines: [e.returnBps >= 0 ? "Up this season." : "Down this season.", "Down this season."] })) };
+  const bots = (await loadBots(base)) ?? [];
+  return { example: false, note: S1_STARTS, data: bots.slice(0, 6).map(x => ({ id: x.botId, name: x.name, dnaSeed: x.dnaSeed ?? null, isHouse: x.isHouse, ret: 0, vol: 0, lines: [S1_STARTS, S1_STARTS] })) };
 }
 
-export async function botOfWeek(): Promise<Live<{ id: string; name: string; dnaSeed?: string | null; line: string; stat: string }>> {
-  const b = await boards();
+/** null = nothing to show: in live mode the section is hidden rather than filled with an example. */
+export async function botOfWeek(
+  base: string | null = getWorkerUrl(),
+  loadBoards: () => Promise<Leaderboards | null> = boards,
+): Promise<Live<{ id: string; name: string; dnaSeed?: string | null; line: string; stat: string }> | null> {
+  if (!base) return { example: true, data: { id: "12", name: "Gold Guru", line: "Steadiest climb of Season 1, and it never once broke its own rules. Its owner coached it \"too timid\" twice and it listened.", stat: "▲ +3.42% · trust 684" } };
+  const b = await loadBoards();
   const t = b?.mostTrusted.find(e => !e.isHouse);
-  if (!t) return { example: true, data: { id: "12", name: "Gold Guru", line: "Steadiest climb of Season 1, and it never once broke its own rules. Its owner coached it \"too timid\" twice and it listened.", stat: "▲ +3.42% · trust 684" } };
+  if (!t) return null;
   return { example: false, data: { id: t.botId, name: t.name, dnaSeed: t.dnaSeed ?? null, line: `Most trusted bot of season ${b!.trustSeason ?? b!.season}.`, stat: `trust ${t.total}/1000` } };
 }
 

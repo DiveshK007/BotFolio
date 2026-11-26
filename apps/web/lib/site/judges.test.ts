@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { samplePage } from "@/lib/bot-record.fixture";
 import type { Leaderboards } from "@/lib/leaderboards";
 import type { ActivityStats } from "@/lib/stats";
-import { activityFrom, boardBotIds, judgesTrades, toSiteActivity, tradesFromPages } from "./judges";
+import { activityFrom, boardBotIds, judgesTrades, listedBotIds, toSiteActivity, tradesFromPages } from "./judges";
+import type { PublicBot } from "@/lib/bots";
+
+const bot = (botId: string, isHouse: boolean): PublicBot => ({ botId, name: `B${botId}`, emoji: "", isHouse, version: 1, createdAt: "2026-11-26T00:00:00Z" });
 
 const stats: ActivityStats = {
   asOf: "2026-11-25T12:00:00.000Z",
@@ -53,9 +56,18 @@ describe("judges trades from the worker", () => {
     const ok = await judgesTrades("https://w", async () => boards, page);
     expect(ok.status).toBe("live");
     expect(ok.data).toHaveLength(1);
-    const bad = await judgesTrades("https://w", async () => { throw new Error("down"); }, page);
+    const bad = await judgesTrades("https://w", async () => { throw new Error("down"); }, page, async () => null);
     expect(bad).toMatchObject({ status: "error", data: null });
     const busy = await judgesTrades("https://w", async () => boards, async () => ({ kind: "busy" as const }));
     expect(busy.status).toBe("error");
+  });
+  it("reads real bot ids from GET /bots while the board 404s (S0 hidden, #371)", async () => {
+    const page = vi.fn(async (id: string) => (id === "7" ? { kind: "ok" as const, page: samplePage() } : { kind: "not_found" as const }));
+    const listed = [bot("9", false), bot("7", true), bot("8", false)];
+    const ok = await judgesTrades("https://w", async () => { throw new Error("404"); }, page, async () => listed);
+    expect(ok).toMatchObject({ status: "live" });
+    expect(ok.data).toHaveLength(1);
+    expect(page.mock.calls.map(c => c[0])).toEqual(["7", "9", "8"]);
+    expect(listedBotIds(listed, 2)).toEqual(["7", "9"]);
   });
 });

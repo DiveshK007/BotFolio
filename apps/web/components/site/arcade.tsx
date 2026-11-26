@@ -83,7 +83,7 @@ const laneX = (r: number) => Math.max(4, Math.min(96, 50 + (r / 14) * 46));
  * status "live": pass real racers each revalidate; the client only animates between server values (no simulation).
  */
 /** PetDevice dispatches `bf:launch` with a Racer; the arena adds it as "YOURS". */
-export function Arena({ initial, btcSeries, btcRound, status }: { initial: Racer[]; btcSeries: number[]; btcRound: string; status: "live" | "example" }) {
+export function Arena({ initial, btcSeries, btcRound, status, note }: { initial: Racer[]; btcSeries: number[]; btcRound: string; status: "live" | "example"; note?: string }) {
   const [racers, setRacers] = useState<Racer[]>(initial);
   const [series, setSeries] = useState(btcSeries);
   const [slot, setSlot] = useState<{ ms: number; label: string } | null>(null); // set on mount: avoids server/client clock mismatch
@@ -144,7 +144,7 @@ export function Arena({ initial, btcSeries, btcRound, status }: { initial: Racer
             <div className={`ret ${r.ret >= 0 ? "up" : "down"}`}>{r.ret >= 0 ? "▲ +" : "▼ −"}{Math.abs(r.ret).toFixed(2)}%</div>
           </li>); })}
       </ol>
-      <div className="arena-foot"><span>Centre line = $100,000. Right of it = up this season.{status === "example" ? " Moves are simulated until the app is live." : ""}</span><button className="btn sun sm" type="button" onClick={runCall} disabled={calling}>{status === "example" ? "Run a call now" : "Replay the last call"}</button></div>
+      <div className="arena-foot"><span>Centre line = $100,000. Right of it = up this season.{status === "example" ? " Moves are simulated until the app is live." : ""}{note ? ` ${note}` : ""}</span><button className="btn sun sm" type="button" onClick={runCall} disabled={calling}>{status === "example" ? "Run a call now" : "Replay the last call"}</button></div>
     </div>
   );
 }
