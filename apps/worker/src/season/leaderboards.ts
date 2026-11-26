@@ -82,12 +82,15 @@ function ranked<T extends { botId: string }>(rows: T[], meta: Map<string, BotMet
   });
 }
 
-/** The season boards default to: the latest that has started and isn't closed, else the latest closed one. null = none yet. */
+/**
+ * The season boards default to: the latest that has started and isn't closed, else the latest closed one. null = none yet.
+ * Never S0, the hidden test season (#219).
+ */
 export async function currentSeason(db: Queryable, now: Date): Promise<number | null> {
   const { rows } = await db.query<{ id: number | null }>(
     `select coalesce(
-       (select max(id) from seasons where status <> 'closed' and starts_at <= $1::timestamptz),
-       (select max(id) from seasons where status = 'closed')) as id`,
+       (select max(id) from seasons where id > 0 and status <> 'closed' and starts_at <= $1::timestamptz),
+       (select max(id) from seasons where id > 0 and status = 'closed')) as id`,
     [now.toISOString()],
   );
   return rows[0]?.id ?? null;
@@ -121,7 +124,7 @@ export async function leaderboards(db: Queryable, season: number, startCashE8: (
   }
 
   const { rows: trustRows } = await db.query<{ season: number | null }>(
-    "select max(season_id) as season from trust_scores where season_id <= $1::int",
+    "select max(season_id) as season from trust_scores where season_id > 0 and season_id <= $1::int", // S0 is hidden
     [season],
   );
   const trustSeason = trustRows[0]?.season ?? null;

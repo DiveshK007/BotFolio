@@ -447,12 +447,14 @@ where id > 0;                                               -- S0 is the hidden 
 
 create view site_season_results as
 select season_id, bot_id, start_value_e8, end_value_e8, return_bps, sortino, max_dd_bps, trades, battle_rank
-from season_results;
+from season_results
+where season_id > 0;                                        -- S0 is the hidden test season (#219)
 
 create view site_trust_scores as
 select season_id, bot_id, rules_version, f_rules, f_drawdown, f_consistency, f_explains, total,
        provisional, leaf_hash
-from trust_scores;
+from trust_scores
+where season_id > 0;                                        -- S0 is the hidden test season (#219)
 
 create view site_cards as
 select id, bot_id, kind, payload, created_at

@@ -44,7 +44,8 @@ export function trustRoutes({ db, origins, clientIp, now = Date.now }: TrustRout
       return sendJson(res, 400, { ok: false, error: { code: "BAD_REQUEST", message: "Give a season number and a bot id." } });
     }
 
-    const found = await scoreProof(db, Number(season), BigInt(bot));
+    // S0 is the hidden test season (#219).
+    const found = Number(season) === 0 ? null : await scoreProof(db, Number(season), BigInt(bot));
     if (!found) return sendJson(res, 404, { ok: false, error: { code: "NOT_FOUND", message: "No trust score for that bot and season." } });
     return sendJson(res, 200, { ok: true, score: found });
   });
