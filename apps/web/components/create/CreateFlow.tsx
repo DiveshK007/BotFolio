@@ -24,7 +24,8 @@ import { ErrorNote, PrimaryButton } from "./controls";
  * S2 (SPEC §2.1 steps 2–4):
  *
  *   signin → persona → review → launching → confirming → done
- *               ↺         ↑ any launch failure   ↺ still unconfirmed: check the same tx again
+ *     ↓         ↺         ↑ any launch failure   ↺ still unconfirmed: check the same tx again
+ *   has_bot (botOf ≠ 0: no persona call)
  *
  * "done" is only reachable from a verified on-chain receipt.
  */
@@ -35,7 +36,9 @@ type Phase =
   | { name: "launching"; step: LaunchStep }
   | { name: "confirming"; busy: boolean; txHash: Hex }
   /** challenge: the short code of a challenge link they came from (#85); they go back there to accept. */
-  | { name: "done"; botId: bigint; txHash: Hex; challenge: string | null };
+  | { name: "done"; botId: bigint; txHash: Hex; challenge: string | null }
+  /** This wallet already has a bot (one per wallet), found right after sign-in. */
+  | { name: "has_bot"; botId: bigint; challenge: string | null };
 
 const STEP_TEXT: Record<LaunchStep, string> = {
   checking: "Checking QIE…",
@@ -65,6 +68,21 @@ function PersonaLoading() {
         <span className="h-6 w-2/3 rounded-r1 bg-surface-2" />
       </div>
       <p className="mt-3 text-sm text-muted">{slow ? "Still working. This is taking longer than usual…" : "Giving your bot a personality…"}</p>
+    </div>
+  );
+}
+
+export function HasBot({ botId, challenge }: { botId: bigint; challenge: string | null }) {
+  return (
+    <div role="status" className="flex flex-col gap-4">
+      <h1 className="font-display text-3xl font-extrabold tracking-tight">You already have bot #{botId.toString()}</h1>
+      <p className="text-muted">It&apos;s one bot per person. Coach the one you have.</p>
+      <Link
+        href={challenge ? `/challenge/${challenge}` : "/me"}
+        className="inline-flex h-12 items-center justify-center rounded-full bg-accent px-6 font-semibold text-on-accent"
+      >
+        {challenge ? "Back to the challenge" : "Open my bot"}
+      </Link>
     </div>
   );
 }
@@ -114,8 +132,20 @@ export function CreateFlow() {
       const signedIn = await (kind === "passkey" ? wallet : qieWallet).signIn();
       setSession(signedIn);
       // Signing in again after an expired session keeps the card and the sliders.
-      if (draft) setPhase({ name: "review" });
-      else await loadPersona(signedIn, sentence);
+      if (draft) return setPhase({ name: "review" });
+      // One bot per wallet: say so now, before spending a persona call on a bot they can't launch (#93).
+      if (config) {
+        const { createChainClient, REGISTRY_ABI } = await import("@/lib/create-bot");
+        const read = createChainClient().readContract({ address: config.registry, abi: REGISTRY_ABI, functionName: "botOf", args: [signedIn.address] });
+        const botId = await read.catch(() => 0n); // QIE unreachable: carry on, launchBot checks again
+        if (botId !== 0n) {
+          const challenge = takePendingChallenge();
+          setPhase({ name: "has_bot", botId, challenge });
+          if (challenge) router.replace(`/challenge/${challenge}`);
+          return;
+        }
+      }
+      await loadPersona(signedIn, sentence);
     } catch (e) {
       setError(userMessage(e));
       setPhase({ name: "signin", busy: null });
@@ -187,6 +217,8 @@ export function CreateFlow() {
       </div>
     );
   }
+
+  if (phase.name === "has_bot") return <HasBot botId={phase.botId} challenge={phase.challenge} />;
 
   if (phase.name === "done") {
     return (
