@@ -142,6 +142,17 @@ describe("Steady Sam", () => {
       expect(r.staleDrops).toEqual(["GOLD"]);
     });
 
+    it("a later slot of the season buys only what the 09:00 rebalance couldn't (#219 item 19)", () => {
+      const first = play("steady_sam", { prices: stale }, { maxPerCoinBps: 5000 });
+      const later = play("steady_sam", { slot: ONE_PM, portfolio: first.after, pendingRebalance: first.staleDrops });
+      expect(later.traded).toEqual(["SOL", "XRP", "GOLD"]);
+      for (const asset of ASSET_IDS) expect(later.weight(asset)).toBeCloseTo(20, 0);
+      expect(later.output.reason_tag).toBe("rebalance");
+      // Not on a debut, and not outside a season.
+      expect(play("steady_sam", { slot: { kind: "debut", time: ONE_PM.time }, pendingRebalance: ["SOL"] }).traded).toEqual([]);
+      expect(play("steady_sam", { slot: ONE_PM, seasonStart: null, pendingRebalance: ["SOL"] }).traded).toEqual([]);
+    });
+
     it("the retry finishes the rebalance with stable indexes", () => {
       const first = play("steady_sam", { prices: stale });
       const retry = play(

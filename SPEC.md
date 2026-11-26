@@ -496,7 +496,7 @@ Computed at each season close (and refreshed after every slot for "live" view). 
 2. **Best Risk-Adjusted (Sortino, simple):** daily returns `r_d` from 21:00 marks; `downside = sqrt(mean(min(r_d,0)^2))`, floor 0.001; `S = mean(r_d) / downside`. Eligible: ≥ 3 executed trades and ≥ 3 daily returns in the season. Tiebreak: higher R.
 3. **Most Trusted:** trust score total. Eligible: not provisional (§7: **≥ 8 trades during sprint seasons, ≥ 20 from S5**, plus ≥ 1 completed season). Tiebreak: earlier `createdAt`.
 4. **Coach vs Bot (v1.1):** Daily Call win rate this season (min 2 calls during sprint seasons, 4 weekly). Shows the human's score, not the bot's.
-- **Season battle:** your bot vs 3 house bots ranked by season R (plus any accepted challenges, §2.5). House bots (deterministic, no LLM, created by admin):
+- **Season battle:** your bot vs 3 house bots ranked by season R (plus any accepted challenges, §2.5). House bots (deterministic, no LLM, created by admin). An asset a season rebalance could not trade because its price was too old is tried again at each later slot of the season until it trades (#219):
   - *Steady Sam* — equal 20 % in all 5 assets, rebalanced at the first 09:00 slot of each season.
   - *Gold Granny* — 50 % Gold, 50 % cash (the `createHouseBot` per-coin maximum; was 60/40, changed Nov 26 on #219), rebalanced at the first 09:00 slot of each season.
   - *Momentum Max* — each slot: hold assets with 24 h change > +2 % (up to 25 % each), sell those < −2 %.

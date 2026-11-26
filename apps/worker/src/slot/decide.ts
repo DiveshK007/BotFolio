@@ -8,7 +8,7 @@ import { publicJson } from "../decisions/json";
 import type { GateInput } from "../gate/types";
 import { houseDecision, type HouseContext } from "../house/strategies";
 import type { Slot } from "../scheduler/slots";
-import { averageEntries, botProfile, houseStrategy, recentCorrections } from "./bots";
+import { averageEntries, botProfile, houseStrategy, pendingRebalanceOf, recentCorrections } from "./bots";
 import type { LedgerState } from "./chain";
 import { GATE_RULES_VERSION, type RunnerDeps } from "./deps";
 import type { Market } from "./market";
@@ -79,6 +79,7 @@ export async function decideBot(
       portfolio: state.portfolio,
       prices: market.prices,
       chg24hPct: Object.fromEntries(Object.entries(market.changes).map(([asset, c]) => [asset, c?.chg24hPct])),
+      pendingRebalance: await pendingRebalanceOf(db, botId, slot),
     };
     const input = publicJson({
       ...context,
