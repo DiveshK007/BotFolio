@@ -28,10 +28,10 @@ Secret = must only ever be in the Render or Vercel dashboard (or your local `.en
 | `SUPABASE_URL` | no | Supabase → Project Settings → API → Project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | **yes** | Supabase → Project Settings → API → `service_role` key |
 | `REPLAY_BUCKET` | no | `replay` (a **public** Supabase Storage bucket; deploy.md step 4) |
-| `LLM_PROVIDER` | no | `xai` |
-| `XAI_API_KEY` | **yes** | console.x.ai → API keys |
-| `XAI_BASE_URL` | no | `https://api.x.ai/v1` |
-| `LLM_MONTHLY_BUDGET_USD` | no | the cap; past it bots rest and hold (open question SPEC §15: pick a number) |
+| `LLM_PROVIDER` | no | `anthropic` (Claude Haiku 5.5, Nov 26 decision). `xai` + `XAI_API_KEY` still works |
+| `LLM_MODEL_DECISION` | no | `claude-haiku-5-5` (persona and v2 use the same model unless `LLM_MODEL_PERSONA` / `LLM_MODEL_V2` are set) |
+| `ANTHROPIC_API_KEY` | **yes** | platform.claude.com → API keys |
+| `LLM_MONTHLY_BUDGET_USD` | no | `4`: past it the bots rest and hold instead of spending more (the account holds $5) |
 | `ALERT_WEBHOOK_URL` | **yes** | a Slack or Discord incoming webhook (anyone with it can post) |
 | `LOW_BALANCE_ALERT_QIE` | no | `2` |
 | `PORT` | no | set by Render |

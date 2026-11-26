@@ -7,10 +7,10 @@ services:
     runtime: node
     # Singapore is the closest region to India. UNVERIFIED that the account offers it; otherwise pick the default.
     region: singapore
-    # Starter is always on. A free web service sleeps after 15 min idle, which stops the cron slots (SPEC §10).
-    plan: starter
-    # One instance only: SIWE nonces and the per-IP limit are in memory (#219 Part C).
-    numInstances: 1
+    # Free plan (Nov 26 2026 decision, no card): it sleeps after 15 min without inbound HTTP, which would stop
+    # the cron slots, so an external monitor must hit /healthz every 5 min (docs/deploy.md step 7). Starter
+    # ($7/mo) is always on and needs no monitor. Free runs one instance, which the in-memory SIWE nonces need.
+    plan: free
     branch: main
     autoDeploy: true
     buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @botfolio/worker build
@@ -81,15 +81,15 @@ services:
         sync: false
       - key: REPLAY_BUCKET
         value: replay
-      # llm
+      # llm: Claude Haiku 5.5, the cheapest current Claude model (Nov 26 2026 decision; Grok stays a one-env swap)
       - key: LLM_PROVIDER
-        value: xai
-      - key: XAI_API_KEY
+        value: anthropic
+      - key: LLM_MODEL_DECISION
+        value: claude-haiku-5-5
+      - key: ANTHROPIC_API_KEY
         sync: false
-      - key: XAI_BASE_URL
-        value: https://api.x.ai/v1
       - key: LLM_MONTHLY_BUDGET_USD
-        sync: false
+        value: "4"
       # alerts
       - key: ALERT_WEBHOOK_URL
         sync: false
