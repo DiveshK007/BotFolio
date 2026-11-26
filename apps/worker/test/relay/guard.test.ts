@@ -355,8 +355,9 @@ describe("limits and DB from env (#39)", () => {
       (1, now() - interval '1 hour', now() + interval '1 day', 'sprint', 8)`);
     const move = async (n: number, season: number | null) => {
       const { rows: s } = await t.pg.query<{ id: string }>(
-        "insert into slots (slot_time, kind, season_id) values (now(), 'scheduled', $1) returning id::text as id",
-        [season],
+        // A distinct time per slot: scheduled slot times are unique (slots_scheduled_time_uidx).
+        "insert into slots (slot_time, kind, season_id) values (now() + $2::int * interval '1 minute', 'scheduled', $1) returning id::text as id",
+        [season, n],
       );
       const { rows: d } = await t.pg.query<{ id: string }>(
         `insert into decisions (bot_id, version, slot_id, prompt_version, model, input_json, input_hash, status)
