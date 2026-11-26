@@ -38,5 +38,5 @@ export const samplePage = (): BotPage => ({
     holdings: [{ asset: "BTC", units_e18: "1500000000000000", value_e8: "11000000000" }],
     prices: [{ asset: "BTC", round_id: "50888", answer_e8: "6392295000000", updated_at: "2026-11-26T07:29:00.000Z", fresh: true }],
   },
-  decisions: [{ id: "d1", version: 1, slot_time: "2026-11-26T03:30:00.000Z", slot_kind: "scheduled", status: "executed", reason: "A little BTC on strength.", reason_tag: "momentum", roast: null }],
+  decisions: [{ id: "d1", version: 1, slot_time: "2026-11-26T03:30:00.000Z", slot_kind: "scheduled", status: "executed", reason: "A little BTC on strength.", reason_tag: "momentum", roast: null, traded: true, stale: [] }],
 });

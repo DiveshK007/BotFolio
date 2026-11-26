@@ -1,5 +1,5 @@
 import { Pool, type PoolClient, type PoolConfig } from "pg";
-import { checkDatabaseUrl, type DatabaseConfig } from "../database-url";
+import { checkDatabaseUrl, POOL_MAX, type DatabaseConfig } from "../database-url";
 import { errorLabel, type Log } from "./log";
 
 export type { DatabaseConfig };
@@ -38,9 +38,8 @@ export function createPgDb(database: DatabaseConfig, log: Log, newPool = (config
     pool.on("error", onError);
     return pool;
   };
-  const queries = open(5);
-  // One per job that can run at once: the six crons and the debut watcher, plus one spare.
-  const locks = open(8);
+  const queries = open(POOL_MAX.schedulerQueries);
+  const locks = open(POOL_MAX.schedulerLocks);
 
   const queryable = (on: Pool | PoolClient): Queryable => ({
     async query<Row extends object>(text: string, params?: unknown[]) {

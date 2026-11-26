@@ -1,16 +1,27 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CARD_SIZES } from "@botfolio/shared";
+import { isRenderedKind } from "@/app/api/card/render";
 import { FlipCard } from "@/components/site/interactive";
 import { ErrorFallback, StatusBadge } from "@/components/site/ui";
 import { getCard } from "@/lib/site/data";
 import { SiteHeader } from "@/components/site/SiteHeader";
 
-/** S7 card landing. WS D owns the OG image at /api/card/[cardId]; point og:image there once it exists. */
+/** S7 card landing. Its link preview is the card PNG from /api/card/[cardId], for the kinds that route draws. */
 export const revalidate = 3600;
 type P = { params: Promise<{ cardId: string }> };
 export async function generateMetadata({ params }: P): Promise<Metadata> {
   const { cardId } = await params; const c = await getCard(cardId);
-  return { title: c.data ? `${c.data.bot.name}: ${c.data.headline}` : "Verify a card", description: "Every BotFolio card carries its receipts. Flip it to see the transactions on QIE." };
+  const title = c.data ? `${c.data.bot.name}: ${c.data.headline}` : "Verify a card";
+  const description = "Every BotFolio card carries its receipts. Flip it to see the transactions on QIE.";
+  // Example cards have no PNG (the route only draws real ids); they keep the site-wide image from app/opengraph-image.
+  if (c.status !== "live" || !c.data || !isRenderedKind(c.data.kind)) return { title, description };
+  const image = { url: `/api/card/${encodeURIComponent(cardId)}`, ...CARD_SIZES.og, alt: title };
+  return {
+    title, description,
+    openGraph: { siteName: "BotFolio", type: "website", title, description, images: [image] },
+    twitter: { card: "summary_large_image", title, description, images: [image] },
+  };
 }
 
 export default async function CardPage({ params }: P) {

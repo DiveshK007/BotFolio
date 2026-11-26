@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { ExplorerLink } from "@/components/ui/ExplorerLink";
 import { Money } from "@/components/ui/Money";
 import { OraclePrice } from "@/components/ui/OraclePrice";
-import { ageAtCall, bpsPct, callLabel, formatUnits, istTime, weightPct, type BotPage } from "@/lib/bot-record";
+import { ageAtCall, bpsPct, callBadge, formatUnits, istTime, reasonTagText, staleNote, weightPct, type BotPage } from "@/lib/bot-record";
 import { assetName, formatE8, shortHex } from "@/lib/format";
 
 const FACTORS = [
@@ -77,7 +77,7 @@ export function BotPageView({
               </p>
             </>
           ) : (
-            <p className="text-muted">No mark yet: the first one comes at the bot&apos;s first call.</p>
+            <p className="text-muted">No mark yet: the first mark comes with its first trade on QIE.</p>
           )}
           {season && (
             <p className="mt-1 text-sm">
@@ -175,26 +175,32 @@ export function BotPageView({
         <h2 id="calls" className={h2}>Every call, with its reason</h2>
         {page.decisions.length ? (
           <ol className="mt-3 flex flex-col divide-y divide-line">
-            {page.decisions.map((d) => (
-              <li key={d.id} className="py-3">
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="text-muted">{istTime(d.slot_time)}</span>
-                  <span className={`${badge} ${d.status === "executed" ? "bg-accent-soft text-accent-ink" : "bg-surface-2 text-muted"}`}>{callLabel(d.status)}</span>
-                  <span className="text-muted">v{d.version}</span>
-                  {d.reason_tag && <span className="font-mono text-muted">{d.reason_tag}</span>}
-                </div>
-                {/* Never a blank slot (SPEC §2.2): a call with no logged reason still says what happened. */}
-                <p className="mt-1 [overflow-wrap:anywhere]">
-                  {d.reason ? <bdi>{d.reason}</bdi> : <span className="text-muted">{callLabel(d.status)}. No reason was logged for this call.</span>}
-                </p>
-                {d.roast && (
-                  <p className="mt-1 text-sm italic text-muted [overflow-wrap:anywhere]">
-                    <bdi>{d.roast}</bdi>
+            {page.decisions.map((d) => {
+              const label = callBadge(d, d.slot_time === page.decisions[0]!.slot_time);
+              const tag = reasonTagText(d.reason_tag);
+              const stale = staleNote(d);
+              return (
+                <li key={d.id} className="py-3">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-muted">{istTime(d.slot_time)}</span>
+                    <span className={`${badge} ${d.status === "executed" && d.traded !== false ? "bg-accent-soft text-accent-ink" : "bg-surface-2 text-muted"}`}>{label}</span>
+                    <span className="text-muted">v{d.version}</span>
+                    {tag && <span className="text-muted">{tag}</span>}
+                  </div>
+                  {stale && <p className="mt-1 text-sm text-muted">{stale}</p>}
+                  {/* Never a blank slot (SPEC §2.2): a call with no logged reason still says what happened. */}
+                  <p className="mt-1 [overflow-wrap:anywhere]">
+                    {d.reason ? <bdi>{d.reason}</bdi> : <span className="text-muted">{label}. No reason was logged for this call.</span>}
                   </p>
-                )}
-                {callAction?.(d)}
-              </li>
-            ))}
+                  {d.roast && (
+                    <p className="mt-1 text-sm italic text-muted [overflow-wrap:anywhere]">
+                      <bdi>{d.roast}</bdi>
+                    </p>
+                  )}
+                  {callAction?.(d)}
+                </li>
+              );
+            })}
           </ol>
         ) : (
           <p className="mt-2 text-muted">No calls yet. Bots decide at 09:00, 13:00, 17:00 and 21:00 IST.</p>

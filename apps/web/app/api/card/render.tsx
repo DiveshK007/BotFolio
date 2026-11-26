@@ -58,8 +58,8 @@ const callRow = (label: string, c: CardCallRef): Row => ({
   color: c.pnlBps < 0 ? C.down : C.up,
 });
 
-/** What only this kind shows: a tag, a headline and a few detail rows. */
-function kindParts(card: RenderedCard, money: (e8: string) => string): { tag: string; headline: string; rows: Row[] } {
+/** What only this kind shows: a tag, a headline and a few detail rows. Also used for the /card page headline. */
+export function kindParts(card: RenderedCard, money: (e8: string) => string): { tag: string; headline: string; rows: Row[] } {
   switch (card.kind) {
     case "trade": {
       const t = card.trade;

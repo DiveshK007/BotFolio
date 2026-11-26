@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { loadBigMoveConfig } from "../../src/config";
 import { gate } from "../../src/gate/gate";
 import { houseDecision, type HouseContext, type HouseStrategy } from "../../src/house/strategies";
+import { ASSET_IDS } from "../../src/interfaces";
 import type { Slot } from "../../src/scheduler/slots";
 import { pendingRebalanceOf } from "../../src/slot/bots";
 import { gateInput, liveStalePrices, portfolio, prices } from "../helpers/fixtures";
@@ -47,7 +48,7 @@ async function decide(strategy: HouseStrategy, at: Slot, fresh: boolean): Promis
     portfolio: portfolio(),
     prices: fresh ? prices() : liveStalePrices(),
     chg24hPct: {},
-    pendingRebalance: await pendingRebalanceOf(db, 1n, at),
+    pendingRebalance: await pendingRebalanceOf(db, 1n, at, strategy),
   };
   const output = houseDecision(ctx);
   const result = gate(
@@ -81,14 +82,41 @@ describe("pendingRebalanceOf", () => {
 
   it("a rebalance that traded leaves nothing pending", async () => {
     await decide("gold_granny", slot("2026-11-27T09:00"), true);
-    expect(await pendingRebalanceOf(db, 1n, slot("2026-11-27T13:00"))).toEqual([]);
+    expect(await pendingRebalanceOf(db, 1n, slot("2026-11-27T13:00"), "gold_granny")).toEqual([]);
   });
 
   it("only within the same season, and never for a debut or Momentum Max", async () => {
     await decide("gold_granny", slot("2026-11-27T09:00"), false);
-    expect(await pendingRebalanceOf(db, 1n, { ...slot("2026-11-29T09:00"), season: { id: 1, startsAt: ist("2026-11-29T00:00") } })).toEqual([]);
-    expect(await pendingRebalanceOf(db, 1n, slot("2026-11-27T10:00", "debut"))).toEqual([]);
+    expect(await pendingRebalanceOf(db, 1n, { ...slot("2026-11-29T09:00"), season: { id: 1, startsAt: ist("2026-11-29T00:00") } }, "gold_granny")).toEqual([]);
+    expect(await pendingRebalanceOf(db, 1n, slot("2026-11-27T10:00", "debut"), "gold_granny")).toEqual([]);
     await db.query("update decisions set input_json = jsonb_set(input_json, '{strategy}', '\"momentum_max\"')");
-    expect(await pendingRebalanceOf(db, 1n, slot("2026-11-27T13:00"))).toEqual([]);
+    expect(await pendingRebalanceOf(db, 1n, slot("2026-11-27T13:00"), "gold_granny")).toEqual([]);
+  });
+
+  it("a missed first 09:00 slot is made up at the next slot that decides, then retried like any stale rebalance", async () => {
+    const one = await decide("gold_granny", slot("2026-11-27T13:00"), false);
+    expect(one.pendingRebalance).toEqual<AssetId[]>(["GOLD"]);
+    const five = await decide("gold_granny", slot("2026-11-27T17:00"), true);
+    expect(five.pendingRebalance).toEqual<AssetId[]>(["GOLD"]);
+    expect(houseDecision(five).actions).toEqual([{ asset: "GOLD", action: "BUY", bps: 5000 }]);
+    expect((await decide("gold_granny", slot("2026-11-27T21:00"), true)).pendingRebalance).toEqual([]);
+  });
+
+  it("Steady Sam with no 09:00 decision buys all five at 13:00", async () => {
+    const ctx = await decide("steady_sam", slot("2026-11-27T13:00"), true);
+    expect(ctx.pendingRebalance).toEqual([...ASSET_IDS]);
+    expect(houseDecision(ctx).actions.map((a) => a.action)).toEqual(["BUY", "BUY", "BUY", "BUY", "BUY"]);
+  });
+
+  it("owes nothing before or at the first 09:00 slot, to Momentum Max, or on a debut", async () => {
+    const late = { id: 0, startsAt: ist("2026-11-27T14:00") };
+    expect(await pendingRebalanceOf(db, 1n, { ...slot("2026-11-27T17:00"), season: late }, "gold_granny")).toEqual([]);
+    expect(await pendingRebalanceOf(db, 1n, { ...slot("2026-11-28T09:00"), season: late }, "gold_granny")).toEqual([]);
+    expect(await pendingRebalanceOf(db, 1n, slot("2026-11-27T09:00"), "gold_granny")).toEqual([]);
+    expect(await pendingRebalanceOf(db, 1n, slot("2026-11-27T13:00"), "momentum_max")).toEqual([]);
+    expect(await pendingRebalanceOf(db, 1n, slot("2026-11-27T13:00", "debut"), "gold_granny")).toEqual([]);
+    // A decision from before the season's first 09:00 slot isn't the rebalance.
+    await decide("gold_granny", { ...slot("2026-11-27T17:00"), season: late }, true);
+    expect(await pendingRebalanceOf(db, 1n, { ...slot("2026-11-28T13:00"), season: late }, "gold_granny")).toEqual<AssetId[]>(["GOLD"]);
   });
 });

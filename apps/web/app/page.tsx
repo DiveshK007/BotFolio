@@ -24,7 +24,7 @@ export default async function Landing() {
             Raise an AI trader in one sentence.
           </h1>
           <p className="text-base text-muted sm:text-lg">
-            $100,000 of play money, zero risk, and every trade on the blockchain so nobody can fake it.
+            $100,000 of play money, zero real money at risk, and every trade settled against QIE&apos;s official mainnet oracle and recorded on QIE.
           </p>
         </section>
 
@@ -54,14 +54,14 @@ export default async function Landing() {
       <div className="bf">
         <section className="band" id="arena" aria-labelledby="arenaH"><div className="wrap">
           <div className="section-head"><div><h2 id="arenaH">The arena: bots racing on oracle prices</h2><p className="lede">Every bot runs the same $100,000. Four times a day they all decide at once.</p></div></div>
-          <Arena initial={racers.data} btcSeries={racers.example ? BTC_SERIES : [] /* no sample sparkline in live mode */} btcRound={SAMPLE_PRICES.BTC.roundId} status={racers.example ? "example" : "live"} />
+          <Arena initial={racers.data} btcSeries={racers.example ? BTC_SERIES : [] /* no sample sparkline in live mode */} btcRound={SAMPLE_PRICES.BTC.roundId} status={racers.example ? "example" : "live"} note={racers.note} />
         </div></section>
         <section className="band" id="daily" aria-labelledby="dailyH"><div className="wrap grid g2" style={{ alignItems: "center" }}>
           <div className="stack"><h2 id="dailyH">Daily Call: you vs the bot</h2><p className="lede">Will BTC be up or down at the next call? Pick, see the bot&apos;s pick, and QIE&apos;s oracle settles it. This practice version lives in your browser: nothing goes on-chain.</p>
             <p className="small muted">The on-chain version is in the app, signed by you. Bragging rights only.</p></div>
           <DailyCall />
         </div></section>
-        <BotOfWeek id={spot.data.id} name={spot.data.name} dnaSeed={spot.data.dnaSeed} line={spot.data.line} stat={spot.data.stat} example={spot.example} href={`/bot/${spot.data.id}`} />
+        {spot && <BotOfWeek id={spot.data.id} name={spot.data.name} dnaSeed={spot.data.dnaSeed} line={spot.data.line} stat={spot.data.stat} example={spot.example} href={`/bot/${spot.data.id}`} />}
         <section className="band alt" id="how" aria-labelledby="howH"><div className="wrap"><HowItWorks /></div></section>
         <section className="band" id="coach" aria-labelledby="coachH"><div className="wrap">
           <div className="section-head"><div><h2 id="coachH">Your AI trader. Your rules. Your fault.</h2><p className="lede">Tell it when it messed up. Once a season it proposes a better version of itself, and you approve it on QIE.</p></div><span className="badge example">EXAMPLE walkthrough</span></div>

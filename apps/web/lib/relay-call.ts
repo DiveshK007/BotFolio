@@ -52,6 +52,8 @@ export const SEASON_LEDGER_ABI = parseAbi([
   "function commitVersion(uint256 botId, uint32 version, bytes32 hash, uint16 maxPerCoinBps, uint8 maxTradesPerDay)",
   "function recordCorrection(uint256 botId, bytes32 decisionId, bytes32 noteHash, uint8 chip)",
   "function currentSeason() view returns (uint32)",
+  "function nextSeason() view returns (uint32)",
+  "function seasonState(uint32 n) view returns (uint8)",
   "event VersionCommitted(uint256 indexed botId, uint32 indexed version, bytes32 hash, uint32 season)",
   "event CallCorrected(uint256 indexed botId, bytes32 indexed decisionId, bytes32 noteHash, uint8 chip, uint32 season)",
 ]);
@@ -69,6 +71,19 @@ export const CHALLENGES_ABI = parseAbi([
   "event ChallengeCreated(bytes32 indexed code, uint256 indexed myBot, uint32 season)",
   "event ChallengeAccepted(bytes32 indexed code, uint256 indexed theirBot)",
 ]);
+const SEASON_CLOSED = 2; // ISeasonLedger.SeasonState { NONE, OPEN, CLOSED }
+
+/**
+ * The season a new challenge can join (#359). Between closeSeason(n) (~21:30 IST) and openSeason(n+1) (00:00 IST),
+ * currentSeason() is still n but n is CLOSED, so Challenges.create(n) reverts: use nextSeason(). Otherwise the live one.
+ */
+export async function joinableSeason(client: ChainClient, ledger: Address): Promise<{ season: number; next: boolean }> {
+  const current = await client.readContract({ address: ledger, abi: SEASON_LEDGER_ABI, functionName: "currentSeason" });
+  const state = await client.readContract({ address: ledger, abi: SEASON_LEDGER_ABI, functionName: "seasonState", args: [current] });
+  if (state !== SEASON_CLOSED) return { season: current, next: false };
+  return { season: await client.readContract({ address: ledger, abi: SEASON_LEDGER_ABI, functionName: "nextSeason" }), next: true };
+}
+
 const EVENTS = [...OWNER_REGISTRY_ABI, ...SEASON_LEDGER_ABI, ...PAPER_LEDGER_ABI, ...DAILY_CALL_ABI, ...CHALLENGES_ABI];
 
 /**

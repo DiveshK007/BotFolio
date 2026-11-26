@@ -106,3 +106,9 @@ export const getQieChain = (): Chain => ({ ...qieMainnet, rpcUrls: { default: { 
 
 /** Public Privy app id (not a secret). null = passkey sign-in is off. */
 export const getPrivyAppId = () => process.env.NEXT_PUBLIC_PRIVY_APP_ID?.trim() || null;
+
+/**
+ * Talk to a bot (/api/site/talk) is off unless the server env says TALK_ENABLED=true (#352): its LLM calls are
+ * outside the worker's LLM_MONTHLY_BUDGET_USD. Server-side only, never a NEXT_PUBLIC_ variable.
+ */
+export const talkEnabled = (env: Record<string, string | undefined> = process.env) => env.TALK_ENABLED?.trim() === "true";

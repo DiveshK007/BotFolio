@@ -19,6 +19,7 @@ import { authRoutes } from "./auth/routes";
 import { setUpAuth } from "./auth/setup";
 import { relayRoutes } from "./relay/route";
 import { databaseConfig, openDb } from "./relay/db";
+import { POOL_MAX } from "./database-url";
 import { setUpRelayer } from "./relay/setup";
 import { trustRoutes } from "./trust/route";
 import { leaderboardRoutes } from "./season/route";
@@ -122,7 +123,7 @@ async function main(): Promise<void> {
   );
   // Small pool for the public read routes and the card sweeper.
   const database = databaseConfig(process.env.DATABASE_URL);
-  const reads = database ? openDb({ ...database, max: 2 }, consoleLog) : null;
+  const reads = database ? openDb({ ...database, max: POOL_MAX.reads }, consoleLog) : null;
   if (!reads) consoleLog("trust.proofs_disabled", { env: "DATABASE_URL" });
   const stopCards = reads && cardChain ? startCardSweeper({ db: reads, chain: cardChain, log: { info: consoleLog, warn: consoleLog } }) : null;
   // .qie names for bot owners (#104), shown by every view that joins qie_names.

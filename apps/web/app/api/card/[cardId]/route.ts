@@ -20,7 +20,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ cardId: 
   // Card ids start with their kind (apps/worker/src/cards), so a kind we can't draw is turned away before any lookup.
   if (!isRenderedKind(cardId.split("-")[0]!)) return fail(400, "BAD_REQUEST", "Unknown card kind.");
 
-  const card = await loadCard(cardId);
+  const card = await loadCard(cardId).catch(() => undefined);
+  if (card === undefined) return fail(503, "UNAVAILABLE", "Cards can't be read right now. Try again in a minute.");
   if (!card || !isRenderedCard(card)) return fail(404, "NOT_FOUND", "No such card.");
   // A card never changes once written (SPEC §9: immutable per cardId, CDN 1 year).
   return renderCard(card, format as CardFormat, { "cache-control": "public, max-age=31536000, immutable" });

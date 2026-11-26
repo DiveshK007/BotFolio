@@ -7,7 +7,7 @@ import type { OwnerBot, PendingBigMove } from "@/lib/owner";
 import type { WalletSession } from "@/lib/wallet";
 import { bigMoveLine } from "./BigMoveCard";
 import { DailyCallCard } from "./DailyCallCard";
-import { MeView, type MeData } from "./MeScreen";
+import { MeSignIn, MeView, nextVisibleClose, SignedInAs, type MeData } from "./MeScreen";
 import { ActionStatus, refusalMessage, SignInCard } from "./relay-ui";
 import { watching } from "./ThinkingFeed";
 
@@ -65,6 +65,16 @@ describe("MeView", () => {
     const html = view({ kind: "ok", page: samplePage(), owner: owner({ proposal: { version: 2, configHash: h("ab"), config: config2, approveBy: config2.approve_by } }), daily: null, moves: [] });
     expect(html).toContain('href="/season/3"');
     expect(html).toContain("Approve by 27 Nov, 08:30 IST, or it keeps v1");
+  });
+
+  it("dates the first result at the next visible close, never the hidden S0 one (#360)", () => {
+    const page = { ...samplePage(), seasons: [] };
+    expect(view({ kind: "ok", page, owner: owner(), daily: null, moves: [] })).toContain("next close, 30 Nov, 21:30 IST");
+    const at = (ist: string) => nextVisibleClose(Date.parse(`${ist}+05:30`));
+    expect(at("2026-11-27T02:30:00")).toBe("2026-11-30T16:00:00.000Z"); // during S0
+    expect(at("2026-11-30T21:30:00")).toBe("2026-12-02T16:00:00.000Z"); // S1 just closed
+    expect(at("2026-12-06T22:00:00")).toBe("2026-12-13T16:00:00.000Z"); // after the sprints: Sunday 21:30
+    expect(at("2026-12-13T21:30:00")).toBe("2026-12-20T16:00:00.000Z");
   });
 
   it("still shows the bot when the owner reads fail", () => {
@@ -139,6 +149,20 @@ describe("SignInCard", () => {
     expect(card(false, true)).toContain("Connect QIE Wallet");
     expect(card(false, true)).not.toContain("live yet");
     expect(card(false, false)).toContain("live yet");
+  });
+
+  it("on /me, sends new users to the home page's 18+ sign-up first (#93)", () => {
+    const html = renderToStaticMarkup(createElement(MeSignIn, { wallets: { passkey: w(true), qie: w(false) } }));
+    expect(html).toContain("New here?");
+    expect(html).toContain('href="/"');
+    expect(html).toContain("Already have a bot? Sign in");
+  });
+
+  it("shows who is signed in, with a Sign out button", () => {
+    const html = renderToStaticMarkup(createElement(SignedInAs, { address: addr("ab"), onSignOut: () => {} }));
+    expect(html).toContain("Signed in as");
+    expect(html).toContain("0xabab…abab");
+    expect(html).toContain("Sign out");
   });
 });
 

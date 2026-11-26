@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CARD_SIZES } from "@botfolio/shared";
+import { MOCK_CARDS } from "../fixtures";
 import { clampText } from "../render";
 import { GET } from "./route";
 
@@ -28,17 +29,44 @@ describe("GET /api/card/:cardId", () => {
     }
   }
 
+  afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+  /** Supabase answers every site_cards read with `rows`. */
+  const db = (rows: unknown) => {
+    vi.stubEnv("SUPABASE_URL", "https://db.example");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon");
+    const fetch = vi.fn(async () => Response.json(rows));
+    vi.stubGlobal("fetch", fetch);
+    return fetch;
+  };
+
   it("turns away an unknown format or kind with 400, and a missing card with 404", async () => {
     for (const [id, q] of [["trade-mock", "?format=square"], ["trade-mock", "?format=toString"], ["battle-7-s3", ""], ["nope", ""]] as const) {
       const res = await call(id, q);
       expect(res.status).toBe(400);
       expect(res.headers.get("cache-control")).toBe("no-store");
     }
+    db([]);
     expect((await call("trade-999")).status).toBe(404);
   });
 
-  afterEach(() => vi.unstubAllEnvs());
+  it("draws a real card from its site_cards payload, in production too", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    const fetch = db([{ payload: { ...MOCK_CARDS.roast, cardId: "roast-7-412" } }]);
+    const res = await call("roast-7-412");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/png");
+    expect(String((fetch.mock.calls[0] as unknown[])[0])).toContain("site_cards?id=eq.roast-7-412&select=payload");
+  }, 20_000);
+
+  it("answers 503, not a cached 404, when the card store can't be read", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    const res = await call("trade-7"); // no Supabase env: the read throws
+    expect(res.status).toBe(503);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
   it("never serves the mock cards in production", async () => {
+    db([]);
     vi.stubEnv("VERCEL_ENV", "production");
     expect((await call("trade-mock")).status).toBe(404);
     vi.stubEnv("VERCEL_ENV", "preview");

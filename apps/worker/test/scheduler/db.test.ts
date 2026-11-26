@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 import { PGlite } from "@electric-sql/pglite";
 import type { Pool, PoolConfig } from "pg";
 import { describe, expect, it } from "vitest";
+import { POOL_MAX } from "../../src/database-url";
 import { createPgDb, databaseConfig, TRY_LOCK_SQL } from "../../src/scheduler/db";
 import { memoryLog } from "./helpers/log";
 
@@ -48,6 +49,11 @@ function fakePools(options: { locked?: boolean; failOn?: string } = {}) {
 }
 
 describe("createPgDb", () => {
+  it("caps both pools at their share of the session pooler (#351)", () => {
+    const { queries, locks } = fakePools();
+    expect([queries.config.max, locks.config.max]).toEqual([POOL_MAX.schedulerQueries, POOL_MAX.schedulerLocks]);
+  });
+
   it("holds the lock in its own pool's transaction for the whole run", async () => {
     const { db, queries, locks } = fakePools();
     const result = await db.withLock("slot:x", async () => {
