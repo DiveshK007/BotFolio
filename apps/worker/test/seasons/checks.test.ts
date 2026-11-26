@@ -101,6 +101,13 @@ describe("openDueSeasons", () => {
     await expect(run(openDueSeasons, "2026-11-24T00:00:00")).rejects.toThrow("season_row_missing");
   });
 
+  it("stops quietly after the last seeded season instead of failing every day (#313)", async () => {
+    await pglite.exec("delete from seasons where id > 2");
+    expect(await run(openDueSeasons, "2026-12-20T00:00:00")).toEqual([0, 1, 2]);
+    expect(await run(openDueSeasons, "2026-12-21T00:00:00")).toEqual([]);
+    expect(log.warn).toHaveBeenCalledWith("seasons.no_next_row", { season: 3 });
+  });
+
   it("starts nothing new once the worker is shutting down", async () => {
     expect(await run(openDueSeasons, "2026-11-28T10:00:00", AbortSignal.abort())).toEqual([]);
   });

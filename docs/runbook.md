@@ -234,6 +234,6 @@ On the day, check the logs:
 - Mon Dec 7 00:00 IST: `seasons.opened` with `season: 6`. Check on-chain with `cast call $SEASON_LEDGER_ADDRESS "nextSeason()(uint32)"`, which should return 7.
 - From then on, the daily 21:30 close check does nothing until Sun Dec 13 21:30.
 
-Known limit: S19 is the last seeded row. From Mon Mar 8 2027 00:00 IST, `season_open` fails each day with `season_row_missing` until rows from S20 on are added to the seed.
+Known limit: S19 is the last seeded row. From Mon Mar 8 2027 00:00 IST, `season_open` logs `seasons.no_next_row` each day (no job failure, #313) and opens nothing until rows from S20 on are added to the seed.
 
 **Who:** Gokul for the database check. The admin key holder for `publishRules`.

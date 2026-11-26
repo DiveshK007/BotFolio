@@ -30,7 +30,12 @@ export async function openDueSeasons({ db, chain, now, signal, log }: SeasonChec
       [next],
     );
     const season = rows[0];
-    if (!season) throw new InternalFailure("season_row_missing"); // run packages/db/seeds/seasons.sql
+    if (!season) {
+      if (next === 0) throw new InternalFailure("season_row_missing"); // run packages/db/seeds/seasons.sql
+      // Past the last seeded season (#313): nothing to open, not a job failure. Extend the seed to go on.
+      log.warn("seasons.no_next_row", { season: next });
+      break;
+    }
 
     const startsAt = new Date(season.starts_at);
     if (startsAt > now) break;
