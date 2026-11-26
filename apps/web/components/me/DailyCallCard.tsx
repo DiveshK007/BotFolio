@@ -5,7 +5,7 @@ import type { SignedDailyCallBotView } from "@botfolio/shared";
 import { ExplorerLink } from "@/components/ui/ExplorerLink";
 import { userMessage } from "@/lib/errors";
 import { istTime } from "@/lib/bot-record";
-import { fetchDailyView, type DailyCallState, type OwnerBot } from "@/lib/owner";
+import { viewForPick, type DailyCallState, type OwnerBot } from "@/lib/owner";
 import type { OwnerCtx } from "./OwnerActions";
 import { ActionStatus, NotLive, useRelay } from "./relay-ui";
 
@@ -66,23 +66,27 @@ export function DailyCallCard({
   const relay = useRelay(ctx.config, ctx.session);
   const [pick, setPick] = useState<boolean | null>(null);
   const [view, setView] = useState<SignedDailyCallBotView | null>(null);
+  const [locked, setLocked] = useState(false);
   const { calls } = bot;
   const p = relay.phase;
   // Past the signature: the call is the owner's now, so the bot's view may show.
   const signed = p.name === "done" || (p.name === "busy" && (p.step === "relaying" || p.step === "confirming")) || (p.name === "error" && Boolean(p.txHash));
-  const canPick = pick === null || (p.name === "error" && !p.txHash);
+  const canPick = pick === null || (p.name === "error" && !p.txHash); // a locked pick comes back on any tap
 
-  async function choose(userUp: boolean) {
-    setPick(userUp);
-    let v: SignedDailyCallBotView;
+  async function choose(tapped: boolean) {
+    setPick(tapped);
+    let got: Awaited<ReturnType<typeof viewForPick>>;
     try {
-      v = await fetchDailyView(ctx.config.workerUrl, ctx.session, bot.botId);
+      got = await viewForPick(ctx.config.workerUrl, ctx.session, bot.botId, tapped);
     } catch (e) {
       relay.fail(userMessage(e));
       return;
     }
-    setView(v);
-    await relay.run({ kind: "dailyCall", botId: BigInt(bot.botId), userUp, botUp: v.botUp, botSig: v.botSig });
+    // Sign the pick the worker stored, which is the only one the relayer sends (PICK_MISMATCH otherwise).
+    setPick(got.userUp);
+    setLocked(got.locked);
+    setView(got.view);
+    await relay.run({ kind: "dailyCall", botId: BigInt(bot.botId), userUp: got.userUp, botUp: got.view.botUp, botSig: got.view.botSig });
   }
 
   let body;
@@ -110,6 +114,11 @@ export function DailyCallCard({
             </button>
           ))}
         </div>
+        {locked && pick !== null && (
+          <p role="status" className="text-sm">
+            You already picked <b>{pick ? "UP" : "DOWN"}</b> today, so that&apos;s your call.
+          </p>
+        )}
         {signed && view && pick !== null && (
           <p role="status" className="rounded-r2 bg-surface-2 p-3">
             You said <b>{word(pick)}</b>. <bdi>{bot.name}</bdi> says <b>{word(view.botUp)}</b>.

@@ -1,5 +1,39 @@
-import { describe, expect, it } from "vitest";
-import { countdown, fetchChallenge, nextSlot, parseBigMoves, parseChallenge, parseDailyCall, parseDailyView, parseOwner, shortCode } from "./owner";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { countdown, fetchChallenge, nextSlot, parseBigMoves, parseChallenge, parseDailyCall, parseDailyView, parseOwner, shortCode, viewForPick } from "./owner";
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe("viewForPick (POST /daily-call/view, #326)", () => {
+  const auth = { authKind: "privy" as const, getAuthToken: async () => "t" };
+  const view = (botUp: boolean) => ({ ok: true, view: { botId: "7", day: 20418, botUp, botSig: "0xabcd" } });
+  const locked = { ok: false, error: { code: "PICK_LOCKED", message: "You already picked the other way today. A pick can't change." } };
+  const stub = (answers: [number, unknown][]) => {
+    const f = vi.fn<typeof fetch>(async () => {
+      const [status, body] = answers.shift()!;
+      return new Response(JSON.stringify(body), { status });
+    });
+    vi.stubGlobal("fetch", f);
+    return f;
+  };
+  const bodies = (f: ReturnType<typeof stub>) => f.mock.calls.map(([, init]) => JSON.parse(init!.body as string));
+
+  it("sends the owner's pick with the bot id", async () => {
+    const f = stub([[200, view(false)]]);
+    expect(await viewForPick("https://w", auth, "7", true)).toEqual({ view: view(false).view, userUp: true, locked: false });
+    expect(bodies(f)).toEqual([{ botId: "7", userUp: true }]);
+  });
+
+  it("keeps the stored pick when the worker says PICK_LOCKED", async () => {
+    const f = stub([[409, locked], [200, view(true)]]);
+    expect(await viewForPick("https://w", auth, "7", true)).toEqual({ view: view(true).view, userUp: false, locked: true });
+    expect(bodies(f)).toEqual([{ botId: "7", userUp: true }, { botId: "7", userUp: false }]);
+  });
+
+  it("passes other refusals on", async () => {
+    stub([[409, { ok: false, error: { code: "CLOSED", message: "Today's call closed at 20:00. Back tomorrow." } }]]);
+    await expect(viewForPick("https://w", auth, "7", true)).rejects.toMatchObject({ code: "CLOSED" });
+  });
+});
 
 const h = (b: string) => `0x${b.repeat(32)}`;
 const ist = (t: string) => new Date(`${t}+05:30`).getTime();

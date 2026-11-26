@@ -15,7 +15,14 @@ export type RelayPhase =
   | { name: "idle" }
   | { name: "busy"; step: LaunchStep | "confirming" }
   | { name: "done"; txHash: Hex; event: ActionEvent }
-  | { name: "error"; message: string; txHash?: Hex; action?: OwnerAction };
+  | { name: "error"; message: string; code?: string; txHash?: Hex; action?: OwnerAction };
+
+/** Relay refusals from #326 in plain words; everything else keeps the worker's own message. */
+const REFUSALS: Record<string, string> = {
+  PICK_MISMATCH: "That isn't the pick you made before seeing your bot's call, so nothing was sent. Tap again: your first pick stands.",
+  TERMS_NOT_ACCEPTED: "Please confirm you're 18 or older and accept the Terms first. Nothing was sent.",
+};
+export const refusalMessage = (e: unknown) => (e instanceof FlowError && REFUSALS[e.code]) || userMessage(e);
 
 export const STEP_TEXT: Record<LaunchStep | "confirming", string> = {
   checking: "Checking QIE…",
@@ -53,7 +60,7 @@ export function useRelay(config: OwnerConfig | null, session: WalletSession | nu
     try {
       txHash = await relayAction({ config, client, session, action, onStep: (step) => setPhase({ name: "busy", step }) });
     } catch (e) {
-      setPhase({ name: "error", message: userMessage(e) });
+      setPhase({ name: "error", message: refusalMessage(e), ...(e instanceof FlowError && { code: e.code }) });
       return null;
     }
     return confirm(action, txHash);
@@ -85,6 +92,11 @@ export function ActionStatus({ phase, done, onRecheck }: { phase: RelayPhase; do
   return (
     <div className="flex flex-col gap-2">
       <ErrorNote>{phase.message}</ErrorNote>
+      {phase.code === "TERMS_NOT_ACCEPTED" && (
+        <Link href="/" className="inline-flex min-h-11 items-center self-start font-semibold text-accent-ink">
+          Confirm you&apos;re 18+ and accept the Terms
+        </Link>
+      )}
       {phase.txHash && (
         <p className="flex flex-wrap items-center gap-2 text-sm text-muted">
           Your tx: <ExplorerLink tx={phase.txHash} />

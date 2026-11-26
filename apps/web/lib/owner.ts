@@ -266,8 +266,25 @@ async function ownerPost<T>(workerUrl: string, auth: Auth, path: string, body: u
 
 export const fetchOwner = (w: string, a: Auth) => ownerPost(w, a, OWNER_PATH, {}, parseOwner);
 export const fetchDailyCall = (w: string, a: Auth) => ownerPost(w, a, DAILY_CALL_PATH, {}, parseDailyCall);
-/** Only ask after the owner has picked: the answer holds the bot's view (SPEC §2.2). */
-export const fetchDailyView = (w: string, a: Auth, botId: string) => ownerPost(w, a, DAILY_CALL_VIEW_PATH, { botId }, parseDailyView);
+/**
+ * Only after the owner has picked: the worker stores `userUp` before it answers with the bot's view (SPEC §2.2, #326),
+ * and the relayer then only sends a DailyCall.call with that same pick.
+ */
+export const fetchDailyView = (w: string, a: Auth, botId: string, userUp: boolean) =>
+  ownerPost(w, a, DAILY_CALL_VIEW_PATH, { botId, userUp }, parseDailyView);
+
+/**
+ * The view for the owner's pick. If they already picked the other way today (409 PICK_LOCKED, e.g. a reload after
+ * a cancelled signature), that stored pick stands: the view comes back for it and `locked` says so.
+ */
+export async function viewForPick(w: string, a: Auth, botId: string, userUp: boolean): Promise<{ view: SignedDailyCallBotView; userUp: boolean; locked: boolean }> {
+  try {
+    return { view: await fetchDailyView(w, a, botId, userUp), userUp, locked: false };
+  } catch (e) {
+    if (!(e instanceof FlowError && e.code === "PICK_LOCKED")) throw e;
+    return { view: await fetchDailyView(w, a, botId, !userUp), userUp: !userUp, locked: true };
+  }
+}
 export const fetchBigMoves = (w: string, a: Auth) => ownerPost(w, a, BIG_MOVES_PATH, {}, parseBigMoves);
 /** Shrink is no tx: the worker ends the 2 h window now and the runner sends the safe size (#80). */
 export const shrinkBigMove = (w: string, a: Auth, orderId: Hex) =>

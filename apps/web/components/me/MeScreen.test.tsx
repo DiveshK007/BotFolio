@@ -8,7 +8,7 @@ import type { WalletSession } from "@/lib/wallet";
 import { bigMoveLine } from "./BigMoveCard";
 import { DailyCallCard } from "./DailyCallCard";
 import { MeView, type MeData } from "./MeScreen";
-import { SignInCard } from "./relay-ui";
+import { ActionStatus, refusalMessage, SignInCard } from "./relay-ui";
 import { watching } from "./ThinkingFeed";
 
 const addr = (b: string) => `0x${b.repeat(20)}` as `0x${string}`;
@@ -114,6 +114,19 @@ it("watches the biggest holding, else BTC", () => {
   page.mark!.holdings = [...page.mark!.holdings, { asset: "GOLD", units_e18: "1", value_e8: "99000000000" }];
   expect(watching(page)).toBe("GOLD");
   expect(watching({ mark: null })).toBe("BTC");
+});
+
+describe("relay refusals (#326)", () => {
+  it("words PICK_MISMATCH and TERMS_NOT_ACCEPTED, and sends the latter to the 18+ / Terms step", async () => {
+    const { FlowError } = await import("@/lib/errors");
+    expect(refusalMessage(new FlowError("PICK_MISMATCH", "x"))).toContain("your first pick stands");
+    expect(refusalMessage(new FlowError("WOULD_REVERT", "Price too old."))).toBe("Price too old.");
+    const html = renderToStaticMarkup(
+      createElement(ActionStatus, { phase: { name: "error", code: "TERMS_NOT_ACCEPTED", message: refusalMessage(new FlowError("TERMS_NOT_ACCEPTED", "x")) }, done: "" }),
+    );
+    expect(html).toContain("18 or older");
+    expect(html).toContain('href="/"');
+  });
 });
 
 describe("SignInCard", () => {
