@@ -2,7 +2,8 @@
 pragma solidity 0.8.24;
 
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
-import {AdminScript, CloseSeason, OpenSeason, PublishRules} from "../script/Admin.s.sol";
+import {AdminScript, CloseSeason, OpenSeason, PublishRules, SeedHouseBots} from "../script/Admin.s.sol";
+import {IBotRegistry} from "../src/interfaces/IBotRegistry.sol";
 import {ISeasonLedger} from "../src/interfaces/ISeasonLedger.sol";
 import {Roles} from "../src/lib/Roles.sol";
 import {DeployedFixture} from "./utils/DeployedFixture.sol";
@@ -27,7 +28,36 @@ contract AdminScriptsForkTest is DeployedFixture {
         vm.startPrank(cfg.admin);
         d.seasonLedger.grantRole(Roles.COMMITTER, deployer);
         d.trust.grantRole(bytes32(0), deployer);
+        d.registry.grantRole(bytes32(0), deployer);
         vm.stopPrank();
+    }
+
+    function _houseInputs()
+        internal
+        pure
+        returns (bytes32[] memory h, uint256[] memory bps, uint256[] memory trades)
+    {
+        h = new bytes32[](3);
+        bps = new uint256[](3);
+        trades = new uint256[](3);
+        (h[0], h[1], h[2]) = (keccak256("sam"), keccak256("granny"), keccak256("max"));
+        (bps[0], bps[1], bps[2]) = (2500, 5000, 2500);
+        (trades[0], trades[1], trades[2]) = (8, 4, 8);
+    }
+
+    function test_seedHouseBots() public {
+        SeedHouseBots seeder = new SeedHouseBots();
+        (bytes32[] memory h, uint256[] memory bps, uint256[] memory trades) = _houseInputs();
+        seeder.runWith(d.registry, h, bps, trades);
+        for (uint256 i; i < 3; ++i) {
+            IBotRegistry.Bot memory b = d.registry.getBot(i + 1);
+            assertTrue(b.house);
+            assertEq(b.personaHash, h[i]);
+            assertEq(b.maxPerCoinBps, bps[i]);
+            assertEq(b.maxTradesPerDay, trades[i]);
+        }
+        vm.expectRevert(abi.encodeWithSelector(AdminScript.BadInput.selector, "registry already has bots"));
+        seeder.runWith(d.registry, h, bps, trades);
     }
 
     function test_openSeasonZero() public {
