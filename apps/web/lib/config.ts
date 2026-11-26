@@ -1,3 +1,5 @@
+import { QIE_RPC_URLS, qieMainnet } from "@botfolio/shared";
+import type { Chain } from "viem";
 import { isAddress } from "./format";
 
 export interface CreateConfig {
@@ -47,3 +49,31 @@ export const getCreateConfig = () =>
     forwarder: process.env.NEXT_PUBLIC_FORWARDER_ADDRESS,
     registry: process.env.NEXT_PUBLIC_BOT_REGISTRY_ADDRESS,
   });
+
+/** rpc3 → 4 → 5 → 1 → 2, like the worker: rpc1/rpc2 drop TLS sometimes. */
+export const DEFAULT_RPC_URLS: readonly string[] = [...QIE_RPC_URLS.slice(2), ...QIE_RPC_URLS.slice(0, 2)];
+
+/**
+ * NEXT_PUBLIC_QIE_RPC_URLS (#219): comma-separated, tried in order. https only, http just for a local fork.
+ * Bad entries are dropped; nothing usable left → the 5 mainnet RPCs.
+ */
+export function parseRpcUrls(raw: string | undefined): string[] {
+  const urls = (raw ?? "").split(",").map((u) => u.trim()).filter((u) => {
+    try {
+      const url = new URL(u);
+      const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+      return url.protocol === "https:" || (local && url.protocol === "http:");
+    } catch {
+      return false;
+    }
+  });
+  return urls.length ? urls : [...DEFAULT_RPC_URLS];
+}
+
+export const getRpcUrls = () => parseRpcUrls(process.env.NEXT_PUBLIC_QIE_RPC_URLS);
+
+/** QIE mainnet with the browser's RPC order. Privy and wallet_addEthereumChain both take this. */
+export const getQieChain = (): Chain => ({ ...qieMainnet, rpcUrls: { default: { http: getRpcUrls() } } });
+
+/** Public Privy app id (not a secret). null = passkey sign-in is off. */
+export const getPrivyAppId = () => process.env.NEXT_PUBLIC_PRIVY_APP_ID?.trim() || null;

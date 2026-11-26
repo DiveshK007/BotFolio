@@ -6,6 +6,7 @@ import { WatchParty } from "@/components/site/home-v3";
 import { tickerItems } from "@/lib/site/ticker";
 import { PlayMoneyFooter } from "@/components/ui/PlayMoneyFooter";
 import { StatusBanner } from "@/components/ui/StatusBanner";
+import { WalletRoot } from "@/components/WalletRoot";
 import "./globals.css";
 import "../styles/site-v3.css";
 
@@ -54,6 +55,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <HoloEffects />
         <div className="flex-1">{children}</div>
         <PlayMoneyFooter />
+        <WalletRoot />
       </body>
     </html>
   );
