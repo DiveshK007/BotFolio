@@ -3,7 +3,7 @@ import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import { PGlite } from "@electric-sql/pglite";
 import { FakeLlmClient, loadLlmConfig } from "@botfolio/llm";
-import type { Hex } from "viem";
+import { keccak256, stringToBytes, type Hex } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createAuthenticator } from "../../src/auth/authenticator";
 import { RelayJwt } from "../../src/auth/jwt";
@@ -94,6 +94,12 @@ describe("POST /persona", () => {
     expect(parsePersonaDraft(res.body)?.persona.limits).toEqual({ maxPerCoinPct: 40, maxTradesPerDay: 4 });
     const { max_per_coin_pct: _p, max_trades_per_day: _t, ...hashed } = res.body.persona;
     expect(res.body.personaHash).toBe(hashJson(hashed));
+  });
+
+  it("personaHash is keccak256 of the persona's canonical JSON, byte for byte (#219)", async () => {
+    const res = await (await serve())(ok);
+    const text = '{"emoji":"🐺","name":"AlphaWolf","persona":"Bold, loud, loves momentum.","rules":"Buys strength, cuts losers."}';
+    expect(res.body.personaHash).toBe(keccak256(stringToBytes(text)));
   });
 
   it("stores the 18+ acceptance and a draft the runner can find by owner and hash", async () => {
