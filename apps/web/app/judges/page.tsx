@@ -8,20 +8,24 @@ import { SAMPLE_BOTS } from "@/lib/site/sample";
 import { arenaRacers } from "@/lib/site/live";
 import { judgesActivity, judgesTrades } from "@/lib/site/judges";
 import { ActivityPanel, ContractsTable, LatestTrades } from "@/components/site/proof";
-import { Badge, Icon, Placeholder } from "@/components/site/ui";
+import { Badge, Icon } from "@/components/site/ui";
+import { START_CASH_LINE } from "@/lib/site/format";
 import { getContracts } from "@/lib/site/data";
 
 export const metadata: Metadata = { title: "For judges: the 90-second tour", description: "What BotFolio is, live QIE mainnet proof, QIE components used, and user-signed traction." };
 export const revalidate = 60;
 const SENTENCE = "Raise an AI trader in one sentence, coach it every season, and let QIE keep score.";
+// Only an https link is shown; the env is ours, but a typo must not become a javascript: href.
+const VIDEO = /^https:\/\//.test(process.env.NEXT_PUBLIC_DEMO_VIDEO_URL ?? "") ? process.env.NEXT_PUBLIC_DEMO_VIDEO_URL : null;
 
 // QIE components: flip `coming` to `verified` only after WS D confirms each in docs/qie-components.md (SPEC §0.6).
+// QIE Wallet stays IN TESTING until signTypedData_v4 on chain 1990 is checked by a person (#99).
 const makeComps = (allLive: boolean): [string, string, "verified" | "coming", string][] => [
   ["QIE mainnet", allLive ? "All 7 contracts live on chain 1990. Chain facts checked Nov 19." : "All 7 contracts target chain 1990. Chain facts checked Nov 19; deploying for Season 1.", "verified", "CHAIN VERIFIED"],
   ["QIE Oracles", "5 feeds read inside PaperLedger and DailyCall at trade time. Prices are never passed in.", "verified", "FEEDS VERIFIED"],
-  ["QIE Wallet connect", "Second login next to passkey. Same signed requests, still zero gas.", "coming", "COMING"],
-  ["QIE ID / .qie names", "Show name.qie instead of 0x… on bot pages, boards and cards.", "coming", "COMING"],
-  ["QIE Wallet MCP", "Server-side name lookups and reads for the proof page.", "coming", "COMING"],
+  ["QIE Wallet connect", "Second login next to passkey. Same signed requests, still zero gas. Signing on chain 1990 is still being tested.", "coming", "IN TESTING"],
+  ["QIE ID / .qie names", "Shows name.qie instead of 0x… for bot owners. Reverse lookup checked live on mainnet Nov 26 2026.", "verified", "VERIFIED NOV 26"],
+  ["QIE Wallet MCP", "The worker looks up .qie names through its read-only qie_reverse_lookup tool. Checked live Nov 27 2026.", "verified", "VERIFIED NOV 27"],
   ["QIE Pass", "Optional \"verified human\" badge on leaderboards. Never gates play. Needs partner access.", "coming", "COMING"],
 ];
 
@@ -51,6 +55,7 @@ export default async function Judges() {
       <section className="tour-sec" id="t2"><div className="wrap stack">
         <p className="kicker"><b>2</b>Live mainnet proof</p><h2>{allLive ? "Real contracts live on QIE mainnet" : deployed > 0 ? `${deployed} of ${contracts.length} contracts live on QIE mainnet` : "Real contracts on QIE mainnet, deploying for Season 1"}</h2>
         <p className="lede">{allLive ? "All 7 contracts are deployed on chain 1990. Each address below links to its record on the explorer." : "The 7 contracts deploy and get verified for Season 1. Until an address is set in env, this panel says so rather than showing anything made up."}</p>
+        <p className="small muted">{START_CASH_LINE}</p>
         <ContractsTable contracts={contracts} />
         <LatestTrades trades={trades} />
       </div></section>
@@ -76,7 +81,7 @@ export default async function Judges() {
         <p className="remember">{SENTENCE}</p>
         <div className="row"><CopyButton text={SENTENCE} label="Copy the sentence" className="btn" />
           <a className="btn ghost" href="https://github.com/DiveshK007/BotFolio" rel="noopener">Repo</a><Link className="btn ghost" href="/proof">Proof page</Link></div>
-        <div className="poster" style={{ maxWidth: 560 }}><div><div className="play"><Icon name="play" size={26} /></div><b>Demo video, 2 minutes</b><p className="small muted">Recorded on real Season 1 data, after Nov 27. <Placeholder>DEMO VIDEO URL</Placeholder></p></div></div>
+        {VIDEO && <a className="poster" style={{ maxWidth: 560 }} href={VIDEO} rel="noopener"><div><div className="play"><Icon name="play" size={26} /></div><b>Demo video, 2 minutes</b><p className="small muted">Recorded on live mainnet data.</p></div></a>}
       </div></section>
       </main>
     </>

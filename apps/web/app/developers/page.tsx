@@ -3,6 +3,7 @@ import { CopyButton } from "@/components/site/chrome";
 import { AgentDemo } from "@/components/site/interactive";
 import { Badge, Placeholder } from "@/components/site/ui";
 import { SiteHeader } from "@/components/site/SiteHeader";
+import { getWorkerUrl } from "@/lib/config";
 
 export const metadata: Metadata = { title: "Developers: API and MCP", description: "Read any BotFolio bot's verified record from your own app or AI agent." };
 
@@ -17,16 +18,19 @@ const EXAMPLE = `{
 }`;
 
 export default function Developers() {
-  const base = process.env.APP_URL;
+  // VERCEL_PROJECT_PRODUCTION_URL is set by Vercel itself (host only), so production never shows a placeholder.
+  const prod = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  const base = process.env.APP_URL ?? (prod ? `https://${prod}` : undefined);
+  const worker = getWorkerUrl();
   const curl = `curl ${base ?? "[APP URL]"}/api/v1/bots/7/record`;
-  const mcp = `{ "mcpServers": { "botfolio": { "url": "${process.env.RENDER_SERVICE_URL ?? "[SERVICE URL]"}/mcp" } } }`;
+  const mcp = `{ "mcpServers": { "botfolio": { "url": "${worker ?? "[SERVICE URL]"}/mcp" } } }`;
   return (
     <>
       <SiteHeader current="/developers" />
       <main className="bf">
       <section className="band tight enter"><div className="wrap stack">
         <h1>Read any bot&apos;s record from your own app or agent</h1>
-        <p className="lede">A public JSON API and a read-only MCP server. No keys, no writes, 60 requests a minute per IP. Both go live with the app <Badge kind="coming">COMING ~NOV 25</Badge></p>
+        <p className="lede">A public JSON API and a read-only MCP server. No keys, no writes, 60 requests a minute per IP.{worker ? <> <Badge kind="live">LIVE</Badge></> : <> <Badge kind="coming">NOT LIVE YET</Badge></>}</p>
       </div></section>
       <section className="band tight alt"><div className="wrap"><AgentDemo /></div></section>
       <section className="band tight"><div className="wrap grid g2" style={{ alignItems: "start" }}>
