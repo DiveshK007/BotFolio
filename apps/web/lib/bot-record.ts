@@ -102,7 +102,7 @@ export interface BotPage {
   decisions: BotDecision[];
 }
 
-export type BotPageResult = { kind: "ok"; page: BotPage } | { kind: "not_found" } | { kind: "not_live" } | { kind: "busy" } | { kind: "error" };
+export type BotPageResult = { kind: "ok"; page: BotPage; fetchedAt?: number } | { kind: "not_found" } | { kind: "not_live" } | { kind: "busy" } | { kind: "error" };
 
 const UINT = /^\d{1,78}$/;
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -173,7 +173,7 @@ export async function fetchBotPage(
     if (res.status === 429) return { kind: "busy" };
     if (!res.ok) return { kind: "error" };
     const page = parseBotPage(await res.json());
-    return page ? { kind: "ok", page } : { kind: "error" };
+    return page ? { kind: "ok", page, fetchedAt: Date.now() } : { kind: "error" };
   } catch {
     return { kind: "error" };
   }
@@ -191,12 +191,19 @@ const CALL_LABEL: Record<string, string> = {
 };
 export const callLabel = (status: string) => CALL_LABEL[status] ?? "Held";
 
+/** A batch lands within seconds (debut) or the slot's 20-min window; past this an unmined call didn't make it. */
+export const SENDING_WINDOW_MS = 25 * 60_000;
+
+/** Only the newest call, and only shortly after its slot, can still be on its way (#378). */
+export const inFlight = (d: Pick<BotDecision, "slot_time">, newest: boolean, nowMs: number) =>
+  newest && nowMs - Date.parse(d.slot_time) < SENDING_WINDOW_MS;
+
 /**
  * A call's badge on the bot page. `executed` only means the gate accepted an order (#370): with no mined trade the
  * newest call is still on its way, and an older one didn't land. Needs the worker's `traded`; without it, the status.
  */
-export function callBadge(d: Pick<BotDecision, "status" | "traded">, newest: boolean): string {
-  if (d.status === "executed" && d.traded === false) return newest ? "Sending to QIE" : "Didn't reach QIE, tries again next call";
+export function callBadge(d: Pick<BotDecision, "status" | "traded">, inFlight: boolean): string {
+  if (d.status === "executed" && d.traded === false) return inFlight ? "Sending to QIE" : "Didn't reach QIE, tries again next call";
   return callLabel(d.status);
 }
 
