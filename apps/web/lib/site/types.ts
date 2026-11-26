@@ -139,13 +139,19 @@ export interface ActivityStats {
   system: { runnerBatches: number; dailyCallSettlements: number; seasonRoots: number };
 }
 
-export interface CardProof { label: string; txHash: `0x${string}`; whatItProves: string }
+export interface CardProof {
+  label: string; txHash: `0x${string}`; whatItProves: string;
+  /** The oracle read behind this tx, when it read one: the Verify panel links that asset's feed. */
+  oracle?: { asset: AssetId; roundId: string } | null;
+}
 export interface CardPayload {
   id: string;
   kind: "trade" | "roast" | "battle" | "season" | "recap" | "evolution" | "challenge" | "call";
   bot: Bot;
-  season: number;
-  trust: number;
+  /** null between seasons. */
+  season: number | null;
+  /** null before the first score. */
+  trust: number | null;
   headline: string; // plain text; the card renders emphasis itself
   line: string;
   proofs: CardProof[];
