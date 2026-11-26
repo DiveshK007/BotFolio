@@ -71,6 +71,7 @@ export function fakeRelay(over: Partial<RelayDeps> = {}) {
     reserve: vi.fn<RelayDeps["guard"]["reserve"]>(async () => reservation),
     recordRefusal: vi.fn<RelayDeps["guard"]["recordRefusal"]>(async () => {}),
     hasAcceptedTerms: vi.fn<RelayDeps["guard"]["hasAcceptedTerms"]>(async () => true),
+    dailyCallPick: vi.fn<RelayDeps["guard"]["dailyCallPick"]>(async () => null),
   };
   const chain = { prepare: vi.fn<RelayDeps["chain"]["prepare"]>(async () => ({ to: FORWARDER, data: "0x12" as Hex, gas: 200_000n })) };
   const sender = { send: vi.fn<RelayDeps["sender"]["send"]>(async () => ({ txHash: TX_HASH })) };

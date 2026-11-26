@@ -38,6 +38,8 @@ export interface RelayGuard {
   recordRefusal(attempt: RelayAttempt): Promise<void>;
   /** The user has a `users` row, which is only written with `terms_accepted_at` (18+ and Terms, SPEC §11). */
   hasAcceptedTerms(identity: Pick<Identity, "wallets" | "privyDid">): Promise<boolean>;
+  /** The Daily Call pick POST /daily-call/view stored for this bot and IST day, or null if none (#219). */
+  dailyCallPick(botId: bigint, day: number): Promise<boolean | null>;
 }
 
 export interface RelayChain {

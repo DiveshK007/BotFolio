@@ -168,6 +168,14 @@ export class PgRelayGuard implements RelayGuard {
     return rows[0]?.ok === true;
   }
 
+  async dailyCallPick(botId: bigint, day: number): Promise<boolean | null> {
+    const { rows } = await this.db.query<{ user_up: boolean | null }>(
+      "select user_up from daily_calls where bot_id = $1::bigint and day = $2::int",
+      [botId.toString(), day],
+    );
+    return rows[0]?.user_up ?? null;
+  }
+
   /** Rows a previous process broadcast but didn't see mined, so their outcome can still be recorded. */
   async openRelays(): Promise<{ txHash: Hex; reservation: Reservation }[]> {
     const { rows } = await this.db.query<{ id: string; tx_hash: Hex }>(

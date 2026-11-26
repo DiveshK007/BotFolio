@@ -12,6 +12,7 @@ export const REFUSAL_MESSAGES: Record<RelayErrorCode, string> = {
   DEADLINE_EXPIRED: "That signature expired. Please sign again.",
   DEADLINE_TOO_FAR: "That signature is valid for too long. Check your device's clock and sign again.",
   TERMS_NOT_ACCEPTED: "Please confirm you're 18 or older and accept the Terms first. Nothing was sent.",
+  PICK_MISMATCH: "That isn't the pick you made before seeing your bot's call, so nothing was sent.",
   RATE_LIMITED_USER: "You've reached today's action limit. Please try again later.",
   RATE_LIMITED_IP: "Too many new bots from this connection today. Please try again later.",
   RATE_LIMITED_GLOBAL: "BotFolio is very busy right now. Please try again later.",

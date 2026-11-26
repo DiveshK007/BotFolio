@@ -1,9 +1,11 @@
-import { RELAY_ERROR_HTTP_STATUS, type RelayErrorCode } from "@botfolio/shared";
+import { istDay, RELAY_ERROR_HTTP_STATUS, type RelayErrorCode } from "@botfolio/shared";
+import { encodeFunctionData } from "viem";
 import { describe, expect, it } from "vitest";
 import { InternalFailure } from "../../src/auth/log";
+import { TARGET_ABIS } from "../../src/relay/abis";
 import { RelayRefusal } from "../../src/relay/errors";
 import { MAX_CALLDATA_BYTES } from "../../src/relay/request";
-import { CREATE_BOT, OTHER, RELAYER, TX_HASH, USER, fakeRelay, lower, relayInput, signedRequest } from "./helpers/fakes";
+import { CREATE_BOT, NOW_S, OTHER, RELAYER, TARGETS, TX_HASH, USER, fakeRelay, lower, relayInput, signedRequest } from "./helpers/fakes";
 
 const code = (r: { body: unknown }) => (r.body as { error?: { code: RelayErrorCode } }).error?.code;
 
@@ -76,6 +78,23 @@ describe("POST /relay pipeline (#37)", () => {
     expect(f.guard.reserve).not.toHaveBeenCalled();
     expect(f.chain.prepare).not.toHaveBeenCalled();
     expect(f.guard.recordRefusal).toHaveBeenCalledOnce();
+  });
+
+  it("relays a Daily Call only with the pick stored before the bot view was served (#219 item 21)", async () => {
+    const dailyCall = (userUp: boolean) =>
+      signedRequest({
+        to: TARGETS.DailyCall,
+        data: encodeFunctionData({ abi: TARGET_ABIS.DailyCall, functionName: "call", args: [5n, userUp, false, "0x1234"] }),
+      });
+    const f = fakeRelay();
+    f.guard.dailyCallPick.mockResolvedValue(true);
+    expect(code(await f.relay(relayInput(await dailyCall(false))))).toBe("PICK_MISMATCH");
+    expect(f.guard.dailyCallPick).toHaveBeenCalledWith(5n, istDay(NOW_S));
+    expect(f.guard.reserve).not.toHaveBeenCalled();
+    expect((await f.relay(relayInput(await dailyCall(true)))).body).toMatchObject({ ok: true });
+
+    f.guard.dailyCallPick.mockResolvedValue(null); // never asked for the view
+    expect(code(await f.relay(relayInput(await dailyCall(true))))).toBe("PICK_MISMATCH");
   });
 
   it("passes every wallet of the signed-in user to the daily limit", async () => {
