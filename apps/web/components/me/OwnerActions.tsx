@@ -5,7 +5,8 @@ import { useState } from "react";
 import { keccak256, stringToHex, zeroHash, type Hex } from "viem";
 import { PrimaryButton } from "@/components/create/controls";
 import type { OwnerConfig } from "@/lib/config";
-import { shortCode } from "@/lib/owner";
+import { userMessage } from "@/lib/errors";
+import { saveCorrectionNote, shortCode } from "@/lib/owner";
 import { CHIPS, createChainClient, SEASON_LEDGER_ABI } from "@/lib/relay-call";
 import type { WalletSession } from "@/lib/wallet";
 import { ActionStatus, NotLive, useRelay } from "./relay-ui";
@@ -48,6 +49,7 @@ export function CorrectCall({ ctx, botId, decisionUuid }: { ctx: OwnerCtx; botId
   const [open, setOpen] = useState(false);
   const [chip, setChip] = useState<number | null>(null);
   const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
   if (!ctx.config.targets.SeasonLedger) return null;
   if (relay.phase.name === "done") return <div className="mt-2"><ActionStatus phase={relay.phase} done="Correction on QIE. It feeds your bot's next version." /></div>;
   if (!open) {
@@ -60,12 +62,22 @@ export function CorrectCall({ ctx, botId, decisionUuid }: { ctx: OwnerCtx; botId
   const text = note.trim();
   async function send() {
     if (chip === null) return;
-    // shortcut: the note text itself isn't stored anywhere yet (no write route), only its hash on-chain.
     const noteHash: Hex = text ? keccak256(stringToHex(text)) : zeroHash;
+    if (text) {
+      setSaving(true);
+      try {
+        await saveCorrectionNote(ctx.config.workerUrl, ctx.session, { botId, decisionId: decisionUuid, chip, note: text, noteHash });
+      } catch (e) {
+        relay.fail(userMessage(e)); // nothing signed: fix the note, or send without one
+        return;
+      } finally {
+        setSaving(false);
+      }
+    }
     await relay.run({ kind: "recordCorrection", botId: BigInt(botId), decisionId: decisionIdFromUuid(decisionUuid), noteHash, chip });
   }
   return (
-    <fieldset className="mt-2 flex flex-col gap-2 rounded-r2 bg-surface-2 p-3" disabled={relay.busy}>
+    <fieldset className="mt-2 flex flex-col gap-2 rounded-r2 bg-surface-2 p-3" disabled={relay.busy || saving}>
       <legend className="sr-only">What was wrong with this call?</legend>
       <div className="flex flex-wrap gap-2">
         {SPOKEN_CHIPS.map((c) => {
@@ -93,7 +105,7 @@ export function CorrectCall({ ctx, botId, decisionUuid }: { ctx: OwnerCtx; botId
           placeholder="e.g. stop chasing gold"
         />
       </label>
-      <PrimaryButton disabled={chip === null || relay.busy} onClick={send}>
+      <PrimaryButton disabled={chip === null || relay.busy || saving} onClick={send}>
         Send correction
       </PrimaryButton>
       <ActionStatus phase={relay.phase} done="" onRecheck={relay.recheck} />

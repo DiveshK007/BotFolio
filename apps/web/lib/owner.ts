@@ -15,6 +15,7 @@ export const DAILY_CALL_VIEW_PATH = "/daily-call/view";
 export const BIG_MOVES_PATH = "/big-moves";
 export const BIG_MOVES_SHRINK_PATH = "/big-moves/shrink";
 export const CHALLENGE_PATH = "/challenge";
+export const CORRECTION_NOTE_PATH = "/corrections/note";
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const isHex = (v: unknown, bytes?: number): v is Hex =>
@@ -271,6 +272,13 @@ export const fetchBigMoves = (w: string, a: Auth) => ownerPost(w, a, BIG_MOVES_P
 /** Shrink is no tx: the worker ends the 2 h window now and the runner sends the safe size (#80). */
 export const shrinkBigMove = (w: string, a: Auth, orderId: Hex) =>
   ownerPost(w, a, BIG_MOVES_SHRINK_PATH, { orderId }, (j) => (isObj(j) && isStr(j.note) ? j.note : null));
+
+/**
+ * The note text goes to the worker before the owner signs (#79): only its hash goes on-chain, and the indexer joins
+ * the two once the signed correction lands. The worker refuses links and real-money advice, so nothing is signed.
+ */
+export const saveCorrectionNote = (w: string, a: Auth, body: { botId: string; decisionId: string; chip: number; note: string; noteHash: Hex }) =>
+  ownerPost(w, a, CORRECTION_NOTE_PATH, body, () => true);
 
 // ---------------------------------------------------------------------------
 // Slot clock (SPEC §6.1: 09:00, 13:00, 17:00, 21:00 IST)
