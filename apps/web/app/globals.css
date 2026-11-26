@@ -50,6 +50,7 @@ body {
   color: var(--ink);
   font-family: var(--f-body);
   min-width: 360px; /* SPEC §2.4 / web README: 360 px minimum width */
+  overflow-wrap: break-word; /* a long unbroken bot name, sentence or hash wraps instead of widening the page at 360 px */
 }
 
 :focus-visible {
