@@ -40,6 +40,9 @@ Vercel (web):
 - [ ] `NEXT_PUBLIC_QIE_CHAIN_ID=1990`
 - [ ] `NEXT_PUBLIC_FORWARDER_ADDRESS`, `NEXT_PUBLIC_BOT_REGISTRY_ADDRESS`, `NEXT_PUBLIC_PAPER_LEDGER_ADDRESS`, `NEXT_PUBLIC_SEASON_LEDGER_ADDRESS`, `NEXT_PUBLIC_TRUST_REGISTRY_ADDRESS`, `NEXT_PUBLIC_DAILY_CALL_ADDRESS`, `NEXT_PUBLIC_CHALLENGES_ADDRESS` all match the Render addresses and the verified contracts on `https://mainnet.qie.digital`
 - [ ] `NEXT_PUBLIC_RELAY_URL` points at the Render service; `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_PRIVY_APP_ID` set
+- [ ] `NEXT_PUBLIC_QIE_RPC_URLS` empty (= rpc3, rpc4, rpc5, rpc1, rpc2) or a comma list of mainnet RPCs, not a local fork URL
+- [ ] The Render service has the same `NEXT_PUBLIC_PRIVY_APP_ID` plus `PRIVY_APP_SECRET`, `SIWE_DOMAIN` = the site's host (e.g. `botfolio.example`, no scheme) and `WEB_ORIGINS`/`APP_URL` = the site's origin. SIWE only works on that one host, so QIE Wallet sign-in fails on Vercel preview URLs
+- [ ] Privy dashboard: the site's origin is an allowed origin, passkey login is on, Ethereum embedded wallets are on (see `apps/web/README.md`)
 - [ ] Render health check path is `/healthz` (**UNVERIFIED**, see `runbook.md`)
 
 ## 3. After deploy: worker smoke checks
