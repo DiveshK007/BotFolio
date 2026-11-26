@@ -174,7 +174,7 @@ comment on table decisions is 'One row per bot per slot, incl. HOLD / skipped / 
 create table trades (
   id            bigint generated always as identity primary key,
   decision_id   uuid not null references decisions(id),
-  action_index  int not null check (action_index between 0 and 2),   -- position in the decision's actions[] (max 3)
+  action_index  int not null check (action_index between 0 and 4),   -- position in actions[]: max 3 (LLM), 5 (house bot)
   order_id      bytes32 not null unique,                    -- keccak256(abi.encode(decisionId, actionIndex)) (§3)
   bot_id        bigint not null references bots(id),
   asset         asset_id not null,
@@ -285,7 +285,7 @@ comment on table relay_log is 'Every POST /relay attempt. Rate limits (30/user/d
 create table big_moves (
   id            bigint generated always as identity primary key,
   decision_id   uuid not null references decisions(id),
-  action_index  int not null check (action_index between 0 and 2),
+  action_index  int not null check (action_index between 0 and 4),
   order_id      bytes32 not null unique,                    -- same orderId the clipped fallback reuses (§6.4 step 10)
   bot_id        bigint not null references bots(id),
   asset         asset_id not null,
