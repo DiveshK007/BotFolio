@@ -132,3 +132,30 @@ describe("trust scores of a closed season (#354)", () => {
     expect(c.commitScores).not.toHaveBeenCalled();
   });
 });
+
+describe("a near-empty season (#152: S0 has few trades)", () => {
+  const memoryStore = () => {
+    const files = new Map<string, string>();
+    return { put: vi.fn(async (name: string, text: string) => (files.set(name, text), name)), get: vi.fn(async (uri: string) => files.get(uri) ?? "") };
+  };
+
+  it("closes a season with no bots: a root, no scores to commit", async () => {
+    const c = chain();
+    expect(await closeSeasons({ ...deps(c), store: memoryStore() }, new AbortController().signal)).toEqual([1]);
+    expect(c.closeSeason).toHaveBeenCalledOnce();
+    expect(c.commitScores).not.toHaveBeenCalled();
+  });
+
+  it("closes a season whose only bot never traded", async () => {
+    const { rows } = await pg.query<{ id: string }>(
+      "insert into slots (slot_time, kind, season_id) values ($1, 'scheduled', 1) returning id::text as id",
+      [ist("2026-11-28T21:00:00").toISOString()],
+    );
+    await pg.query("insert into portfolio_marks (bot_id, slot_id, cash_e8, holdings, value_e8) values (7, $1, $2, '{}', $2)", [rows[0]!.id, START.toString()]);
+    const c = chain();
+    expect(await closeSeasons({ ...deps(c), store: memoryStore() }, new AbortController().signal)).toEqual([1]);
+    expect(c.commitScores).toHaveBeenCalledOnce();
+    expect(c.closeSeason).toHaveBeenCalledOnce();
+    expect((await pg.query("select battle_rank, trades from season_results")).rows).toEqual([{ battle_rank: 1, trades: 0 }]);
+  });
+});
