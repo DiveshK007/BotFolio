@@ -80,7 +80,7 @@ interface ResultRow {
 
 async function seasonCards({ db, chain, now }: CardDeps): Promise<number> {
   const { rows: seasons } = await db.query<{ id: number; root_tx: Hex }>(
-    "select id, root_tx from seasons where status = 'closed' and root_tx is not null and ends_at > $1::timestamptz order by id",
+    "select id, root_tx from seasons where id > 0 and status = 'closed' and root_tx is not null and ends_at > $1::timestamptz order by id", // S0 is hidden (#219)
     [new Date(now().getTime() - CLOSE_LOOKBACK_MS).toISOString()],
   );
   let made = 0;
@@ -225,7 +225,7 @@ async function challengeCards({ db, chain, now }: CardDeps): Promise<number> {
     `select c.code, c.season_id as season, c.challenger_bot::text as challenger, c.opponent_bot::text as opponent,
             c.winner_bot::text as winner, s.root_tx
      from challenges c join seasons s on s.id = c.season_id
-     where c.status = 'settled' and c.winner_bot is not null and s.root_tx is not null and s.ends_at > $1::timestamptz
+     where c.season_id > 0 and c.status = 'settled' and c.winner_bot is not null and s.root_tx is not null and s.ends_at > $1::timestamptz
        and (not exists (select 1 from cards x where x.id = 'challenge-' || substr(c.code, 3, 16) || '-' || c.challenger_bot::text)
          or not exists (select 1 from cards x where x.id = 'challenge-' || substr(c.code, 3, 16) || '-' || c.opponent_bot::text))`,
     [new Date(now().getTime() - CLOSE_LOOKBACK_MS).toISOString()],
