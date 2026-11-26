@@ -55,8 +55,9 @@ services:
         sync: false
       # relay + login
       - key: RELAY_ENABLED
-        # Switch to true only once every value here is set (docs/deploy.md step 8).
-        value: "false"
+        # Set in the dashboard: "false" until every value here is set, then "true" (docs/deploy.md step 8).
+        # sync: false, so a Blueprint sync never switches a live relay back off.
+        sync: false
       - key: RELAY_JWT_SECRET
         generateValue: true
       - key: WEB_ORIGINS
