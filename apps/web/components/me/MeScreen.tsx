@@ -6,6 +6,7 @@ import { BotPageView } from "@/components/bot/BotPageView";
 import { ErrorNote } from "@/components/create/controls";
 import { fetchBotPage, istTime, type BotPage } from "@/lib/bot-record";
 import { getOwnerConfig, type OwnerConfig } from "@/lib/config";
+import type { BotCardLink } from "@/lib/site/data";
 import { REGISTRY_ABI } from "@/lib/create-bot";
 import { userMessage } from "@/lib/errors";
 import { fetchBigMoves, fetchDailyCall, fetchOwner, type DailyCallToday, type OwnerBot, type PendingBigMove } from "@/lib/owner";
@@ -31,10 +32,19 @@ export type MeData =
       owner: OwnerBot | null;
       daily: DailyCallToday | null;
       moves: PendingBigMove[];
+      /** null = the cards read failed. */
+      cards: BotCardLink[] | null;
     };
 
 const card = "flex flex-col gap-3 rounded-r3 border border-line bg-surface p-4 shadow-card";
 const h2 = "font-display text-xl font-extrabold";
+
+async function fetchCards(botId: string): Promise<BotCardLink[]> {
+  const r = await fetch(`/api/site/cards?bot=${botId}`);
+  const j = r.ok ? ((await r.json()) as { cards?: unknown }) : null;
+  if (!Array.isArray(j?.cards)) throw new Error(`cards ${r.status}`);
+  return j.cards as BotCardLink[];
+}
 
 export async function loadMe(config: OwnerConfig, session: WalletSession): Promise<MeData> {
   const registry = config.targets.BotRegistry;
@@ -48,7 +58,7 @@ export async function loadMe(config: OwnerConfig, session: WalletSession): Promi
   if (botId === 0n) return { kind: "no_bot" };
   const id = botId.toString();
   const w = config.workerUrl;
-  const [page, owner, daily, moves] = await Promise.allSettled([fetchBotPage(id, w), fetchOwner(w, session), fetchDailyCall(w, session), fetchBigMoves(w, session)]);
+  const [page, owner, daily, moves, cards] = await Promise.allSettled([fetchBotPage(id, w), fetchOwner(w, session), fetchDailyCall(w, session), fetchBigMoves(w, session), fetchCards(id)]);
   if (page.status === "rejected" || page.value.kind === "error" || page.value.kind === "busy") return { kind: "error", message: "Your bot's record didn't load. Please try again in a minute." };
   if (page.value.kind === "not_found") return { kind: "not_indexed", botId: id };
   if (page.value.kind === "not_live") return { kind: "error", message: "Bot pages aren't switched on yet." };
@@ -59,6 +69,7 @@ export async function loadMe(config: OwnerConfig, session: WalletSession): Promi
     owner: ok(owner)?.find((b) => b.botId === id) ?? null,
     daily: ok(daily),
     moves: (ok(moves) ?? []).filter((m) => m.botId === id),
+    cards: ok(cards),
   };
 }
 
@@ -130,7 +141,7 @@ export function MeView({ data, ctx, now, onReload }: { data: MeData; ctx: OwnerC
     );
   }
 
-  const { page, owner, daily, moves } = data;
+  const { page, owner, daily, moves, cards } = data;
   const botId = page.bot.id;
   const dailyBot = daily?.bots.find((b) => b.botId === botId);
   const proposal = owner?.proposal;
@@ -176,6 +187,27 @@ export function MeView({ data, ctx, now, onReload }: { data: MeData; ctx: OwnerC
           </Link>
         ) : (
           <p className="text-sm text-muted">Your first season result comes at the next close, {istTime(nextVisibleClose(now))}.</p>
+        )}
+      </section>
+      <section aria-labelledby="cards" className={card}>
+        <h2 id="cards" className={h2}>
+          Your cards
+        </h2>
+        {cards === null ? (
+          <p className="text-sm text-muted">Your cards didn&apos;t load. Reload the page in a minute.</p>
+        ) : cards.length === 0 ? (
+          <p className="text-sm text-muted">Your first card appears after your bot&apos;s first trade.</p>
+        ) : (
+          <ul className="flex flex-col">
+            {cards.map((c) => (
+              <li key={c.id}>
+                <Link href={`/card/${encodeURIComponent(c.id)}`} className="flex min-h-11 items-center justify-between gap-3 font-semibold text-accent-ink">
+                  <span>{c.headline}</span>
+                  <span className="shrink-0 text-xs font-normal text-muted">{istTime(c.createdAt)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
       <section aria-labelledby="challenge" className={card}>
