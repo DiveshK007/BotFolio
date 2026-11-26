@@ -2,10 +2,11 @@
 pragma solidity 0.8.24;
 
 import {Script, console2} from "forge-std/Script.sol";
+import {IBotRegistry} from "../src/interfaces/IBotRegistry.sol";
 import {ISeasonLedger} from "../src/interfaces/ISeasonLedger.sol";
 import {ITrustScoreRegistry} from "../src/interfaces/ITrustScoreRegistry.sol";
 
-/// Admin scripts (issue #29, README "Admin scripts"): OpenSeason, CloseSeason, PublishRules.
+/// Admin scripts (issue #29, README "Admin scripts"): OpenSeason, CloseSeason, PublishRules, SeedHouseBots.
 ///
 /// None reads a private key. Pass `--sender <address>` to simulate. A real run adds the signer and
 /// `--broadcast` on the command line, and is done by a person.
@@ -110,5 +111,43 @@ contract PublishRules is AdminScript {
         vm.stopBroadcast();
 
         console2.log("published %s: %s", version, uri);
+    }
+}
+
+/// DEFAULT_ADMIN_ROLE (cold key), issue #28. Env: BOT_REGISTRY_ADDRESS, HOUSE_HASHES, HOUSE_BPS, HOUSE_TRADES
+/// (comma-separated, printed by `pnpm --filter ./apps/worker house:seed forge`, see docs/deploy.md). Creates the three house
+/// bots as botIds 1-3, so it only runs on a registry with no bots yet: a second run can't make duplicates.
+contract SeedHouseBots is AdminScript {
+    function run() external {
+        runWith(
+            IBotRegistry(vm.envAddress("BOT_REGISTRY_ADDRESS")),
+            vm.envBytes32("HOUSE_HASHES", ","),
+            vm.envUint("HOUSE_BPS", ","),
+            vm.envUint("HOUSE_TRADES", ",")
+        );
+    }
+
+    function runWith(
+        IBotRegistry registry,
+        bytes32[] memory hashes,
+        uint256[] memory bps,
+        uint256[] memory trades
+    ) public onQie {
+        if (hashes.length != 3 || bps.length != 3 || trades.length != 3) {
+            revert BadInput("need exactly 3 house bots");
+        }
+        if (registry.nextBotId() != 1) revert BadInput("registry already has bots");
+        for (uint256 i; i < 3; ++i) {
+            if (hashes[i] == bytes32(0)) revert BadInput("HOUSE_HASHES has a zero hash");
+            if (bps[i] > type(uint16).max || trades[i] > type(uint8).max) revert BadInput("limit too large");
+        }
+
+        vm.startBroadcast();
+        for (uint256 i; i < 3; ++i) {
+            // forge-lint: disable-next-line(unsafe-typecast)
+            uint256 id = registry.createHouseBot(hashes[i], uint16(bps[i]), uint8(trades[i]));
+            console2.log("house bot %s created", id);
+        }
+        vm.stopBroadcast();
     }
 }

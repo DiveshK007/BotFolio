@@ -1,0 +1,97 @@
+# Render blueprint for the BotFolio worker (SPEC §10): relayer, runner, scheduler, indexer, season close, MCP.
+# Dashboard → New → Blueprint → this repo. Values marked `sync: false` are asked for once in the dashboard and
+# never live in git. Full list with meanings: docs/env.md. Order of first deploy: docs/deploy.md.
+services:
+  - type: web
+    name: botfolio-worker
+    runtime: node
+    # Singapore is the closest region to India. UNVERIFIED that the account offers it; otherwise pick the default.
+    region: singapore
+    # Starter is always on. A free web service sleeps after 15 min idle, which stops the cron slots (SPEC §10).
+    plan: starter
+    # One instance only: SIWE nonces and the per-IP limit are in memory (#219 Part C).
+    numInstances: 1
+    branch: main
+    autoDeploy: true
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @botfolio/worker build
+    startCommand: node apps/worker/dist/index.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # chain
+      - key: QIE_CHAIN_ID
+        value: "1990"
+      - key: QIE_RPC_URLS
+        # rpc3 first: rpc1/rpc2 drop TLS sometimes (SPEC §0.1).
+        value: https://rpc3mainnet.qie.digital,https://rpc4mainnet.qie.digital,https://rpc5mainnet.qie.digital,https://rpc1mainnet.qie.digital,https://rpc2mainnet.qie.digital
+      - key: MAX_AGE_CRYPTO_S
+        value: "1800"
+      - key: MAX_AGE_GOLD_S
+        value: "21600"
+      # contracts: from packages/contracts/deployments/1990.env after the deploy
+      - key: FORWARDER_ADDRESS
+        sync: false
+      - key: BOT_REGISTRY_ADDRESS
+        sync: false
+      - key: PAPER_LEDGER_ADDRESS
+        sync: false
+      - key: SEASON_LEDGER_ADDRESS
+        sync: false
+      - key: TRUST_REGISTRY_ADDRESS
+        sync: false
+      - key: DAILY_CALL_ADDRESS
+        sync: false
+      - key: CHALLENGES_ADDRESS
+        sync: false
+      - key: INDEXER_START_BLOCK
+        sync: false
+      # hot keys (secret)
+      - key: RELAYER_PRIVATE_KEY
+        sync: false
+      - key: RUNNER_PRIVATE_KEY
+        sync: false
+      - key: COMMITTER_PRIVATE_KEY
+        sync: false
+      # relay + login
+      - key: RELAY_ENABLED
+        # Switch to true only once every value here is set (docs/deploy.md step 8).
+        value: "false"
+      - key: RELAY_JWT_SECRET
+        generateValue: true
+      - key: WEB_ORIGINS
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: SIWE_DOMAIN
+        sync: false
+      - key: TRUSTED_PROXY_HOPS
+        # Render puts one proxy in front of the service. UNVERIFIED until checked from a real request header.
+        value: "1"
+      - key: NEXT_PUBLIC_PRIVY_APP_ID
+        sync: false
+      - key: PRIVY_APP_SECRET
+        sync: false
+      # data
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: REPLAY_BUCKET
+        value: replay
+      # llm
+      - key: LLM_PROVIDER
+        value: xai
+      - key: XAI_API_KEY
+        sync: false
+      - key: XAI_BASE_URL
+        value: https://api.x.ai/v1
+      - key: LLM_MONTHLY_BUDGET_USD
+        sync: false
+      # alerts
+      - key: ALERT_WEBHOOK_URL
+        sync: false
+      - key: LOW_BALANCE_ALERT_QIE
+        value: "2"

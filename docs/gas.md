@@ -2,6 +2,8 @@
 
 Measured Nov 22 2026 on a QIE mainnet fork (rpc3, around block 12,091,065) with Foundry 1.9.0, solc 0.8.24, shanghai, optimizer 200 runs (SPEC §4.10). Nothing was broadcast.
 
+**Nov 26 update (#316, #219 Part A guards):** the rows for `DailyCall.call` (banned-bot check), `DailyCall.settle`, `openSeason`, `closeSeason` and `commitScores` are re-measured from PR #316's CI run (Foundry 1.9.0). `DailyCall.call`'s tx gas is the old figure plus the measured difference (≈). The per-contract deploy sizes below are from Nov 22; a full deploy simulated on an Anvil fork on Nov 26 estimated **12,609,280 gas in total** (≈ 0.014 QIE at 1.125 gwei). The 300k cap still holds.
+
 **Decision for the relayer (SPEC §11): keep the 300,000 cap on the signed `gas` field.** The most expensive relayed call, `executeApproved` with the 5-feed cap check, needs 173,400. That leaves 1.7× headroom.
 
 ## How it was measured
@@ -31,7 +33,7 @@ The same test fails CI if any relayed call stops fitting in 300k.
 | `PaperLedger.executeApproved`, empty portfolio | 109,203 | 36 % | 171,890 | 0.000193 |
 | `PaperLedger.executeApproved`, holds all 5 (5-feed cap check) | 159,813 | 53 % | 222,495 | 0.000250 |
 | `PaperLedger.executeApproved`, holds 4 and buys the 5th (**worst**) | **173,400** | **58 %** | **236,088** | 0.000266 |
-| `DailyCall.call` | 105,394 | 35 % | 167,126 | 0.000188 |
+| `DailyCall.call` | 108,287 | 36 % | ≈170,019 | 0.000191 |
 | `Challenges.create` | 113,671 | 38 % | 173,625 | 0.000195 |
 | `Challenges.accept` | 60,240 | 20 % | 120,571 | 0.000136 |
 
@@ -49,12 +51,12 @@ The signed `gas` and the transaction's gas limit are different numbers. Size the
 | `executeBatch`: 10 bots, empty portfolios | 850,317 | 0.000957 |
 | `executeBatch`: 10 bots, 5 holdings each | 907,449 | 0.001021 |
 | `executeBatch`: 50 bots, 5 holdings each | 4,212,212 | 0.004739 |
-| `DailyCall.settle`: 1 bot | 51,781 | 0.000058 |
-| `DailyCall.settle`: 10 bots | 148,981 | 0.000168 |
-| `SeasonLedger.openSeason` | 54,197 | 0.000061 |
-| `SeasonLedger.closeSeason` (76-char URI) | 165,120 | 0.000186 |
+| `DailyCall.settle`: 1 bot | 52,177 | 0.000059 |
+| `DailyCall.settle`: 10 bots | 149,377 | 0.000168 |
+| `SeasonLedger.openSeason` | 56,548 | 0.000064 |
+| `SeasonLedger.closeSeason` (76-char URI) | 167,259 | 0.000188 |
 | `TrustScoreRegistry.publishRules` (76-char URI) | 140,818 | 0.000158 |
-| `TrustScoreRegistry.commitScores` (first for a season) | 76,529 | 0.000086 |
+| `TrustScoreRegistry.commitScores` (first for a season) | 76,649 | 0.000086 |
 | `Challenges.settle` | 46,903 | 0.000053 |
 | `Challenges.expire` | 43,802 | 0.000049 |
 | `BotRegistry.createHouseBot` (includes `initPortfolio`) | 129,182 | 0.000145 |
