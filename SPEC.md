@@ -136,16 +136,15 @@ Checked Nov 20 2026. QIE Wallet `signTypedData` on chain 1990 is still to be tes
 
   | Season | Opens | Last slot | Closes | Type |
   |---|---|---|---|---|
-  | S0 (test, hidden) | Nov 24 00:00 | Nov 25 21:00 | Nov 25 21:30 | sprint |
-  | S1 | Nov 26 00:00 | Nov 27 21:00 | Nov 27 21:30 | sprint |
-  | S2 | Nov 28 00:00 | Nov 29 21:00 | Nov 29 21:30 | sprint |
-  | S3 | Nov 30 00:00 | Dec 1 21:00 | Dec 1 21:30 | sprint |
-  | S4 | Dec 2 00:00 | Dec 3 21:00 | Dec 3 21:30 | sprint |
-  | S5 | Dec 4 00:00 | Dec 6 21:00 (Sun) | Dec 6 21:30 | sprint (3 days, bridges to weekly) |
-  | S6+ | Mon Dec 7 00:00 | Sun 21:00 | Sun 21:30 | weekly |
+  | S0 (test, hidden) | Nov 27 00:00 | Nov 28 21:00 | Nov 28 21:30 | sprint |
+  | S1 | Nov 29 00:00 | Nov 30 21:00 | Nov 30 21:30 | sprint |
+  | S2 | Dec 1 00:00 | Dec 2 21:00 | Dec 2 21:30 | sprint |
+  | S3 | Dec 3 00:00 | Dec 4 21:00 | Dec 4 21:30 | sprint |
+  | S4 | Dec 5 00:00 | Dec 6 21:00 (Sun) | Dec 6 21:30 | sprint |
+  | S5+ | Mon Dec 7 00:00 | Sun 21:00 | Sun 21:30 | weekly |
 
-  Result: S1 and S2 are closed before submission (Nov 30); S3–S5 close during or right after demo week, so judges see live season results.
-- **Launch threshold (v1.1):** until S6 starts, "provisional" = fewer than **8** executed trades or **0** completed seasons. From S6 it reverts to 20 trades / 1 season (§7). Store the active threshold in `trust_rules_version` so old scores stay reproducible.
+  Re-seeded Nov 26 (`docs/decisions.md`): the contracts deploy ~Nov 27–28 and `SeasonLedger` opens S(n+1) only after S(n) closes, so no season may start before the deploy. Result: S1 closes Nov 30 21:30, before the submission deadline (04:29 IST Dec 1); S2–S4 close during demo week, so judges see live season results.
+- **Launch threshold (v1.1):** until S5 starts, "provisional" = fewer than **8** executed trades or **0** completed seasons. From S5 it reverts to 20 trades / 1 season (§7). Store the active threshold in `trust_rules_version` so old scores stay reproducible.
 - Example prompts are crypto/gold only (QIE has no stock feeds).
 - Hackathon track: **AI + Autonomous Agents** (locked).
 - LLM: **Grok via the xAI API** behind a provider-agnostic interface (§6.6). Hosting: **Render** for the worker + relayer (§10).
@@ -251,7 +250,7 @@ trust_scores(season_id, bot_id, rules_version, f_rules int, f_drawdown int, f_co
 cards(id text pk, bot_id, kind enum(trade,roast,battle,season,recap,evolution,challenge,call), payload jsonb, created_at)
 relay_log(id pk, user_wallet, target text, selector text, status, tx_hash, gas_used, created_at)
 -- v1.1
-seasons: + kind enum(sprint,weekly), + provisional_min_trades int   -- 8 during sprint, 20 from S6
+seasons: + kind enum(sprint,weekly), + provisional_min_trades int   -- 8 during sprint, 20 from S5
 big_moves(id pk, decision_id, action_index int, order_id bytea32, bot_id, asset, side, bps int, runner_sig bytea, deadline timestamptz,
      status enum(pending,approved,shrunk,blocked,expired), user_tx text, created_at)
 daily_calls(id pk, bot_id, user_wallet, day int, asset, user_up bool, bot_up bool, bot_up_sig bytea, price_at_call_e8 numeric,
@@ -482,7 +481,7 @@ Computed over the bot's whole history up to the season close (all-time), integer
 | F4 Explains its trades | share of executed decisions whose reason passes a deterministic check: 10–140 chars, names the traded asset, valid `reason_tag`, tag consistent with action (e.g. `take_profit`/`cut_loss` only on SELL, `buy_dip` only on BUY after negative 24 h change) | `250 × valid / max(1, executed)` |
 
 - Rounding: `floor` per factor.
-- `provisional = trades < N OR completed_seasons < 1` (shown with a "new" badge), with **N = 8 during sprint seasons (until S6), 20 from S6**, read from the active trust rules version (`trust-v1-sprint` → `trust-v1`). Both versions are published via `publishRules`.
+- `provisional = trades < N OR completed_seasons < 1` (shown with a "new" badge), with **N = 8 during sprint seasons (until S5), 20 from S5**, read from the active trust rules version (`trust-v1-sprint` → `trust-v1`). Both versions are published via `publishRules`.
 - Trades executed through Approve Big Move count as executed trades and as "follows its rules" (F1) — the owner signed off.
 - Every bot starts with the same capital, so factors are comparable.
 - Rules change only by publishing `trust-v2`; old seasons keep their version.
@@ -495,7 +494,7 @@ Computed at each season close (and refreshed after every slot for "live" view). 
 
 1. **Top Returns:** `R = V_end / V_start − 1`. Tiebreak: lower maxDD.
 2. **Best Risk-Adjusted (Sortino, simple):** daily returns `r_d` from 21:00 marks; `downside = sqrt(mean(min(r_d,0)^2))`, floor 0.001; `S = mean(r_d) / downside`. Eligible: ≥ 3 executed trades and ≥ 3 daily returns in the season. Tiebreak: higher R.
-3. **Most Trusted:** trust score total. Eligible: not provisional (§7: **≥ 8 trades during sprint seasons, ≥ 20 from S6**, plus ≥ 1 completed season). Tiebreak: earlier `createdAt`.
+3. **Most Trusted:** trust score total. Eligible: not provisional (§7: **≥ 8 trades during sprint seasons, ≥ 20 from S5**, plus ≥ 1 completed season). Tiebreak: earlier `createdAt`.
 4. **Coach vs Bot (v1.1):** Daily Call win rate this season (min 2 calls during sprint seasons, 4 weekly). Shows the human's score, not the bot's.
 - **Season battle:** your bot vs 3 house bots ranked by season R (plus any accepted challenges, §2.5). House bots (deterministic, no LLM, created by admin):
   - *Steady Sam* — equal 20 % in all 5 assets, rebalanced at the first 09:00 slot of each season.

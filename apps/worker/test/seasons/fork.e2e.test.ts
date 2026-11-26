@@ -28,7 +28,7 @@ describe.skipIf(!fork)("season open on the real SeasonLedger, on an Anvil fork",
       address: f.addresses.SeasonLedger,
       sender: createSystemSender({ rpcUrls: [f.url], account }),
     });
-  const now = new Date("2026-11-26T00:00:00+05:30");
+  const now = new Date("2026-11-29T00:00:00+05:30");
   const log = { info() {}, warn() {} };
   const signal = new AbortController().signal;
 
@@ -45,8 +45,8 @@ describe.skipIf(!fork)("season open on the real SeasonLedger, on an Anvil fork",
     expect(await openDueSeasons({ db, chain: committer, now, signal, log })).toEqual([]);
     expect(await committer.nextSeason()).toBe(1);
     const [start, end, , , closed] = await f.read<[bigint, bigint, string, string, boolean]>("SeasonLedger", "seasons", [0]);
-    expect(start).toBe(BigInt(Date.parse("2026-11-24T00:00:00+05:30") / 1000));
-    expect(end).toBe(BigInt(Date.parse("2026-11-25T21:30:00+05:30") / 1000));
+    expect(start).toBe(BigInt(Date.parse("2026-11-27T00:00:00+05:30") / 1000));
+    expect(end).toBe(BigInt(Date.parse("2026-11-28T21:30:00+05:30") / 1000));
     expect(closed).toBe(false);
   }, 120_000);
 });

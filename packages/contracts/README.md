@@ -59,9 +59,9 @@ Contract-to-contract roles: PaperLedger grants `REGISTRY_ROLE` to BotRegistry, a
 ## Admin scripts
 `script/Admin.s.sol` has three. None reads a private key. The commands below only simulate (`--sender` stands in for the signer). A person does the real run by adding their signer and `--broadcast`.
 
-**Open a season** (committer). `SEASON` must be `SeasonLedger.nextSeason()`. Times are unix seconds. S0 is Nov 24 00:00 to Nov 25 21:00 IST (SPEC §1):
+**Open a season** (committer). `SEASON` must be `SeasonLedger.nextSeason()`. Times are unix seconds. S0 is Nov 27 00:00 to Nov 28 21:30 IST, the `seasons` seed (SPEC §1):
 ```bash
-SEASON_LEDGER_ADDRESS=0x... SEASON=0 SEASON_START=1795458600 SEASON_END=1795620600 \
+SEASON_LEDGER_ADDRESS=0x... SEASON=0 SEASON_START=1795717800 SEASON_END=1795881600 \
   forge script script/Admin.s.sol:OpenSeason --fork-url qie --sender $COMMITTER_ADDRESS
 ```
 

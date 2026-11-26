@@ -83,7 +83,7 @@ create table seasons (
   scores_tx              tx_hash,
   -- v1.1
   kind                   season_kind not null,
-  provisional_min_trades int not null,                      -- 8 during sprint seasons, 20 from S6 (§7)
+  provisional_min_trades int not null,                      -- 8 during sprint seasons, 20 from S5 (§7)
   check (ends_at > starts_at)
 );
 comment on table seasons is 'Season boundaries and the on-chain roots committed at close. Sprint vs weekly is data, not code.';

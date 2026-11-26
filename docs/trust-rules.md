@@ -6,8 +6,8 @@ Two versions are published with `publishRules`. They score the same way and diff
 
 | Version | Seasons | Provisional when |
 |---|---|---|
-| `trust-v1-sprint` | S0 to S5 (sprint seasons) | fewer than **8** executed trades, or no completed season |
-| `trust-v1` | S6 onwards (weekly seasons) | fewer than **20** executed trades, or no completed season |
+| `trust-v1-sprint` | S0 to S4 (sprint seasons) | fewer than **8** executed trades, or no completed season |
+| `trust-v1` | S5 onwards (weekly seasons) | fewer than **20** executed trades, or no completed season |
 
 The version of each season is in `TrustScoreRegistry.rulesVersionOf(season)`. A version is never edited; a rule change means a new version, and old seasons keep theirs.
 

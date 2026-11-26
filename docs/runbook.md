@@ -209,7 +209,7 @@ Write every pause and its reason in `docs/decisions.md`.
 
 ## 8. Dec 7 switch: sprint to weekly seasons (written Nov 25 2026)
 
-S5 closes Sun Dec 6 21:30 IST. S6, the first weekly season, opens Mon Dec 7 00:00 IST and closes Sun Dec 13 21:30 IST. The worker reads every boundary, the provisional threshold (8 → 20 trades) and the trust rules version (`trust-v1-sprint` → `trust-v1`) from the `seasons` rows, so there is no deploy and no env change. `TRUST_RULES_VERSION` and `PROVISIONAL_MIN_TRADES_*` in `.env.example` are not read by the worker.
+S4 closes Sun Dec 6 21:30 IST. S5, the first weekly season, opens Mon Dec 7 00:00 IST and closes Sun Dec 13 21:30 IST (calendar re-seeded Nov 26, `docs/decisions.md`). The worker reads every boundary, the provisional threshold (8 → 20 trades) and the trust rules version (`trust-v1-sprint` → `trust-v1`) from the `seasons` rows, so there is no deploy and no env change. `TRUST_RULES_VERSION` and `PROVISIONAL_MIN_TRADES_*` in `.env.example` are not read by the worker.
 
 Two checks, done before Sun Dec 6:
 
@@ -217,9 +217,9 @@ Two checks, done before Sun Dec 6:
    ```sql
    select id, starts_at at time zone 'Asia/Kolkata' as opens, ends_at at time zone 'Asia/Kolkata' as closes,
           kind, provisional_min_trades, trust_rules_version, status
-   from seasons where id between 5 and 19 order by id;
+   from seasons where id between 4 and 18 order by id;
    ```
-   Expect S5 `sprint, 8, trust-v1-sprint` ending Dec 6 21:30, then S6 to S19 `weekly, 20, trust-v1`, each Monday 00:00 to Sunday 21:30, S19 ending Mar 14 2027. If rows are missing, run `packages/db/seeds/seasons.sql` (it leaves existing rows alone). If S6 is missing on Dec 7, the 00:00 job fails with `season_row_missing` and S6 is not opened.
+   Expect S4 `sprint, 8, trust-v1-sprint` ending Dec 6 21:30, then S5 to S18 `weekly, 20, trust-v1`, each Monday 00:00 to Sunday 21:30, S18 ending Mar 14 2027. If rows are missing or still on the old calendar, run `packages/db/seeds/seasons.sql` (it leaves rows that have slots or a close tx alone). If S5 is missing on Dec 7, the 00:00 job logs `seasons.no_next_row` and S5 is not opened.
 2. **`trust-v1` is published on-chain.** Non-zero means published:
    ```bash
    cast call $TRUST_REGISTRY_ADDRESS "rulesDocHash(bytes32)(bytes32)" $(cast format-bytes32-string trust-v1) \
@@ -227,13 +227,13 @@ Two checks, done before Sun Dec 6:
    ```
    If it returns zero, the admin key holder publishes it with `script/Admin.s.sol:PublishRules` and `RULES_VERSION=trust-v1` ([`packages/contracts/README.md`](../packages/contracts/README.md), "Publish trust rules"). Use the same `docs/trust-rules.md` bytes, URI and hash as `trust-v1-sprint`: that doc defines both versions. **UNVERIFIED**: whether `trust-v1-sprint` and `trust-v1` are already published on mainnet.
 
-Without step 2, S6's close still commits the data root, but not the trust scores (`season.trust_rules_unpublished` in the logs). Publishing later is enough: the next close run commits them.
+Without step 2, S5's close still commits the data root, but not the trust scores (`season.trust_rules_unpublished` in the logs). Publishing later is enough: the next close run commits them.
 
 On the day, check the logs:
-- Sun Dec 6 21:30 IST: S5 goes `closing`, then `closed` once its `SeasonClosed` event is indexed.
-- Mon Dec 7 00:00 IST: `seasons.opened` with `season: 6`. Check on-chain with `cast call $SEASON_LEDGER_ADDRESS "nextSeason()(uint32)"`, which should return 7.
+- Sun Dec 6 21:30 IST: S4 goes `closing`, then `closed` once its `SeasonClosed` event is indexed.
+- Mon Dec 7 00:00 IST: `seasons.opened` with `season: 5`. Check on-chain with `cast call $SEASON_LEDGER_ADDRESS "nextSeason()(uint32)"`, which should return 6.
 - From then on, the daily 21:30 close check does nothing until Sun Dec 13 21:30.
 
-Known limit: S19 is the last seeded row. From Mon Mar 8 2027 00:00 IST, `season_open` logs `seasons.no_next_row` each day (no job failure, #313) and opens nothing until rows from S20 on are added to the seed.
+Known limit: S18 is the last seeded row. From Mon Mar 15 2027 00:00 IST, `season_open` logs `seasons.no_next_row` each day (no job failure, #313) and opens nothing until rows from S19 on are added to the seed.
 
 **Who:** Gokul for the database check. The admin key holder for `publishRules`.

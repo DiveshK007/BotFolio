@@ -10,8 +10,8 @@ import {DeployedFixture} from "./utils/DeployedFixture.sol";
 /// Issue #29: the admin scripts against a full deploy. Scripts broadcast as forge's default sender,
 /// so that account gets the two roles here.
 contract AdminScriptsForkTest is DeployedFixture {
-    uint256 internal constant S0_START = 1_795_458_600; // Nov 24 2026 00:00 IST
-    uint256 internal constant S0_END = 1_795_620_600; // Nov 25 2026 21:00 IST
+    uint256 internal constant S0_START = 1_795_717_800; // Nov 27 2026 00:00 IST
+    uint256 internal constant S0_END = 1_795_881_600; // Nov 28 2026 21:30 IST
     string internal constant URI = "https://example.com/trust-rules.md";
     bytes32 internal constant DOC = keccak256("rules doc");
 
@@ -38,10 +38,10 @@ contract AdminScriptsForkTest is DeployedFixture {
         assertFalse(closed);
     }
 
-    /// The README's timestamps are what SPEC §1 says: 00:00 IST Nov 24 to 21:00 IST Nov 25.
+    /// The README's timestamps are what SPEC §1 says: 00:00 IST Nov 27 to 21:30 IST Nov 28.
     function test_seasonZeroTimestampsAreIst() public pure {
         assertEq((S0_START + IST_OFFSET) % 1 days, 0);
-        assertEq(S0_END - S0_START, 1 days + 21 hours);
+        assertEq(S0_END - S0_START, 1 days + 21 hours + 30 minutes);
     }
 
     function test_openRefusesWrongNumber() public {

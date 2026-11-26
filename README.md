@@ -345,7 +345,7 @@ curl localhost:10000/healthz   # "reasons" lists what is still degraded
 - [ ] Public API `GET /api/v1/bots/:id/record` ([#106](https://github.com/DiveshK007/BotFolio/issues/106)) and `/stats` ([#92](https://github.com/DiveshK007/BotFolio/issues/92))
 - [ ] Connect QIE Wallet and `.qie` names ([#86](https://github.com/DiveshK007/BotFolio/issues/86), [#87](https://github.com/DiveshK007/BotFolio/issues/87))
 - [ ] Demo video, deck and submission ([#116](https://github.com/DiveshK007/BotFolio/issues/116), [#117](https://github.com/DiveshK007/BotFolio/issues/117), [#121](https://github.com/DiveshK007/BotFolio/issues/121))
-- [ ] Weekly seasons from S6, Dec 7 ([#179](https://github.com/DiveshK007/BotFolio/issues/179))
+- [ ] Weekly seasons from S5, Dec 7 ([#179](https://github.com/DiveshK007/BotFolio/issues/179))
 
 ## Documentation
 
