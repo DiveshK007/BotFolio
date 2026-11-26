@@ -49,10 +49,14 @@ export class DebutWatcher {
   private async safeTick(): Promise<void> {
     try {
       await this.tick();
+      if (this.failureLogged) this.record();
       this.failureLogged = false;
     } catch (error) {
       // Every 2 s, so once per outage.
-      if (!this.failureLogged) this.deps.log.warn("debut.poll_failed", { error: errorLabel(error) });
+      if (!this.failureLogged) {
+        this.deps.log.warn("debut.poll_failed", { error: errorLabel(error) });
+        this.record("poll failed");
+      }
       this.failureLogged = true;
     }
   }
@@ -164,8 +168,15 @@ export class DebutWatcher {
       }
       const { portfolio } = await chain.state(botId, Math.floor(time.getTime() / 1000));
       await saveMark(db, slot.id, botId, portfolio, await markPrices(db, market));
+      this.record();
     } catch (error) {
       log.warn("debut.failed", { botId, error: errorLabel(error) });
+      this.record("failed");
     }
+  }
+
+  /** /healthz (public, so no bot id) and the job-failure alert. A later success clears it. */
+  private record(problem?: string): void {
+    this.deps.health.recordJobRun("debut", { at: this.deps.now().toISOString(), problem });
   }
 }

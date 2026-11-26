@@ -60,6 +60,10 @@ export class HealthState {
     this.startProblems.push(problem);
   }
 
+  problemsAtStart(): readonly string[] {
+    return this.startProblems;
+  }
+
   setJob(name: string, state: JobHealth["state"], detail?: string): void {
     this.jobs.set(name, { state, detail });
   }

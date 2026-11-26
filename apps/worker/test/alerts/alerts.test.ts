@@ -1,7 +1,7 @@
 import { parseEther, type Address } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { describe, expect, it, vi } from "vitest";
-import { ALERT_COOLDOWN_MS, checkAlerts, createAlerts, hotWallets, lowBalanceWei, type Alerts } from "../../src/alerts";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { ALERT_COOLDOWN_MS, checkAlerts, createAlerts, hotWallets, lowBalanceWei, startedText, type Alerts } from "../../src/alerts";
 import { HealthState } from "../../src/health";
 import type { Log } from "../../src/scheduler/log";
 
@@ -134,10 +134,11 @@ describe("checkAlerts", () => {
     ]);
   });
 
-  it("alerts each failed slot run once, and a job that never started", async () => {
+  it("alerts each failed slot run once, and each start problem once", async () => {
     const { sent, health, deps, seen } = setup(null);
     deps.wallets = [];
-    health.setJob("daily_call", "not_started", "needs COMMITTER_PRIVATE_KEY");
+    health.addStartProblem("daily_call job not started: needs COMMITTER_PRIVATE_KEY");
+    health.addStartProblem("relay not started: needs RELAY_ENABLED");
     health.recordJobRun("slot", { at: "2026-11-25T06:00:05Z", problem: "failed for 2 bot(s)" });
     await checkAlerts(deps, seen, NOW);
     await checkAlerts(deps, seen, NOW);
@@ -146,9 +147,74 @@ describe("checkAlerts", () => {
     health.recordJobRun("slot", { at: "2026-11-25T18:00:05Z", problem: "failed" });
     await checkAlerts(deps, seen, NOW);
     expect(sent).toEqual([
-      { kind: "job_not_started:daily_call", text: "daily_call job not started: needs COMMITTER_PRIVATE_KEY" },
+      {
+        kind: "not_started:daily_call job not started: needs COMMITTER_PRIVATE_KEY",
+        text: "Not running: daily_call job not started: needs COMMITTER_PRIVATE_KEY",
+      },
+      { kind: "not_started:relay not started: needs RELAY_ENABLED", text: "Not running: relay not started: needs RELAY_ENABLED" },
       { kind: "job_failed:slot", text: "slot job failed for 2 bot(s) at 2026-11-25T06:00:05Z" },
       { kind: "job_failed:slot", text: "slot job failed at 2026-11-25T18:00:05Z" },
     ]);
+  });
+
+  describe("missed-slot watchdog", () => {
+    // 09:00 IST = 03:30 UTC; its window closes at 03:50, so it counts as missed from 04:15.
+    const SLOT = "2026-11-25T03:30:00.000Z";
+    const at = (iso: string) => new Date(iso);
+    afterEach(() => vi.useRealTimers());
+
+    function started(iso: string) {
+      vi.useFakeTimers({ now: at(iso) });
+      const s = setup(null);
+      s.deps.wallets = [];
+      s.health.setJob("slot", "scheduled");
+      return s;
+    }
+
+    it("alerts once when no run was recorded 25 min after the window", async () => {
+      const { sent, deps, seen } = started("2026-11-25T01:00:00Z");
+      await checkAlerts(deps, seen, at("2026-11-25T04:14:59Z"));
+      expect(sent).toEqual([]);
+      await checkAlerts(deps, seen, at("2026-11-25T04:15:00Z"));
+      await checkAlerts(deps, seen, at("2026-11-25T06:00:00Z"));
+      expect(sent).toEqual([{ kind: "missed_slot", text: `slot job missed the ${SLOT} slot: no run recorded` }]);
+    });
+
+    it("stays quiet when the slot ran or failed (that alerts on its own)", async () => {
+      const ran = started("2026-11-25T01:00:00Z");
+      ran.health.recordSlotRun({ slotId: "7", kind: "scheduled", slotTime: SLOT, finishedAt: "2026-11-25T03:31:00Z" });
+      await checkAlerts(ran.deps, ran.seen, at("2026-11-25T05:00:00Z"));
+      expect(ran.sent).toEqual([]);
+
+      const failed = started("2026-11-25T01:00:00Z");
+      failed.health.recordJobRun("slot", { at: "2026-11-25T03:30:02Z", problem: "failed" });
+      await checkAlerts(failed.deps, failed.seen, at("2026-11-25T05:00:00Z"));
+      expect(failed.sent.map(({ kind }) => kind)).toEqual(["job_failed:slot"]);
+    });
+
+    it("stays quiet after a deploy past the window, and when the slot job can't run", async () => {
+      const late = started("2026-11-25T03:50:00Z");
+      await checkAlerts(late.deps, late.seen, at("2026-11-25T05:00:00Z"));
+      expect(late.sent).toEqual([]);
+
+      const off = started("2026-11-25T01:00:00Z");
+      off.health.setJob("slot", "not_started", "needs RUNNER_PRIVATE_KEY");
+      await checkAlerts(off.deps, off.seen, at("2026-11-25T05:00:00Z"));
+      expect(off.sent).toEqual([]);
+    });
+
+    it("looks back across midnight to the 21:00 IST slot", async () => {
+      const { sent, deps, seen } = started("2026-11-25T12:00:00Z");
+      await checkAlerts(deps, seen, at("2026-11-26T00:30:00Z"));
+      expect(sent).toEqual([{ kind: "missed_slot", text: "slot job missed the 2026-11-25T15:30:00.000Z slot: no run recorded" }]);
+    });
+  });
+});
+
+describe("startedText", () => {
+  it("names the commit Render deployed, and nothing else", () => {
+    expect(startedText({ RENDER_GIT_COMMIT: "5ac9411e0f3b2c1d" })).toBe("worker_started 5ac9411e0f3b");
+    expect(startedText({})).toBe("worker_started");
+    expect(startedText({ RENDER_GIT_COMMIT: "not a sha <@everyone>" })).toBe("worker_started");
   });
 });

@@ -7,7 +7,7 @@ import { createScheduler } from "../../src/scheduler/scheduler";
 import { seasonJobs } from "../../src/seasons";
 import { systemAccount } from "../../src/system/key";
 import { closeSeasons } from "../../src/season/close";
-import { openDueSeasons } from "../../src/seasons/checks";
+import { markSeasonsClosing, openDueSeasons } from "../../src/seasons/checks";
 
 vi.mock("../../src/season/close", () => ({ closeSeasons: vi.fn(async () => []) }));
 vi.mock("../../src/seasons/checks", () => ({ markSeasonsClosing: vi.fn(async () => []), openDueSeasons: vi.fn(async () => []) }));
@@ -36,6 +36,14 @@ describe("seasonJobs", () => {
     expect(set.handlers).toEqual({});
     expect(set.unavailable.season_open).toContain(name);
     expect(JSON.stringify(set.unavailable)).not.toContain(key.slice(2));
+  });
+
+  it("fails season_close when closing isn't configured, after marking seasons closing", async () => {
+    const close = jobs(ENV).handlers.season_close!;
+    await expect(close({ scheduledFor: new Date(), signal: new AbortController().signal })).rejects.toThrow(
+      "season close needs PAPER_LEDGER_ADDRESS",
+    );
+    expect(markSeasonsClosing).toHaveBeenCalledOnce();
   });
 
   it.each(["RELAYER_PRIVATE_KEY", "RUNNER_PRIVATE_KEY", "DEPLOYER_PRIVATE_KEY"])("refuses a committer key shared with %s", (other) => {
