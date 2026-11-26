@@ -96,6 +96,8 @@ export function seasonJobs({ db, env, client, rpcUrls, log, committer, v2, now =
         let closeError: unknown = null;
         if (!closing) {
           log.warn("season.close_not_configured", { needs: closingMissing });
+          // Fail the run, so /healthz and the job-failure alert show it: a "successful" close that never closes leaves the next season unopened.
+          closeError = new Error(`season close needs ${closingMissing.join(", ")}`);
         } else {
           // The last batch's trades need the indexer (10 s loop, 2 confirmations): retry a few times before giving up.
           for (let attempt = 1; ; attempt++) {
