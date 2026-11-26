@@ -180,6 +180,25 @@ describe("runDecisionCall()", () => {
     expect(result.output?.daily_call).toEqual(VIEW);
   });
 
+  it("the debut only offers assets with a fresh price, so the first trade isn't lost to a stale feed (#219 item 18)", async () => {
+    const input = buildDecisionInput({ ...CONTEXT, prices: liveStalePrices() }); // only BTC and ETH fresh
+    const debut = { kind: "debut" as const, time: ist("15:37") };
+    const run = (reply: FakeReply, slot: { kind: "scheduled" | "debut"; time: Date } = debut) => {
+      const llm = new FakeLlmClient([reply]);
+      const config = { ...loadLlmConfig({}), timeoutMs: 1000 };
+      return { llm, done: runDecisionCall({ llm, config, input, slot, budget: "ok", logLine: () => {} }) };
+    };
+
+    const btc = run({ ...decision(buy("BTC", 10)), daily_call: VIEW });
+    expect((await btc.done).status).toBe("ok");
+    const sent = btc.llm.calls[0]!.schema as typeof DECISION_SCHEMA;
+    expect(sent.properties.actions.items.properties.asset).toEqual({ enum: ["BTC", "ETH"] });
+
+    expect((await run({ ...decision(buy("GOLD", 10)), daily_call: VIEW }).done).status).toBe("invalid");
+    // Scheduled slots keep every asset: a stale one there is retried at +5/+10/+15 min.
+    expect((await run(decision(buy("GOLD", 10)), ONE_PM).done).status).toBe("ok");
+  });
+
   it("treats a missing daily_call at 09:00 as invalid output", async () => {
     expect((await call([decision()], { slot: NINE_AM })).result.status).toBe("invalid");
   });

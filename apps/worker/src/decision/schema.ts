@@ -81,6 +81,16 @@ const DECISION_WITH_DAILY_CALL_SCHEMA = {
  * strict structured output wants every property required (UNVERIFIED for xAI), so the 09:00 and debut
  * requests require it and every other slot sends §6.3 as it is.
  */
-export function decisionSchemaFor(withDailyCall: boolean): JsonSchema {
-  return withDailyCall ? DECISION_WITH_DAILY_CALL_SCHEMA : DECISION_SCHEMA;
+export function decisionSchemaFor(withDailyCall: boolean, assets?: readonly AssetId[]): JsonSchema {
+  const schema = withDailyCall ? DECISION_WITH_DAILY_CALL_SCHEMA : DECISION_SCHEMA;
+  if (!assets || assets.length === 0) return schema;
+  const { actions } = DECISION_SCHEMA.properties;
+  const asset = { enum: [...assets] };
+  return {
+    ...schema,
+    properties: {
+      ...schema.properties,
+      actions: { ...actions, items: { ...actions.items, properties: { ...actions.items.properties, asset } } },
+    },
+  };
 }
