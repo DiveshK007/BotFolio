@@ -115,7 +115,7 @@ Checked Nov 20 2026. QIE Wallet `signTypedData` on chain 1990 is still to be tes
 
 **One-liner (judges):** Raise an AI trader in one sentence, coach it every season, and let QIE keep score.
 
-**Main line (users):** Raise an AI trader in one sentence. ₹1 lakh of play money, zero risk, and every trade on the blockchain so nobody can fake it.
+**Main line (users):** Raise an AI trader in one sentence. $100,000 of play money, zero risk, and every trade on the blockchain so nobody can fake it.
 
 **Differentiation:** Others let coders enter bots or let you watch famous AIs trade. BotFolio lets anyone raise a bot in one sentence, coach it every season, and prove its record on QIE mainnet with play money.
 
@@ -126,10 +126,10 @@ Checked Nov 20 2026. QIE Wallet `signTypedData` on chain 1990 is still to be tes
 - It's Pokémon, but your Pokémon trades Bitcoin.
 - Sharma ji's son trades manually. Yours has a bot. (CIT WhatsApp groups)
 
-**Viral engine:** the roast card on losses, e.g. "AlphaWolf lost ₹12,400 going all-in on gold at 2 AM. Trust score 312. Roast him." Every card links to the bot's on-chain record.
+**Viral engine:** the roast card on losses, e.g. "AlphaWolf lost $12,400 going all-in on gold at 2 AM. Trust score 312. Roast him." Every card links to the bot's on-chain record.
 
 **Locked product rules**
-- Play money only. Every bot starts with the same **₹1,00,000 play capital**. No token, no NFTs, no entry fees, no stakes, no prizes, no real-asset buy links (India: Promotion and Regulation of Online Gaming Act 2025 — no money games).
+- Play money only. Every bot starts with the same **$100,000 play capital**. No token, no NFTs, no entry fees, no stakes, no prizes, no real-asset buy links (India: Promotion and Regulation of Online Gaming Act 2025 — no money games).
 - Assets: **BTC, ETH, SOL, XRP, Gold + cash**. Long or cash only. No shorting, no leverage. QIE and BNB off.
 - Decisions **4×/day at 09:00, 13:00, 17:00, 21:00 IST**.
 - **Seasons (v1.1):** *Sprint seasons* during launch and judging, then weekly. Season boundaries live in the `seasons` table (config, not code):
@@ -167,7 +167,7 @@ Checked Nov 20 2026. QIE Wallet `signTypedData` on chain 1990 is still to be tes
 2. **Tap "Make my bot"** → passkey sheet (Face ID / fingerprint). Embedded wallet is created silently. No seed phrase, no network prompt, no gas (target ≤ 8 s).
 3. **Bot card appears** (LLM persona call ≤ 5 s, streamed): name, emoji avatar, personality line, plain-words rules, and **2 sliders** pre-set by the LLM: *Max per coin* (10–50 %, step 5) and *Max trades per day* (1–8). User can drag or accept.
 4. **Tap "Launch"** → one EIP-712 signature (passkey) → relayer submits `BotRegistry.createBot` via forwarder (≤ 4 s on a 3.6 s chain).
-5. **First trade** immediately: runner runs an out-of-schedule "debut" decision for that bot → `PaperLedger.executeBatch` reads oracles on-chain → card shows "Bought ₹25,000 of Gold at $3,730.84 (QIE oracle round 14811) · View on explorer".
+5. **First trade** immediately: runner runs an out-of-schedule "debut" decision for that bot → `PaperLedger.executeBatch` reads oracles on-chain → card shows "Bought $25,000 of Gold at $3,730.84 (QIE oracle round 14811) · View on explorer".
 
 Stopwatch target ≤ 30 s total; measured on Nov 27 with 20 people (§12).
 
@@ -197,7 +197,7 @@ Stopwatch target ≤ 30 s total; measured on Nov 27 with 20 people (§12).
 |---|---|---|
 | S1 | `/` | Landing + one-sentence input + examples |
 | S2 | `/create` | Bot card preview + 2 sliders + Launch |
-| S3 | `/me` | My bot: value in ₹, today's calls, correct-a-call, version, trust score |
+| S3 | `/me` | My bot: value in $, today's calls, correct-a-call, version, trust score |
 | S4 | `/bot/[botId]` | Public bot page: balance, holdings, every decision and trade with reason, oracle roundId, tx + explorer links, versions with config hashes, trust score breakdown, "replay this season" link |
 | S5 | `/season/[n]` | Season close: battle result, v2 diff, Approve |
 | S6 | `/leaderboards` | Tabs: Top Returns · Best Risk-Adjusted (Sortino) · Most Trusted · Coach vs Bot |
@@ -222,7 +222,7 @@ Stopwatch target ≤ 30 s total; measured on Nov 27 with 20 people (§12).
 
 ## 3. Data model (Postgres / Supabase)
 
-Money units: **on-chain values are in "play USDT" with 8 decimals** (same scale as the feeds). The ₹ figure is a display unit: `displayINR = 100000 × value / startValue` (exact, deterministic). A tooltip shows "≈ X USDT; INR conversion approximate" using an off-chain USD/INR rate (cached daily). QIE has no INR feed.
+Money units: **on-chain values are in "play USDT" with 8 decimals** (same scale as the feeds). The $ figure is a display unit: `display = 100000 × value / startValue` (exact, deterministic), so every bot starts at $100,000. A tooltip shows "On chain: X play USDT, scaled so every bot starts at $100,000". (Changed from ₹1,00,000 on Nov 26 2026 for a global audience, #335.)
 
 ```text
 users(id uuid pk, wallet_address text unique, privy_did text, created_at, last_seen_at, flags jsonb)
@@ -306,7 +306,7 @@ Events: `BotCreated(botId, owner, personaHash, maxPerCoinBps, maxTradesPerDay)`,
 ### 4.3 `PaperLedger` (trade log + play balances)
 Storage:
 ```solidity
-uint256 public immutable START_CASH_E8; // set in constructor: play USDT ≈ ₹1,00,000 / USDINR on deploy day (display uses the ₹ rule in §3)
+uint256 public immutable START_CASH_E8; // set in constructor: play USDT (1,078 on mainnet; display scales it to $100,000 by the rule in §3)
 enum Asset { BTC, ETH, SOL, XRP, GOLD }       // index 0..4
 mapping(uint8 => address) public feed;          // fixed at deploy, only these 5
 mapping(uint8 => uint32) public maxAge;         // 1800 s crypto, 21600 s (6 h) gold
@@ -414,7 +414,7 @@ Season boundaries come from the `seasons` table (§1), so moving from sprint to 
 System prompt fixed in repo (hash recorded). Input JSON (also hashed and stored):
 ```json
 { "slot": "2026-11-23T13:00:00+05:30", "bot": {"name":"AlphaWolf","persona":"...","rules":"...","max_per_coin_pct":25,"max_trades_per_day":4,"trades_today":1,"version":2},
-  "portfolio": {"cash_pct":40,"holdings":[{"asset":"GOLD","pct":35,"avg_entry":3700.1}],"value_inr_play":103420},
+  "portfolio": {"cash_pct":40,"holdings":[{"asset":"GOLD","pct":35,"avg_entry":3700.1}],"value_play_usd":103420},
   "market": [{"asset":"BTC","price":63922.95,"chg_24h_pct":-1.2,"chg_7d_pct":3.4,"fresh":true}, ...],
   "recent_corrections": [{"chip":"too risky","note":"stop going all in"}] }
 ```
@@ -509,7 +509,7 @@ Computed at each season close (and refreshed after every slot for "live" view). 
 
 - `next/og` (`ImageResponse`, Satori) at `/api/card/[cardId]` → 1200×630 PNG (X/OG) and `?format=story` 1080×1920 (WhatsApp status).
 - Card kinds: **trade** (first trade), **roast** (loss ≥ 3 % in a slot or worst call of the season), **battle** (season rank vs house bots), **season** (return, trust score, best & worst call), and v1.1: **recap** (daily, 21:35), **evolution** (v2 diff: "You said 'too risky' 3× → 40 % → 25 %", with config hash), **challenge** (bot vs bot result + Rematch), **call** (Daily Call result: "You 4 – AlphaWolf 3").
-- Content: bot emoji + name, owner `name.qie` if any, ₹ value and % change, one line (roast or reason, from the logged decision — never newly invented), trust score, "Season n", QR/short link to `/bot/[botId]`, footer "Settled against QIE's official mainnet oracle · play money · not advice", short tx hash.
+- Content: bot emoji + name, owner `name.qie` if any, $ value and % change, one line (roast or reason, from the logged decision — never newly invented), trust score, "Season n", QR/short link to `/bot/[botId]`, footer "Settled against QIE's official mainnet oracle · play money · not advice", short tx hash.
 - **Verify on QIE (v1.1):** every card landing page (`/card/[cardId]`) has a "Verify on QIE" button that opens a panel listing each tx the card cites, with explorer links, the oracle roundId and a one-line "what this proves" (e.g. "This trade was priced by QIE's oracle round 50887, not by us").
 - Data only from indexed on-chain records + logged decision text. Card payload stored in `cards` with the tx hashes it cites.
 - Share: Web Share API (mobile) → WhatsApp/X; fallback copy-link + download.
@@ -642,7 +642,7 @@ Four workstreams run in parallel using Claude Code (§16). Until Sunday Nov 22 n
 |---|---|---|---|
 | **A — Chain** | Gokul (GitHub: Gokul-social) — until Sun Nov 22 | 7 contracts, Foundry tests on mainnet fork, deploy + verify, ABI package, gas report. Local fork staging: [`docs/anvil-fork.md`](docs/anvil-fork.md) | §4, §5, §0.1–0.3 |
 | **B — Runner** | Gokul (GitHub: Gokul-social) — until Sun Nov 22 | Render service: relayer + allowlist, LLM client, decision runner, gate + big-move split, scheduler, indexer, season close, DailyCall settle, trust/leaderboards, replay script, BotFolio MCP server | §6, §7, §8, §10, §10.1, §11 |
-| **C — App** | Gokul (GitHub: Gokul-social) — until Sun Nov 22 | Next.js PWA: all screens S1–S11, Privy passkey + QIE Wallet connect, `.qie` display, ₹ display rule, price-age labels, `/proof`, `/stats` | §2, §3 (reads), §5.7 |
+| **C — App** | Gokul (GitHub: Gokul-social) — until Sun Nov 22 | Next.js PWA: all screens S1–S11, Privy passkey + QIE Wallet connect, `.qie` display, $ display rule, price-age labels, `/proof`, `/stats` | §2, §3 (reads), §5.7 |
 | **D — Growth & ecosystem** | Divesh (GitHub: DiveshK007) for registration, wallets, QIE checks, launch; Gokul for code | Share cards + Verify-on-QIE panel, public API, QIE Wallet MCP + Pass checks (§0.6), domain, launch content, soft launch + public launch, demo video, deck, README/docs | §0.6, §9, §13, traction |
 
 ### 12.2 Interfaces frozen on Day 1 (Fri Nov 20, by 23:00)
@@ -657,7 +657,7 @@ Four workstreams run in parallel using Claude Code (§16). Until Sunday Nov 22 n
 | Day | A — Chain | B — Runner | C — App | D — Growth & ecosystem | Gate (must be true to move on) |
 |---|---|---|---|---|---|
 | **Fri Nov 20** | Repo scaffold (monorepo §16.1); interfaces; contracts written | DB schema; Render + xAI + Supabase accounts; `LlmClient` | Next.js scaffold; **passkey spike on 2 phones (iOS Safari + Android Chrome) → EIP-712 sig on 1990** | Register team on hackathon.qie.digital + QIE wallet address; fund deployer/relayer/runner wallets; apply for QIE Pass partner creds; check QIE Wallet + Wallet MCP (§0.6) | Interfaces frozen; passkey sig on 1990 works on both phones (else switch to thirdweb) |
-| **Sat Nov 21** | Fork tests green (stale, limits, cap, batch-skip, forwarder `_msgSender`, `executeApproved` sig + replay guard, DailyCall, Challenges); gas report | Relayer + allowlist + rate limits against the local fork ([`docs/anvil-fork.md`](docs/anvil-fork.md)); persona + decision calls with strict schema; gate incl. big-move split | S1 landing + S2 create (mocked relay); ₹ display; price-age component | Card renderer for trade/roast/recap with mock data; domain bought | All tests green with `evm_version=shanghai`; gas per call known |
+| **Sat Nov 21** | Fork tests green (stale, limits, cap, batch-skip, forwarder `_msgSender`, `executeApproved` sig + replay guard, DailyCall, Challenges); gas report | Relayer + allowlist + rate limits against the local fork ([`docs/anvil-fork.md`](docs/anvil-fork.md)); persona + decision calls with strict schema; gate incl. big-move split | S1 landing + S2 create (mocked relay); $ display; price-age component | Card renderer for trade/roast/recap with mock data; domain bought | All tests green with `evm_version=shanghai`; gas per call known |
 | **Sun Nov 22** | **Mainnet deploy + verify all 7**; addresses into env; seed 3 house bots | Indexer → Postgres; 4-slot scheduler; debut trade; executeBatch on mainnet | Real passkey → createBot → first trade on mainnet; S3 `/me`; S4 public bot page | `.qie` reverse lookup working or fallback; Verify-on-QIE panel | **End-to-end on mainnet: landing → first trade ≤ 30 s on a phone** |
 | **Mon Nov 23** | Support B/C; admin scripts (open/close season, publish rules) | Corrections, big-move flow + expiry fallback, DailyCall settle, season open/close checks | Correct-a-call, Approve Big Move sheet, Daily Call sheet (S11) | Public API `/api/v1/bots/:id/record`; `/stats` user-signed vs system split | A real big move approved by a user executes on mainnet with the user as signer |
 | **Tue Nov 24** | Replay script checks on-chain events | v2 proposal + Approve → `commitVersion`; season data root; trust score + `commitScores`; leaderboards (4 boards). **S0 test season opens** | S5 season close + v2 diff; S6 leaderboards; S10 challenge page; QIE Wallet connect | Battle/season/evolution/challenge/call cards; WhatsApp + X unfurl tests | All flows work in S0 |
@@ -707,7 +707,7 @@ Four workstreams run in parallel using Claude Code (§16). Until Sunday Nov 22 n
 |---|---|
 | 0–3 s | Phone: type "Careful like my dad, loves gold" → tap Make my bot |
 | 3–6 s | Face ID → bot card "Gold Guru" with 2 sliders → Launch |
-| 6–10 s | First trade card: "Bought ₹25,000 of Gold · QIE oracle round 14811" → tap → explorer tx |
+| 6–10 s | First trade card: "Bought $25,000 of Gold · QIE oracle round 14811" → tap → explorer tx |
 | 10–14 s | "Gold Guru wants 35 % in Gold. Allow?" → Face ID → trade executes, signed by the user |
 | 14–17 s | Roast notification on a loss → tap "Bad call: too risky" |
 | 17–23 s | **Hero moment:** season close, v2 diff "You said 'too risky' 3× → max per coin 40 % → 25 %" → Approve → config hash on QIE |
@@ -790,7 +790,7 @@ botfolio/
 > Read CLAUDE.md, then SPEC.md §3, §6, §7, §8, §10, §10.1, §11. Start with `packages/db/schema.sql` (all §3 tables incl. v1.1) and `packages/shared/relay.ts` (ForwardRequest type, EIP-712 domains for the forwarder and ApprovedOrder, POST /relay shape). Then build `packages/llm` (LlmClient interface + XaiClient with strict json_schema output) and `apps/worker`: relay endpoint with the §11 allowlist and rate limits, then the pure `gate()` function with unit tests (including the big-move split, §6.4 steps 9–10). Use ABIs from `packages/contracts/abi` once WS A publishes them; until then, stub them. Show me schema.sql and relay.ts first — they get frozen tonight.
 
 **WS C — App**
-> Read CLAUDE.md, then SPEC.md §1, §2, §5 (display rules), §0.4 and §10. Scaffold `apps/web` (Next.js 15 App Router, TypeScript, Tailwind, PWA manifest). First task is the passkey spike: Privy passkey sign-up + embedded wallet + `signTypedData` on a custom viem chain (id 1990, 5 RPCs) — a single test page I can open on an iPhone and an Android phone. Then build S1 and S2 against a mocked `/relay`. Mobile-first, 360 px minimum. ₹ display rule from §3 and the price-age label from §5.7 as shared components.
+> Read CLAUDE.md, then SPEC.md §1, §2, §5 (display rules), §0.4 and §10. Scaffold `apps/web` (Next.js 15 App Router, TypeScript, Tailwind, PWA manifest). First task is the passkey spike: Privy passkey sign-up + embedded wallet + `signTypedData` on a custom viem chain (id 1990, 5 RPCs) — a single test page I can open on an iPhone and an Android phone. Then build S1 and S2 against a mocked `/relay`. Mobile-first, 360 px minimum. $ display rule from §3 and the price-age label from §5.7 as shared components.
 
 **WS D — Growth & ecosystem**
 > Read CLAUDE.md, then SPEC.md §0.6, §1.1, §9, §13 and §12.4. First, check each item in §0.6 against the live sources (QIE Wallet integration guide, QIE Wallet MCP at mcp.qie.digital/mcp, QIE Pass integration docs) and write what actually works into `docs/qie-components.md`. Then define `packages/shared/cards.ts` (payload types for all 8 card kinds) and build the card renderer in `apps/web/app/api/card/[cardId]` with `next/og`, using mock data, 1200×630 and 1080×1920 story format. Then the Verify-on-QIE panel and the public record API.

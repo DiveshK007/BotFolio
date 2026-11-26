@@ -1,7 +1,7 @@
 import type { AssetId } from "@botfolio/shared";
 
-/** ₹ with Indian grouping: 103420 → ₹1,03,420. Play-money display unit only. */
-export const inr = (n: number) => "₹" + Math.round(n).toLocaleString("en-IN");
+/** Play $: 103420 → $103,420. Play-money display unit only. */
+export const money = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 
 export const pct = (n: number, d = 2) => (n > 0 ? "+" : n < 0 ? "−" : "") + Math.abs(n).toFixed(d) + "%";
 export const arrow = (n: number) => (n > 0 ? "▲" : n < 0 ? "▼" : "•");

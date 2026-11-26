@@ -49,7 +49,7 @@ export interface Trade {
   blockTime: string; // ISO
   /** true when executed via PaperLedger.executeApproved (owner-signed). */
   userSigned: boolean;
-  /** ₹ display value: 100000 × cash / startCash (SPEC §3). */
+  /** $ display value: 100000 × cash / startCash (SPEC §3). */
   inrDisplay: number;
   /** Joined bot info for display (name, emoji). */
   bot?: Bot;
@@ -95,7 +95,7 @@ export interface Holding {
 /** Payload of GET /api/v1/bots/:id/record (SPEC §10), as the site consumes it. */
 export interface BotRecord {
   bot: Bot;
-  valueInr: number;
+  valueDisplay: number;
   seasonReturnPct: number;
   holdings: Holding[];
   decisions: Decision[];
@@ -108,7 +108,7 @@ export interface BotRecord {
 export interface BoardRow {
   bot: Bot;
   returnPct: number;
-  valueInr: number;
+  valueDisplay: number;
   trades: number;
   trust: number | null; // null = provisional ("new")
   sortino?: number;

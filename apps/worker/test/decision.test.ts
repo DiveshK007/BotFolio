@@ -74,7 +74,7 @@ describe("buildDecisionInput() (SPEC §6.2)", () => {
           { asset: "BTC", pct: 25, avg_entry: null },
           { asset: "GOLD", pct: 35, avg_entry: 3700.1 },
         ],
-        value_inr_play: 100000,
+        value_play_usd: 100000,
       },
       market: [
         { asset: "BTC", price: 60000, chg_24h_pct: -1.2, chg_7d_pct: 3.4, fresh: true },

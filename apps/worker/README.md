@@ -114,7 +114,7 @@ Take `reason` and `roast` from `GateResult.output`, never from the raw model out
 - Every tx hash in a payload must also be in `cites`, or `saveCard` refuses it.
 - A one-minute sweeper (same pool as the read routes) writes first-trade and slot-loss cards. A newcomer's first trade gets its card within a minute.
 - The `recap` job (21:35 IST) runs the same sweep, then writes one recap per active raised bot, quiet days included: the day's change, best and worst call, and rank in the season.
-- Prices are as recorded. A round or block time we didn't store is read from QIE (`getRoundData`, `getBlock`), never estimated. Needs `PAPER_LEDGER_ADDRESS` (₹ rule) and `DATABASE_URL`.
+- Prices are as recorded. A round or block time we didn't store is read from QIE (`getRoundData`, `getBlock`), never estimated. Needs `PAPER_LEDGER_ADDRESS` ($ display rule) and `DATABASE_URL`.
 - The same sweep writes the cards that follow a close or a settlement, each once:
   - `battle-<bot>-s<n>` and `season-<bot>-s<n>`: for each raised bot once the season's close is indexed. They cite the `closeSeason` tx. Battle needs exactly 3 house bots.
   - `evolution-<bot>-v<n>`: when the owner commits a v2. It shows the diff and the chip behind it ("too risky" ×N), and cites the commit.

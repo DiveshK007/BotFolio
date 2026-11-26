@@ -3,7 +3,7 @@ import path from "node:path";
 import { ImageResponse } from "next/og";
 import { ASSETS, CARD_FOOTER, CARD_SIZES, type CardCallRef, type CardFormat, type CardOraclePrice, type CardPayload } from "@botfolio/shared";
 import { PLAY_MONEY_LINE } from "@/components/ui/PlayMoneyFooter";
-import { assetName, displayInr, formatE8, formatInr, priceAge, shortHex } from "@/lib/format";
+import { assetName, displayMoney, formatE8, formatMoney, priceAge, shortHex } from "@/lib/format";
 
 /** The kinds this renderer draws (#102). The other five come in later issues. */
 export const RENDERED_KINDS = ["trade", "roast", "recap"] as const;
@@ -36,7 +36,7 @@ const loadFonts = () =>
       { name: "Noto Sans", data: regular, weight: 400, style: "normal" },
       { name: "Noto Sans", data: bold, weight: 700, style: "normal" },
     ],
-    () => undefined, // missing file: next/og's default font, ₹ shows as a box
+    () => undefined, // missing file: next/og's default font, − and “ ” may show as boxes
   ));
 
 const C = { paper: "#FAFAF7", surface: "#FFFFFF", ink: "#14161C", muted: "#5A5F6B", line: "#E2E1DA", accent: "#2B50FF", sun: "#FFC93C", up: "#0B7A53", down: "#C23B25", amber: "#8A5A00", grey: "#6B6F78" };
@@ -59,13 +59,13 @@ const callRow = (label: string, c: CardCallRef): Row => ({
 });
 
 /** What only this kind shows: a tag, a headline and a few detail rows. */
-function kindParts(card: RenderedCard, inr: (e8: string) => string): { tag: string; headline: string; rows: Row[] } {
+function kindParts(card: RenderedCard, money: (e8: string) => string): { tag: string; headline: string; rows: Row[] } {
   switch (card.kind) {
     case "trade": {
       const t = card.trade;
       return {
         tag: "First trade",
-        headline: `${t.side} ${assetName(t.price.asset)} · ${inr(t.cashE8)}`,
+        headline: `${t.side} ${assetName(t.price.asset)} · ${money(t.cashE8)}`,
         rows: [{ text: `at ${priceText(t.price)}` }, ...(t.approvedByOwner ? [{ text: "Approved by its owner" }] : [])],
       };
     }
@@ -73,7 +73,7 @@ function kindParts(card: RenderedCard, inr: (e8: string) => string): { tag: stri
       const r = card.roast;
       return {
         tag: "Roast",
-        headline: r.trigger === "slot_loss" ? `Lost ${inr(r.lossE8)} in one slot` : `Worst call of the season: ${pct(-r.lossBps)}`,
+        headline: r.trigger === "slot_loss" ? `Lost ${money(r.lossE8)} in one slot` : `Worst call of the season: ${pct(-r.lossBps)}`,
         rows: r.trigger === "worst_call" ? [callRow("Call", r.call)] : [],
       };
     }
@@ -98,8 +98,8 @@ export async function renderCard(card: RenderedCard, format: CardFormat, headers
   const s = <T,>(og: T, story: T) => (format === "story" ? story : og);
 
   const start = BigInt(card.value.startCashE8);
-  const inr = (e8: string) => formatInr(displayInr(BigInt(e8), start));
-  const parts = kindParts(card, inr);
+  const money = (e8: string) => formatMoney(displayMoney(BigInt(e8), start));
+  const parts = kindParts(card, money);
   const owner = clampText(card.bot.ownerQieName ?? shortHex(card.bot.ownerAddress), 32);
   const valueAge = card.value.oldestPrice ? ageText(card.value.oldestPrice) : null;
   const chips = [
@@ -135,7 +135,7 @@ export async function renderCard(card: RenderedCard, format: CardFormat, headers
         <div style={{ display: "flex", flexDirection: "column", gap: s(6, 24) }}>
           <div style={{ fontSize: s(40, 72), fontWeight: 700, lineHeight: 1.15 }}>{parts.headline}</div>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", columnGap: s(16, 32) }}>
-            <div style={{ fontSize: s(34, 64), fontWeight: 700 }}>{inr(card.value.valueE8)}</div>
+            <div style={{ fontSize: s(34, 64), fontWeight: 700 }}>{money(card.value.valueE8)}</div>
             <div style={{ color: card.change.bps < 0 ? C.down : C.up, fontSize: s(28, 52) }}>{`${pct(card.change.bps)} ${SINCE[card.change.since]}`}</div>
             {valueAge ? <div style={{ color: valueAge.color, fontSize: s(20, 32) }}>{valueAge.text}</div> : null}
           </div>

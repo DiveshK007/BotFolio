@@ -67,7 +67,7 @@ export function RaceReplay({ series, labels, example }: { series: RaceSeries[]; 
           <div key={s.id} className="race-row" style={{ transform: `translateY(${(rank.get(k) ?? 0) * ROW}px)` }}>
             <DnaBot size={40} bot={{ id: s.id, name: s.name }} /><span className="race-name">{s.name}{s.isHouse && <> <span className="badge house">HOUSE</span></>}</span>
             <span className="race-bar"><i className={v >= 0 ? "pos" : "neg"} style={{ width: `${Math.max(2, Math.min(100, ((v + 14) / 28) * 100))}%` }} /></span>
-            <span className="race-val mono">₹{Math.round(100000 * (1 + v / 100)).toLocaleString("en-IN")} · {pctTxt(v)}</span></div>); })}
+            <span className="race-val mono">${Math.round(100000 * (1 + v / 100)).toLocaleString("en-US")} · {pctTxt(v)}</span></div>); })}
       </div>
       <div className="race-ctl"><button className="btn sm" type="button" onClick={() => { if (!play && i >= last) setI(0); setPlay(p => !p); }}>{play ? "Pause" : "Play"}</button>
         <label className="sr" htmlFor="raceRange">Call</label><input type="range" id="raceRange" min={0} max={last} step={1} value={i} onChange={e => { setPlay(false); setI(+e.target.value); }} /></div>

@@ -2,21 +2,21 @@ import { ASSETS, type AssetId } from "@botfolio/shared";
 
 /**
  * Display rules shared by every screen.
- * - ₹ rule: SPEC §3. On-chain values are play USDT with 8 decimals; ₹ is a display unit only.
+ * - $ rule: SPEC §3. On-chain values are play USDT with 8 decimals; the $ figure is a display unit only.
  * - Price age: SPEC §5.7. Mandatory wherever a price or a mark is shown.
  */
 
-/** The ₹ every bot starts with (SPEC §1: ₹1,00,000 play capital). */
-export const START_INR = 100_000;
+/** The display $ every bot starts with (SPEC §1: $100,000 play capital). */
+export const START_DISPLAY = 100_000;
 
 /**
- * SPEC §3: displayINR = 100000 × value / startValue (exact, deterministic).
+ * SPEC §3: display = 100000 × value / startValue (exact, deterministic).
  * Done in bigint so the result doesn't depend on float rounding of 8-decimal values.
- * Returns whole rupees, rounded half away from zero.
+ * Returns whole dollars, rounded half away from zero.
  */
-export function displayInr(valueE8: bigint, startValueE8: bigint): number {
+export function displayMoney(valueE8: bigint, startValueE8: bigint): number {
   if (startValueE8 <= 0n) throw new RangeError("startValueE8 must be > 0");
-  const num = BigInt(START_INR) * valueE8;
+  const num = BigInt(START_DISPLAY) * valueE8;
   const q = num / startValueE8;
   const r = num % startValueE8;
   const twiceR = (r < 0n ? -r : r) * 2n;
@@ -24,16 +24,16 @@ export function displayInr(valueE8: bigint, startValueE8: bigint): number {
   return Number(rounded);
 }
 
-/** ₹ change relative to the start: same rule applied to (value − start). */
-export const displayInrDelta = (valueE8: bigint, startValueE8: bigint) =>
-  displayInr(valueE8 - startValueE8, startValueE8);
+/** $ change relative to the start: same rule applied to (value − start). */
+export const displayMoneyDelta = (valueE8: bigint, startValueE8: bigint) =>
+  displayMoney(valueE8 - startValueE8, startValueE8);
 
-/** ₹ with Indian digit grouping: 103420 → "₹1,03,420", −12400 → "−₹12,400". */
-export function formatInr(rupees: number, opts: { signed?: boolean } = {}): string {
-  const abs = Math.abs(Math.round(rupees)).toLocaleString("en-IN");
-  if (rupees < 0) return `−₹${abs}`;
-  if (opts.signed && rupees > 0) return `+₹${abs}`;
-  return `₹${abs}`;
+/** Play $: 103420 → "$103,420", −12400 → "−$12,400". */
+export function formatMoney(dollars: number, opts: { signed?: boolean } = {}): string {
+  const abs = Math.abs(Math.round(dollars)).toLocaleString("en-US");
+  if (dollars < 0) return `−$${abs}`;
+  if (opts.signed && dollars > 0) return `+$${abs}`;
+  return `$${abs}`;
 }
 
 /** 8-decimal fixed point → display string, e.g. 6392295000000n → "63,922.95". */
@@ -48,10 +48,9 @@ export function formatE8(e8: bigint, decimals = 2): string {
   return (neg ? "−" : "") + whole + frac;
 }
 
-/** Tooltip for every ₹ figure (SPEC §3). `usdInr` is the worker's daily off-chain rate, display only. */
-export const inrTooltip = (valueE8: bigint, usdInr?: number | null) =>
-  `≈ ${formatE8(valueE8)} USDT; INR conversion approximate` +
-  (usdInr ? ` (1 USD ≈ ₹${usdInr.toLocaleString("en-IN", { maximumFractionDigits: 2 })} today)` : "");
+/** Tooltip for every $ figure (SPEC §3): the exact on-chain amount behind the scaled display. */
+export const moneyTooltip = (valueE8: bigint) =>
+  `On chain: ${formatE8(valueE8)} play USDT, scaled so every bot starts at $100,000`;
 
 // ---------------------------------------------------------------------------
 // Price age (SPEC §5.7)

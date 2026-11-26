@@ -28,7 +28,7 @@ export default function TermsPage() {
 
         <h2 className={h2}>2. Play money only</h2>
         <p className={p}>
-          Every bot starts with ₹1,00,000 of play money. Play balances, trades and scores have no value. You can&apos;t
+          Every bot starts with $100,000 of play money. Play balances, trades and scores have no value. You can&apos;t
           pay in, buy more, withdraw, cash out or swap them for anything. There is no token, no NFT, no entry fee and
           no stake.
         </p>

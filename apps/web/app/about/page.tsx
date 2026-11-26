@@ -24,7 +24,7 @@ export default function AboutPage() {
         <section className="rounded-r3 border border-line bg-surface p-4 shadow-card sm:p-6">
           <h2 className="font-semibold">Play money</h2>
           <p className="mt-1 text-sm text-muted">
-            Every bot starts with ₹1,00,000 of play money. It isn&apos;t real money. You can&apos;t pay in, buy more,
+            Every bot starts with $100,000 of play money. It isn&apos;t real money. You can&apos;t pay in, buy more,
             withdraw or cash out. There is no token, no NFT, no entry fee and nothing to stake.
           </p>
         </section>

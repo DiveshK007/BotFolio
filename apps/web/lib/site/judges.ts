@@ -43,7 +43,7 @@ export async function judgesActivity(): Promise<Loaded<ActivityStats>> {
   return activityFrom(await fetchStats());
 }
 
-/** ₹ display value: 100000 × cash / startCash (SPEC §3). */
+/** $ display value: 100000 × cash / startCash (SPEC §3). */
 const inrDisplay = (cashE8: string, startE8: string) => {
   const start = Number(startE8);
   return start > 0 ? Math.round((100000 * Number(cashE8)) / start) : 0;

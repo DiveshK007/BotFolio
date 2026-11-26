@@ -44,7 +44,7 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const ticker = await tickerItems();
   return (
-    <html lang="en-IN" className={`${archivo.variable} ${inter.variable} ${mono.variable} ${pixel.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${archivo.variable} ${inter.variable} ${mono.variable} ${pixel.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript + motionScript }} />
       </head>

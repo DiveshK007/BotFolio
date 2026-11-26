@@ -28,7 +28,6 @@ import { botsRoutes } from "./bots/route";
 import { mcpRoutes } from "./mcp/mcp";
 import { verifyTrade } from "./mcp/verify-trade";
 import { bigMoveRoutes } from "./big-moves/route";
-import { DEFAULT_USDINR_SOURCE_URL, usdInrCache, usdInrRoutes } from "./fx/usd-inr";
 import { startQieNameSweeper } from "./qie-names/sweeper";
 import { dailyCallRoutes } from "./daily-call/route";
 import { statusRoutes } from "./status/route";
@@ -83,7 +82,7 @@ async function main(): Promise<void> {
     );
     return startCash;
   };
-  // Cards need START_CASH_E8 for the ₹ rule.
+  // Cards need START_CASH_E8 for the $ display rule.
   const challengesAddress = process.env.CHALLENGES_ADDRESS?.trim().toLowerCase() ?? "";
   const cardChain = isAddress(paperLedger)
     ? createCardChain(client, startCashE8, isAddress(challengesAddress) ? (challengesAddress as Address) : null)
@@ -116,9 +115,6 @@ async function main(): Promise<void> {
   const stopQieNames = reads ? startQieNameSweeper({ db: reads, log: { info: consoleLog, warn: consoleLog } }) : null;
   const boards = reads && isAddress(paperLedger) ? { db: reads, startCashE8 } : null;
   if (!boards) consoleLog("leaderboards.disabled", { env: "DATABASE_URL,PAPER_LEDGER_ADDRESS" });
-  // Display-only USD/INR for the ₹ tooltip; first fetch starts now.
-  const usdInr = usdInrCache({ url: process.env.USDINR_SOURCE_URL?.trim() || DEFAULT_USDINR_SOURCE_URL, log: consoleLog });
-  usdInr.get();
   const routes = {
     ...authRoutes({ origins, clientIp, log: consoleLog, siwe: auth.siwe }),
     ...relayRoutes({ relay: relayer.relay, origins, clientIp }),
@@ -130,7 +126,6 @@ async function main(): Promise<void> {
     ...challengeRoutes({ db: reads, origins, clientIp }),
     ...correctionNoteRoutes({ origins, auth: auth.authenticator, log: consoleLog, db: reads }),
     ...leaderboardRoutes({ source: boards, origins, clientIp }),
-    ...usdInrRoutes({ cache: usdInr, origins }),
     ...statusRoutes({ health, origins, clientIp }),
     ...botPageRoutes({ source: boards, origins, clientIp }),
     ...statsRoutes({ db: reads, origins, clientIp }),

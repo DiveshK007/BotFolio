@@ -19,7 +19,7 @@ export function Flap({ text, className }: { text: string; className?: string }) 
   return (
     <span className={`flap ${className ?? ""}`} role="img" aria-label={text}>
       {[...text].map((ch, i) => (
-        <span key={i + ch + (old[i] !== ch ? "f" : "")} aria-hidden="true" className={`${/[0-9A-Za-z₹]/.test(ch) ? "" : "sep"}${old[i] !== ch && !rm() ? " flip" : ""}`} style={{ animationDelay: `${i * 35}ms` }}>{ch === " " ? " " : ch}</span>
+        <span key={i + ch + (old[i] !== ch ? "f" : "")} aria-hidden="true" className={`${/[0-9A-Za-z$]/.test(ch) ? "" : "sep"}${old[i] !== ch && !rm() ? " flip" : ""}`} style={{ animationDelay: `${i * 35}ms` }}>{ch === " " ? " " : ch}</span>
       ))}
     </span>
   );
@@ -144,7 +144,7 @@ export function Arena({ initial, btcSeries, btcRound, status }: { initial: Racer
             <div className={`ret ${r.ret >= 0 ? "up" : "down"}`}>{r.ret >= 0 ? "▲ +" : "▼ −"}{Math.abs(r.ret).toFixed(2)}%</div>
           </li>); })}
       </ol>
-      <div className="arena-foot"><span>Centre line = ₹1,00,000. Right of it = up this season.{status === "example" ? " Moves are simulated until the app is live." : ""}</span><button className="btn sun sm" type="button" onClick={runCall} disabled={calling}>{status === "example" ? "Run a call now" : "Replay the last call"}</button></div>
+      <div className="arena-foot"><span>Centre line = $100,000. Right of it = up this season.{status === "example" ? " Moves are simulated until the app is live." : ""}</span><button className="btn sun sm" type="button" onClick={runCall} disabled={calling}>{status === "example" ? "Run a call now" : "Replay the last call"}</button></div>
     </div>
   );
 }

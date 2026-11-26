@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 const card = "rounded-r3 border border-line bg-surface p-4 shadow-card";
-const n = (v: number) => v.toLocaleString("en-IN");
+const n = (v: number) => v.toLocaleString("en-US");
 
 // SPEC §11 user-signed tx metric (#92). Server-rendered from the worker's public GET /stats (#107).
 export default async function StatsPage() {

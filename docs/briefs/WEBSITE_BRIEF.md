@@ -33,7 +33,7 @@ A product website that makes people feel BotFolio, not read a spec: the product'
   - Play money only. Every page footer: "Play money. Not investment advice. No prizes."
   - Never imply real money, tokens, NFTs, stakes, rewards, prizes or cash-out. No "invest", "earn", "profit" calls to action.
   - Never present relayer/runner transactions as user activity; user-signed numbers are shown separately (SPEC §11).
-  - ₹ amounts are play-money display values converted from the oracle's USD prices (SPEC §3 display rule); every price shows its age (SPEC §5).
+  - $ amounts are play-money display values converted from the oracle's USD prices (SPEC §3 display rule); every price shows its age (SPEC §5).
 - Label everything: LIVE (read from the API/chain at load), EXAMPLE (illustrative mockup), REAL FOOTAGE. Never invent users, bots, testimonials, logos or metrics. A missing fact becomes a visible [PLACEHOLDER].
 - QIE component status comes from SPEC §0.6. Show a component as live only when §0.6 says so. QIE Wallet pieces that depend on `signTypedData` stay "coming" until #189. QIE Pass stays "coming" while §0.6 marks it UNVERIFIED.
 - Include an honest "what works / what's next" section.
