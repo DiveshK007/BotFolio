@@ -98,7 +98,7 @@ export class ForwarderChain {
   }
 }
 
-/** Bare intrinsic gas (+ slack) means the node never ran the code (#339). Our cheapest real call, a skipped 1-order batch, runs ~23k above intrinsic. */
+/** Bare intrinsic gas (+ slack) means the node never ran the code (#339). A few real no-ops (an already-used order) also land here; they then just get the floor or ceiling. */
 export const isBogusEstimate = (estimate: bigint, intrinsic: bigint) => estimate < intrinsic + 10_000n;
 
 /** Shanghai intrinsic gas: 21000 + 4 per zero byte + 16 per non-zero byte. */

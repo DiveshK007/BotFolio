@@ -67,12 +67,15 @@ export function createSystemSender(opts: { rpcUrls: readonly string[]; account: 
     }
     // The estimate is also the pre-check: a call that would revert throws here, before any gas is spent.
     const intrinsic = intrinsicGas(encodeFunctionData(call));
-    let estimate = await reader.estimateContractGas({ ...call, account });
-    // #339: QIE sometimes answers with bare intrinsic gas, as if the contract had no code. Ask again, then give up unsent.
-    for (let tries = 1; isBogusEstimate(estimate, intrinsic); tries++) {
-      if (tries >= ESTIMATE_TRIES) throw new InternalFailure("gas_estimate_bogus");
+    // The address, not the LocalAccount: with a local account viem sizes gas from eth_fillTransaction, and QIE's
+    // answers with bare intrinsic gas without running the call (#339, reproduced Nov 27: 21,544 vs 71,336).
+    const estimateGas = () => reader.estimateContractGas({ ...call, account: account.address });
+    let estimate = await estimateGas();
+    // #339: QIE sometimes answers with bare intrinsic gas, as if the contract had no code. Ask again; if it stays
+    // bogus, the floor below still covers every system call's known cost, so send rather than stall the job.
+    for (let tries = 1; tries < ESTIMATE_TRIES && isBogusEstimate(estimate, intrinsic); tries++) {
       await new Promise((r) => setTimeout(r, ESTIMATE_RETRY_MS));
-      estimate = await reader.estimateContractGas({ ...call, account });
+      estimate = await estimateGas();
     }
     const fees = await reader.estimateFeesPerGas();
     if (fees.maxFeePerGas > MAX_FEE_PER_GAS) throw new InternalFailure("gas_price_above_cap");
