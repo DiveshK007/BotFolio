@@ -131,6 +131,25 @@ describe("season-close cards", () => {
     expect(rows).toEqual([]);
     expect((await card<SeasonCardPayload>("season-7-s1"))!.trust).toBeNull();
   });
+
+  it("a pass skips bots whose cards exist and builds only the missing one", async () => {
+    await sweepCloseCards(deps());
+    let tradeReads = 0;
+    const counting = {
+      query: (text: string, values?: unknown[]) => {
+        if (text.includes("from trades t")) tradeReads++;
+        return db.query(text, values);
+      },
+    } as Queryable;
+    const withCount = (): CardDeps => ({ ...deps(), db: counting });
+    expect(await sweepCloseCards(withCount())).toBe(0);
+    expect(tradeReads).toBe(0);
+
+    await pg.exec("delete from cards where id = 'battle-7-s1'");
+    expect(await sweepCloseCards(withCount())).toBe(1);
+    expect(await card("battle-7-s1")).toBeDefined();
+    expect(tradeReads).toBe(0); // the season card exists, so its trades aren't re-read
+  });
 });
 
 describe("evolution cards", () => {

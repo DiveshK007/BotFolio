@@ -76,6 +76,8 @@ interface ResultRow {
   trades: number;
   battle_rank: number | null;
   is_house: boolean;
+  has_season: boolean;
+  has_battle: boolean;
 }
 
 async function seasonCards({ db, chain, now }: CardDeps): Promise<number> {
@@ -87,7 +89,9 @@ async function seasonCards({ db, chain, now }: CardDeps): Promise<number> {
   for (const season of seasons) {
     const { rows: results } = await db.query<ResultRow>(
       `select r.bot_id::text as bot_id, r.start_value_e8::text as start_value_e8, r.end_value_e8::text as end_value_e8,
-              r.return_bps, r.max_dd_bps, r.trades, r.battle_rank, b.is_house
+              r.return_bps, r.max_dd_bps, r.trades, r.battle_rank, b.is_house,
+              exists (select 1 from cards c where c.id = 'season-' || r.bot_id::text || '-s' || $1::text) as has_season,
+              exists (select 1 from cards c where c.id = 'battle-' || r.bot_id::text || '-s' || $1::text) as has_battle
        from season_results r join bots b on b.id = r.bot_id where r.season_id = $1::int order by r.bot_id`,
       [season.id],
     );
@@ -99,6 +103,9 @@ async function seasonCards({ db, chain, now }: CardDeps): Promise<number> {
     };
 
     for (const r of results.filter((x) => !x.is_house)) {
+      // Cards are write-once: skip the per-bot reads when every card this bot gets already exists.
+      const wantBattle = r.battle_rank !== null && house.length === 3 && !r.has_battle;
+      if (r.has_season && !wantBattle) continue;
       const mark = await lastMarkIn(db, r.bot_id, season.id);
       if (!mark) continue;
       const start = BigInt(r.start_value_e8);
@@ -114,7 +121,7 @@ async function seasonCards({ db, chain, now }: CardDeps): Promise<number> {
       };
 
       // Battle: this bot and exactly 3 house bots (SPEC §8), in the battle's order.
-      if (r.battle_rank !== null && house.length === 3) {
+      if (wantBattle) {
         const four = [r, ...house].sort((a, b) => b.return_bps - a.return_bps || a.max_dd_bps - b.max_dd_bps);
         const entries = (await Promise.all(
           four.map(async (x, i) => ({ bot: await botOf(x.bot_id), rank: (i + 1) as 1 | 2 | 3 | 4, returnBps: x.return_bps })),
@@ -131,6 +138,7 @@ async function seasonCards({ db, chain, now }: CardDeps): Promise<number> {
       }
 
       // Season: return, drawdown, trades, and the best and worst call priced at the season's last mark.
+      if (r.has_season) continue;
       const { rows: trades } = await db.query<TradeRow>(
         `select ${TRADE_COLUMNS} from trades t join decisions d on d.id = t.decision_id join slots s on s.id = d.slot_id
          where t.bot_id = $1::bigint and t.tx_hash is not null and s.season_id = $2::int order by t.block_number, t.log_index`,
