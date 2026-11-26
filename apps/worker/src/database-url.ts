@@ -1,8 +1,13 @@
+import { SUPABASE_ROOT_CA } from "./supabase-ca";
+
 /** What pg gets. `ssl` is set when a remote URL names no sslmode: pg would send the password in plain text otherwise. */
 export interface DatabaseConfig {
   connectionString: string;
-  ssl?: true;
+  ssl?: true | { ca: string };
 }
+
+/** Supabase's Postgres and pooler hosts, whose certificates chain to the Supabase root CA, not a public one. */
+const isSupabaseHost = (host: string) => host.endsWith(".supabase.com") || host.endsWith(".supabase.co");
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const TLS_MODES = new Set(["require", "verify-ca", "verify-full"]);
@@ -28,6 +33,11 @@ export function checkDatabaseUrl(raw: string | undefined): DatabaseConfig | stri
   const modes = url.searchParams.getAll("sslmode");
   if (modes.length > 1) return "must set sslmode once"; // pg would use the last one, and we'd have checked the first
   const mode = modes[0];
-  if (mode === undefined) return { connectionString: value, ssl: true };
-  return TLS_MODES.has(mode) ? { connectionString: value } : "must use TLS for a remote server";
+  if (mode !== undefined && !TLS_MODES.has(mode)) return "must use TLS for a remote server";
+  if (isSupabaseHost(url.hostname)) {
+    // Still verified, against Supabase's own root. pg lets a URL's sslmode replace the ssl object, so drop it.
+    url.searchParams.delete("sslmode");
+    return { connectionString: url.toString(), ssl: { ca: SUPABASE_ROOT_CA } };
+  }
+  return mode === undefined ? { connectionString: value, ssl: true } : { connectionString: value };
 }

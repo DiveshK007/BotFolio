@@ -44,4 +44,22 @@ describe.each(Object.entries(READERS))("DATABASE_URL in the %s", (_name, read) =
     expect(ssl).toBeTruthy();
     if (typeof ssl === "object") expect(ssl.rejectUnauthorized).not.toBe(false);
   });
+
+  // Supabase's certificates chain to its own root, which Node doesn't trust: without the CA every query fails
+  // with SELF_SIGNED_CERT_IN_CHAIN (seen on the first Render deploy, Nov 26 2026).
+  it.each([
+    "postgresql://postgres.abc:pw@aws-0-ap-south-1.pooler.supabase.com:5432/postgres",
+    "postgresql://postgres.abc:pw@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require",
+    "postgresql://postgres:pw@db.abc.supabase.co:5432/postgres",
+  ])("verifies %s against the Supabase root CA", (url) => {
+    const config = read(url);
+    expect(config).not.toBeNull();
+    const { ssl } = new pg.Client(config!) as unknown as { ssl: { ca?: string; rejectUnauthorized?: boolean } };
+    expect(ssl.ca).toContain("BEGIN CERTIFICATE");
+    expect(ssl.rejectUnauthorized).not.toBe(false);
+  });
+
+  it("refuses an unencrypted Supabase URL", () => {
+    expect(read("postgresql://postgres.abc:pw@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=disable")).toBeNull();
+  });
 });
