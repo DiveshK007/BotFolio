@@ -1,8 +1,9 @@
 import { QIE_CHAIN_ID, qieMainnet } from "@botfolio/shared";
-import { createWalletClient, fallback, http, type Abi, type Address, type LocalAccount, type TransactionReceipt } from "viem";
+import { createWalletClient, encodeFunctionData, fallback, http, type Abi, type Address, type LocalAccount, type TransactionReceipt } from "viem";
 import { InternalFailure } from "../auth/log";
 import { createQiePublicClient } from "../chain";
 import { MAX_FEE_PER_GAS } from "../relay/fees";
+import { intrinsicGas, isBogusEstimate } from "../relay/chain";
 
 export interface ContractWrite {
   address: Address;
@@ -21,8 +22,16 @@ export interface SystemSender {
 const RECEIPT_TIMEOUT_MS = 90_000;
 const GAS_MARGIN = 15_000n;
 
+/**
+ * #339: every system call costs well over this (openSeason ~57k, a 1-order batch ~120k), and QIE bills at least half
+ * the limit, so a floor costs < 0.0001 QIE a tx while a bogus estimate can no longer starve one.
+ */
+export const SYSTEM_MIN_GAS = 150_000n;
+const ESTIMATE_TRIES = 3;
+const ESTIMATE_RETRY_MS = 2_000;
+
 /** Estimate + 25 % + margin, never below `minGas`. */
-export const gasLimit = (estimate: bigint, minGas = 0n) => {
+export const gasLimit = (estimate: bigint, minGas = SYSTEM_MIN_GAS) => {
   const padded = estimate + estimate / 4n + GAS_MARGIN;
   return padded > minGas ? padded : minGas;
 };
@@ -57,7 +66,14 @@ export function createSystemSender(opts: { rpcUrls: readonly string[]; account: 
       chainChecked = true;
     }
     // The estimate is also the pre-check: a call that would revert throws here, before any gas is spent.
-    const estimate = await reader.estimateContractGas({ ...call, account });
+    const intrinsic = intrinsicGas(encodeFunctionData(call));
+    let estimate = await reader.estimateContractGas({ ...call, account });
+    // #339: QIE sometimes answers with bare intrinsic gas, as if the contract had no code. Ask again, then give up unsent.
+    for (let tries = 1; isBogusEstimate(estimate, intrinsic); tries++) {
+      if (tries >= ESTIMATE_TRIES) throw new InternalFailure("gas_estimate_bogus");
+      await new Promise((r) => setTimeout(r, ESTIMATE_RETRY_MS));
+      estimate = await reader.estimateContractGas({ ...call, account });
+    }
     const fees = await reader.estimateFeesPerGas();
     if (fees.maxFeePerGas > MAX_FEE_PER_GAS) throw new InternalFailure("gas_price_above_cap");
 

@@ -101,6 +101,12 @@ describe("pre-checks before spending gas (#37)", () => {
     expect(small.gas).toBeLessThan(225_000n);
   });
 
+  it("uses the ceiling when the node answers with bare intrinsic gas (#339)", async () => {
+    const { result, request } = await prepare({ estimate: { result: numberToHex(21_544) } });
+    const prepared = await result;
+    expect(prepared.gas).toBe(intrinsicGas(prepared.data) + (request.gas * 64n) / 63n + 120_000n);
+  });
+
   it("refuses an absurd estimate", async () => {
     const { result } = await prepare({ estimate: { result: numberToHex(30_000_000) } });
     await expect(result).rejects.toMatchObject({ reason: "gas_estimate_above_ceiling" });

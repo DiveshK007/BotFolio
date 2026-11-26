@@ -91,10 +91,15 @@ export class ForwarderChain {
     }
     const ceiling = intrinsicGas(data) + (request.gas * 64n) / 63n + EXECUTE_OVERHEAD_GAS;
     if (estimate > ceiling) throw new InternalFailure("gas_estimate_above_ceiling");
+    // #339: an estimate of bare intrinsic gas is a broken node, not a cheap call. The user signed for request.gas.
+    if (isBogusEstimate(estimate, intrinsicGas(data))) return { to: this.forwarder, data, gas: ceiling };
     const padded = estimate + estimate / 4n + ESTIMATE_MARGIN_GAS;
     return { to: this.forwarder, data, gas: padded < ceiling ? padded : ceiling };
   }
 }
+
+/** Bare intrinsic gas (+ slack) means the node never ran the code (#339). Our cheapest real call, a skipped 1-order batch, runs ~23k above intrinsic. */
+export const isBogusEstimate = (estimate: bigint, intrinsic: bigint) => estimate < intrinsic + 10_000n;
 
 /** Shanghai intrinsic gas: 21000 + 4 per zero byte + 16 per non-zero byte. */
 export function intrinsicGas(data: Hex): bigint {
