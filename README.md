@@ -221,9 +221,9 @@ Solidity 0.8.24, `evm_version = "shanghai"`, OpenZeppelin 5.0.2. Source in [pack
 | :--- | :--- | :--- |
 | **QIE oracle feeds** (BTC, ETH, SOL, XRP, Gold) | Read inside `PaperLedger` and `DailyCall` (`src/lib/OracleReader.sol`); re-read by `verify_trade` and the replay script | In the code |
 | **QIE mainnet** (chain 1990) | All 7 contracts; RPC failover over rpc1–rpc5 | Deploy pending (#25) |
-| **QIE Wallet** | "Connect QIE Wallet" login next to passkey ([#86](https://github.com/DiveshK007/BotFolio/issues/86)); relay auth for it is in the worker (`/auth/nonce`, `/auth/verify`) | Signing on chain 1990 not tested yet ([#99](https://github.com/DiveshK007/BotFolio/issues/99)) |
-| **QIE ID / `.qie` names** | Show `name.qie` instead of `0x…` on bot pages and leaderboards ([#87](https://github.com/DiveshK007/BotFolio/issues/87), [#104](https://github.com/DiveshK007/BotFolio/issues/104)) | Planned |
-| **QIE Wallet MCP** | Server-side `.qie` reverse lookups ([#104](https://github.com/DiveshK007/BotFolio/issues/104)) | Planned |
+| **QIE Wallet** | "Connect QIE Wallet" login next to passkey ([#86](https://github.com/DiveshK007/BotFolio/issues/86), PR #322); relay auth for it is in the worker (`/auth/nonce`, `/auth/verify`) | Connect live; EIP-712 signing on chain 1990 not tested yet ([#99](https://github.com/DiveshK007/BotFolio/issues/99)) |
+| **QIE ID / `.qie` names** | `name.qie` instead of `0x…` on bot pages, leaderboards and cards ([#87](https://github.com/DiveshK007/BotFolio/issues/87), [#104](https://github.com/DiveshK007/BotFolio/issues/104)) | In the code (PR #321); lookups checked live Nov 26 |
+| **QIE Wallet MCP** | Server-side `.qie` reverse lookups (`qie_reverse_lookup`, cached 24 h) ([#104](https://github.com/DiveshK007/BotFolio/issues/104)) | In the code (PR #321); checked live Nov 26 |
 | **QIE Pass** | Optional "verified human" badge behind `PASS_ENABLED` ([#110](https://github.com/DiveshK007/BotFolio/issues/110)) | Partner access not confirmed (unverified) |
 
 ### Submission links
@@ -340,10 +340,12 @@ curl localhost:10000/healthz   # "reasons" lists what is still degraded
 - [x] Replay script, leaderboards, BotFolio MCP server code
 - [x] `/proof`, `/about`, `/terms`, `/privacy`, bot page and leaderboards pages
 - [ ] Deploy the 7 contracts to QIE mainnet ([#25](https://github.com/DiveshK007/BotFolio/issues/25))
-- [ ] Passkey sign-in with Privy on chain 1990 ([#71](https://github.com/DiveshK007/BotFolio/issues/71))
+- [x] Passkey sign-in with Privy on chain 1990, code (PR #322); real-phone check pending ([#71](https://github.com/DiveshK007/BotFolio/issues/71))
 - [ ] Newcomer path end to end on mainnet in under 30 s ([#76](https://github.com/DiveshK007/BotFolio/issues/76))
-- [ ] Public API `GET /api/v1/bots/:id/record` ([#106](https://github.com/DiveshK007/BotFolio/issues/106)) and `/stats` ([#92](https://github.com/DiveshK007/BotFolio/issues/92))
-- [ ] Connect QIE Wallet and `.qie` names ([#86](https://github.com/DiveshK007/BotFolio/issues/86), [#87](https://github.com/DiveshK007/BotFolio/issues/87))
+- [x] Public API `GET /api/v1/bots/:id/record` ([#106](https://github.com/DiveshK007/BotFolio/issues/106)) and `/stats` ([#92](https://github.com/DiveshK007/BotFolio/issues/92))
+- [x] Connect QIE Wallet and `.qie` names, code ([#86](https://github.com/DiveshK007/BotFolio/issues/86), [#87](https://github.com/DiveshK007/BotFolio/issues/87))
+- [x] Owner screens: /me, corrections, Approve Big Move, Daily Call, season v2 approve, challenges (PR #323)
+- [x] Deploy kit: mainnet deploy/verify/role-check scripts, Render blueprint, runbook ([docs/deploy.md](docs/deploy.md), PR #320)
 - [ ] Demo video, deck and submission ([#116](https://github.com/DiveshK007/BotFolio/issues/116), [#117](https://github.com/DiveshK007/BotFolio/issues/117), [#121](https://github.com/DiveshK007/BotFolio/issues/121))
 - [ ] Weekly seasons from S5, Dec 7 ([#179](https://github.com/DiveshK007/BotFolio/issues/179))
 
@@ -357,6 +359,8 @@ curl localhost:10000/healthz   # "reasons" lists what is still degraded
 | [docs/oracle-caveat.md](docs/oracle-caveat.md) | The QIE oracle caveat: one operator, update gaps, max ages, skip and hold |
 | [docs/replay.md](docs/replay.md) | Recompute a season, and what is and isn't reproducible |
 | [docs/trust-rules.md](docs/trust-rules.md) | Trust score rules `trust-v1-sprint` and `trust-v1` |
+| [docs/deploy.md](docs/deploy.md) | First production deploy, end to end: keys, contracts, database, rules and house bots, Render, Vercel, smoke test |
+| [docs/env.md](docs/env.md) | Every environment variable: where it comes from, and whether it is a secret |
 | [docs/runbook.md](docs/runbook.md) | Incidents: restart, stale oracle, LLM down, RPC down, wallet top-up, key rotation |
 | [docs/rollback.md](docs/rollback.md) | Rollback: Vercel, Render, contract-address switch |
 | [docs/gas.md](docs/gas.md) | Gas report from a mainnet fork, and the relayer gas cap |
