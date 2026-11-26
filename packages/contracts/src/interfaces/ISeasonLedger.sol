@@ -37,6 +37,10 @@ interface ISeasonLedger is IAccessControl, IERC165 {
     error BadSeason(uint32 n);
     /// @notice The season is not open.
     error SeasonNotOpen(uint32 n);
+    /// @notice The previous season is not closed yet, so the next can't open.
+    error PreviousSeasonOpen(uint32 previous);
+    /// @notice The season's `end` hasn't been reached, so it can't be closed yet.
+    error SeasonNotOver(uint32 n, uint64 end);
 
     /// @notice Role of the committer key (season roots).
     function COMMITTER_ROLE() external view returns (bytes32);
@@ -96,13 +100,14 @@ interface ISeasonLedger is IAccessControl, IERC165 {
     /// @param chip Preset chip id (e.g. "too risky"), defined off-chain.
     function recordCorrection(uint256 botId, bytes32 decisionId, bytes32 noteHash, uint8 chip) external;
 
-    /// @notice Opens season `n`. COMMITTER_ROLE only. `n` must equal `nextSeason()`; `start < end`.
+    /// @notice Opens season `n`. COMMITTER_ROLE only. `n` must equal `nextSeason()`; `start < end`;
+    ///         season `n - 1` must be closed.
     /// @param n Season number.
     /// @param start Unix start time.
     /// @param end Unix end time.
     function openSeason(uint32 n, uint64 start, uint64 end) external;
 
-    /// @notice Closes an open season and seals its data root. COMMITTER_ROLE only.
+    /// @notice Closes an open season and seals its data root. COMMITTER_ROLE only; not before its `end`.
     /// @param n Season number.
     /// @param dataRoot Merkle root (keccak256, sorted pairs) over the replay file's line hashes.
     /// @param dataURI Public URL of `season-<n>.jsonl`.

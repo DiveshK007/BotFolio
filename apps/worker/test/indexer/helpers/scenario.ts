@@ -54,7 +54,8 @@ export async function openAndCreateBots(fork: Fork): Promise<Opened> {
   await fork.setClock(timeAt(day, IST_NOON));
 
   const start = timeAt(day, 0n);
-  await fork.send(committer, "SeasonLedger", "openSeason", [0, start, start + 2n * 86_400n]);
+  // Ends at the 21:00 settle, so part 2 can close it that evening: closeSeason waits for `end` (#219 item 2).
+  await fork.send(committer, "SeasonLedger", "openSeason", [0, start, timeAt(day, IST_SETTLE)]);
   await fork.send(admin, "TrustScoreRegistry", "publishRules", [VALUES.rules, "https://example.invalid/rules", VALUES.dataRoot]);
 
   await fork.relay(alice, "BotRegistry", "createBot", [VALUES.alicePersona, 4000, 4]);

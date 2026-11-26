@@ -2,7 +2,9 @@
 pragma solidity 0.8.24;
 
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
+import {SeasonLedger} from "../src/SeasonLedger.sol";
 import {TrustScoreRegistry} from "../src/TrustScoreRegistry.sol";
+import {ISeasonLedger} from "../src/interfaces/ISeasonLedger.sol";
 import {ITrustScoreRegistry} from "../src/interfaces/ITrustScoreRegistry.sol";
 import {Roles} from "../src/lib/Roles.sol";
 import {ForkTest} from "./utils/ForkTest.sol";
@@ -22,14 +24,19 @@ contract TrustScoreRegistryTest is ForkTest {
     string internal constant URI = "https://example.com/trust-rules.md";
 
     TrustScoreRegistry internal trust;
+    SeasonLedger internal seasons;
     address internal admin = makeAddr("botfolio.admin");
     address internal committer = makeAddr("botfolio.committer");
 
     function setUp() public override {
         super.setUp();
-        trust = new TrustScoreRegistry(admin);
-        vm.prank(admin);
+        // Only season state is read, so the forwarder and registry can be any address.
+        seasons = new SeasonLedger(makeAddr("forwarder"), admin, makeAddr("registry"));
+        trust = new TrustScoreRegistry(admin, address(seasons));
+        vm.startPrank(admin);
         trust.grantRole(Roles.COMMITTER, committer);
+        seasons.grantRole(Roles.COMMITTER, committer);
+        vm.stopPrank();
     }
 
     function _publishAndCommit() internal {
@@ -179,8 +186,52 @@ contract TrustScoreRegistryTest is ForkTest {
         trust.commitScores(3, RULES, ROOT, URI);
     }
 
-    function test_constructorRejectsZeroAdmin() public {
+    function test_constructorRejectsZeroAddresses() public {
         vm.expectRevert(TrustScoreRegistry.ZeroAddress.selector);
-        new TrustScoreRegistry(address(0));
+        new TrustScoreRegistry(address(0), address(seasons));
+        vm.expectRevert(TrustScoreRegistry.ZeroAddress.selector);
+        new TrustScoreRegistry(admin, address(0));
+        assertEq(trust.seasonLedger(), address(seasons));
+    }
+
+    // --- lock after close (#219 item 4)
+
+    function _commit(uint32 season, bytes32 root) internal {
+        vm.prank(committer);
+        trust.commitScores(season, RULES, root, URI);
+    }
+
+    function _openAndClose(uint32 n) internal {
+        vm.startPrank(committer);
+        seasons.openSeason(n, uint64(block.timestamp), uint64(block.timestamp + 1));
+        vm.warp(block.timestamp + 1);
+        seasons.closeSeason(n, keccak256("data root"), "x");
+        vm.stopPrank();
+    }
+
+    function test_commitScores_replaceableUntilClose_thenLocked() public {
+        vm.prank(admin);
+        trust.publishRules(RULES, URI, DOC);
+        _commit(0, keccak256("day 1"));
+        _commit(0, keccak256("day 2"));
+        assertEq(trust.scoresRoot(0), keccak256("day 2"));
+
+        _openAndClose(0);
+        vm.expectRevert(abi.encodeWithSelector(ITrustScoreRegistry.ScoresLocked.selector, 0));
+        vm.prank(committer);
+        trust.commitScores(0, RULES, keccak256("rewrite"), URI);
+        assertEq(trust.scoresRoot(0), keccak256("day 2"));
+    }
+
+    function test_commitScores_closedSeasonGetsItsFirstRootOnce() public {
+        vm.prank(admin);
+        trust.publishRules(RULES, URI, DOC);
+        _openAndClose(0);
+        assertEq(uint8(seasons.seasonState(0)), uint8(ISeasonLedger.SeasonState.CLOSED));
+
+        _commit(0, keccak256("late root")); // rules published after the close: still allowed once
+        vm.expectRevert(abi.encodeWithSelector(ITrustScoreRegistry.ScoresLocked.selector, 0));
+        vm.prank(committer);
+        trust.commitScores(0, RULES, keccak256("rewrite"), URI);
     }
 }

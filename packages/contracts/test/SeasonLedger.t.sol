@@ -30,7 +30,10 @@ contract SeasonLedgerTest is LedgerFixture {
         seasonsC.openSeason(n, uint64(block.timestamp), uint64(block.timestamp + 2 days));
     }
 
+    /// Waits for the season's end first: closing earlier reverts (#219 item 2).
     function _close(uint32 n) internal {
+        (, uint64 end,,,) = seasonsC.seasons(n);
+        if (block.timestamp < end) vm.warp(end);
         vm.prank(committer);
         seasonsC.closeSeason(n, keccak256("root"), "https://example.com/season.jsonl");
     }
@@ -192,6 +195,7 @@ contract SeasonLedgerTest is LedgerFixture {
         vm.prank(committer);
         seasonsC.openSeason(0, 1, 2);
 
+        _close(0);
         _open(1);
         assertEq(seasonsC.currentSeason(), 1);
         assertEq(seasonsC.nextSeason(), 2);
@@ -213,6 +217,29 @@ contract SeasonLedgerTest is LedgerFixture {
         assertEq(root, keccak256("root"));
         assertEq(uri, "https://example.com/season.jsonl");
         assertTrue(closed);
+        assertEq(uint8(seasonsC.seasonState(0)), uint8(ISeasonLedger.SeasonState.CLOSED));
+    }
+
+    function test_openSeason_needsPreviousClosed() public {
+        _open(0);
+        vm.expectRevert(abi.encodeWithSelector(ISeasonLedger.PreviousSeasonOpen.selector, 0));
+        vm.prank(committer);
+        seasonsC.openSeason(1, uint64(block.timestamp), uint64(block.timestamp + 2 days));
+        assertEq(seasonsC.nextSeason(), 1);
+    }
+
+    function test_closeSeason_notBeforeEnd() public {
+        _open(0);
+        (, uint64 end,,,) = seasonsC.seasons(0);
+        vm.warp(end - 1);
+        vm.expectRevert(abi.encodeWithSelector(ISeasonLedger.SeasonNotOver.selector, 0, end));
+        vm.prank(committer);
+        seasonsC.closeSeason(0, keccak256("root"), "x");
+        assertEq(uint8(seasonsC.seasonState(0)), uint8(ISeasonLedger.SeasonState.OPEN));
+
+        vm.warp(end); // `end` itself is over
+        vm.prank(committer);
+        seasonsC.closeSeason(0, keccak256("root"), "x");
         assertEq(uint8(seasonsC.seasonState(0)), uint8(ISeasonLedger.SeasonState.CLOSED));
     }
 

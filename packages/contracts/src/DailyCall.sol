@@ -21,6 +21,7 @@ contract DailyCall is IDailyCall, ForwarderAccess, EIP712 {
 
     uint32 public constant CALL_CUTOFF = 72_000; // 20:00 IST
     uint32 public constant SETTLE_FROM = 75_600; // 21:00 IST
+    uint32 public constant SETTLE_WINDOW = 1 days; // from SETTLE_FROM; a call not settled by then is void
     uint32 public constant MAX_AGE = QieFeeds.CRYPTO_MAX_AGE;
 
     address public immutable registry;
@@ -67,6 +68,8 @@ contract DailyCall is IDailyCall, ForwarderAccess, EIP712 {
         address owner = IBotRegistry(registry).getBot(botId).owner;
         address caller = _msgSender();
         if (caller != owner) revert NotBotOwner(botId, caller);
+        // A paused bot may still play; an admin-banned one may not (#219 item 6).
+        if (IBotRegistry(registry).banned(botId)) revert BotBanned(botId);
 
         uint32 day = _today();
         Call storage c = calls[botId][day];
@@ -91,7 +94,9 @@ contract DailyCall is IDailyCall, ForwarderAccess, EIP712 {
     }
 
     /// @dev Returns quietly when there's no usable price yet, because the worker retries (SPEC §6.1).
+    ///      After the window it also returns quietly: the committer can't wait for a price it likes (#219 item 5).
     function settle(uint256[] calldata botIds, uint32 day) external onlyRole(COMMITTER_ROLE) {
+        if (block.timestamp >= IstTime.timeAt(day, SETTLE_FROM) + SETTLE_WINDOW) return;
         OracleReader.Round memory round = OracleReader.latest(QieFeeds.BTC_USDT);
         if (!OracleReader.isFresh(round, MAX_AGE)) return;
         if (round.updatedAt < IstTime.timeAt(day, SETTLE_FROM)) return;

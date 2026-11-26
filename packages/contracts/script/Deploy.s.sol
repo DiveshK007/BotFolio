@@ -109,7 +109,7 @@ contract Deploy is Script {
 
         address reg = address(d.registry);
         d.seasonLedger = new SeasonLedger(fwd, deployer, reg);
-        d.trust = new TrustScoreRegistry(deployer);
+        d.trust = new TrustScoreRegistry(deployer, address(d.seasonLedger));
         d.dailyCall = new DailyCall(fwd, deployer, reg);
         d.challenges = new Challenges(fwd, deployer, reg, address(d.seasonLedger));
     }

@@ -3,6 +3,7 @@ pragma solidity 0.8.24;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import {ISeasonLedger} from "./interfaces/ISeasonLedger.sol";
 import {ITrustScoreRegistry} from "./interfaces/ITrustScoreRegistry.sol";
 import {Roles} from "./lib/Roles.sol";
 
@@ -12,17 +13,20 @@ import {Roles} from "./lib/Roles.sol";
 contract TrustScoreRegistry is ITrustScoreRegistry, AccessControl {
     bytes32 public constant COMMITTER_ROLE = Roles.COMMITTER;
 
+    address public immutable seasonLedger;
+
     mapping(bytes32 version => string) public rulesURI;
     mapping(bytes32 version => bytes32) public rulesDocHash;
     mapping(uint32 season => bytes32) public scoresRoot;
     mapping(uint32 season => bytes32) public rulesVersionOf;
 
-    /// @notice The admin argument was zero.
+    /// @notice The admin or season ledger argument was zero.
     error ZeroAddress();
 
-    constructor(address admin) {
-        if (admin == address(0)) revert ZeroAddress();
+    constructor(address admin, address seasonLedger_) {
+        if (admin == address(0) || seasonLedger_ == address(0)) revert ZeroAddress();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        seasonLedger = seasonLedger_;
     }
 
     /// @dev `docHash` can't be zero, so a non-zero `rulesDocHash` is what "published" means.
@@ -46,10 +50,17 @@ contract TrustScoreRegistry is ITrustScoreRegistry, AccessControl {
     {
         if (root == bytes32(0) || bytes(uri).length == 0) revert EmptyValue();
         if (rulesDocHash[rulesVersion] == bytes32(0)) revert UnknownRules(rulesVersion);
+        // Provisional roots may be replaced while the season runs. Once it is closed, the first root
+        // stays (#219 item 4); a closed season with no root yet may still get one (rules published late).
+        if (scoresRoot[season] != bytes32(0) && _closed(season)) revert ScoresLocked(season);
 
         scoresRoot[season] = root;
         rulesVersionOf[season] = rulesVersion;
         emit ScoresCommitted(season, rulesVersion, root, uri);
+    }
+
+    function _closed(uint32 season) private view returns (bool) {
+        return ISeasonLedger(seasonLedger).seasonState(season) == ISeasonLedger.SeasonState.CLOSED;
     }
 
     function leafHash(

@@ -33,7 +33,10 @@ contract ChallengesForkTest is LedgerFixture {
         seasonsC.openSeason(n, uint64(block.timestamp), uint64(block.timestamp + 2 days));
     }
 
+    /// Waits for the season's end first: closing earlier reverts (#219 item 2).
     function _close(uint32 n) internal {
+        (, uint64 end,,,) = seasonsC.seasons(n);
+        if (block.timestamp < end) vm.warp(end);
         vm.prank(committer);
         seasonsC.closeSeason(n, keccak256("root"), "https://example.com/s.jsonl");
     }
