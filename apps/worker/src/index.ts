@@ -31,6 +31,9 @@ import { bigMoveRoutes } from "./big-moves/route";
 import { DEFAULT_USDINR_SOURCE_URL, usdInrCache, usdInrRoutes } from "./fx/usd-inr";
 import { dailyCallRoutes } from "./daily-call/route";
 import { statusRoutes } from "./status/route";
+import { ownerRoutes } from "./owner/route";
+import { challengeRoutes } from "./challenges/route";
+import { correctionNoteRoutes } from "./corrections/route";
 import { createCardChain } from "./cards/build";
 import { cardJobs, startCardSweeper } from "./cards/jobs";
 import { TARGET_ABIS } from "./relay/abis";
@@ -120,6 +123,9 @@ async function main(): Promise<void> {
     ...trustRoutes({ db: reads, origins, clientIp }),
     ...bigMoveRoutes({ origins, auth: auth.authenticator, log: consoleLog, db: reads }),
     ...dailyCallRoutes({ origins, auth: auth.authenticator, log: consoleLog, db: reads }),
+    ...ownerRoutes({ origins, auth: auth.authenticator, log: consoleLog, db: reads }),
+    ...challengeRoutes({ db: reads, origins, clientIp }),
+    ...correctionNoteRoutes({ origins, auth: auth.authenticator, log: consoleLog, db: reads }),
     ...leaderboardRoutes({ source: boards, origins, clientIp }),
     ...usdInrRoutes({ cache: usdInr, origins }),
     ...statusRoutes({ health, origins, clientIp }),

@@ -27,7 +27,7 @@ interface Call {
   signal?: AbortSignal;
 }
 
-async function postJson({ url, auth, body, timeoutMs, noAnswer, signal }: Call): Promise<Record<string, unknown>> {
+export async function postJson({ url, auth, body, timeoutMs, noAnswer, signal }: Call): Promise<Record<string, unknown>> {
   const token = await auth.getAuthToken();
   // AbortSignal.any needs iOS 17.4, so join the caller's signal and the timeout by hand.
   const controller = new AbortController();
@@ -86,8 +86,12 @@ export async function requestPersona(
  * POST /relay (SPEC §10, §11). A lost answer can mean the tx was sent, so the copy doesn't claim it wasn't.
  * Trying again is safe: the forwarder nonce and one-bot-per-wallet both block a second bot.
  */
-export async function postRelay(workerUrl: string, auth: Auth, request: ForwardRequestJson): Promise<Hex> {
-  const noAnswer = "We couldn't confirm the launch went through. Try again: you can't end up with two bots.";
+export async function postRelay(
+  workerUrl: string,
+  auth: Auth,
+  request: ForwardRequestJson,
+  noAnswer = "We couldn't confirm the launch went through. Try again: you can't end up with two bots.",
+): Promise<Hex> {
   const body: RelayRequestBody = { request };
   const json = await postJson({ url: workerUrl + RELAY_PATH, auth, body, timeoutMs: RELAY_TIMEOUT_MS, noAnswer });
   if (typeof json.txHash !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(json.txHash)) {

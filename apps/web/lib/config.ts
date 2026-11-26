@@ -1,4 +1,4 @@
-import { QIE_RPC_URLS, qieMainnet } from "@botfolio/shared";
+import { QIE_RPC_URLS, qieMainnet, type RelayTargetContract } from "@botfolio/shared";
 import type { Chain } from "viem";
 import { isAddress } from "./format";
 
@@ -50,6 +50,35 @@ export const getCreateConfig = () =>
     registry: process.env.NEXT_PUBLIC_BOT_REGISTRY_ADDRESS,
   });
 
+/** The signed-in owner screens: worker + forwarder, and each relay target that is deployed. */
+export interface OwnerConfig {
+  workerUrl: string;
+  forwarder: `0x${string}`;
+  /** A missing target means that one action isn't live yet; the screen says so instead of guessing an address. */
+  targets: Partial<Record<RelayTargetContract, `0x${string}`>>;
+}
+
+export function parseOwnerConfig(env: { relayUrl?: string; forwarder?: string } & Partial<Record<RelayTargetContract, string>>): OwnerConfig | null {
+  const workerUrl = workerBase(env.relayUrl);
+  if (!workerUrl || !env.forwarder || !isAddress(env.forwarder)) return null;
+  const targets: OwnerConfig["targets"] = {};
+  for (const name of ["BotRegistry", "SeasonLedger", "PaperLedger", "DailyCall", "Challenges"] as const) {
+    const a = env[name];
+    if (a && isAddress(a)) targets[name] = a;
+  }
+  return { workerUrl, forwarder: env.forwarder, targets };
+}
+
+export const getOwnerConfig = () =>
+  parseOwnerConfig({
+    relayUrl: process.env.NEXT_PUBLIC_RELAY_URL,
+    forwarder: process.env.NEXT_PUBLIC_FORWARDER_ADDRESS,
+    BotRegistry: process.env.NEXT_PUBLIC_BOT_REGISTRY_ADDRESS,
+    SeasonLedger: process.env.NEXT_PUBLIC_SEASON_LEDGER_ADDRESS,
+    PaperLedger: process.env.NEXT_PUBLIC_PAPER_LEDGER_ADDRESS,
+    DailyCall: process.env.NEXT_PUBLIC_DAILY_CALL_ADDRESS,
+    Challenges: process.env.NEXT_PUBLIC_CHALLENGES_ADDRESS,
+  });
 /** rpc3 → 4 → 5 → 1 → 2, like the worker: rpc1/rpc2 drop TLS sometimes. */
 export const DEFAULT_RPC_URLS: readonly string[] = [...QIE_RPC_URLS.slice(2), ...QIE_RPC_URLS.slice(0, 2)];
 

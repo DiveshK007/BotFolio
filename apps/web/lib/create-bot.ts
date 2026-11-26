@@ -2,31 +2,14 @@
  * createBot through BotForwarder (SPEC §2.1 step 4, §4.1, §4.2): read nonce → user signs → POST /relay → receipt.
  * Imported lazily on Launch so viem's contract code isn't in the first load of /create.
  */
-import {
-  forwardRequestToJson,
-  forwardRequestTypedData,
-  qieMainnet,
-  RELAY_LIMITS,
-  toForwardRequest,
-  type ForwardRequestMessage,
-} from "@botfolio/shared";
-import {
-  createPublicClient,
-  encodeFunctionData,
-  fallback,
-  http,
-  isAddressEqual,
-  parseAbi,
-  parseEventLogs,
-  type Address,
-  type Hex,
-  type PublicClient,
-} from "viem";
-import { getRpcUrls, type CreateConfig } from "./config";
+import { encodeFunctionData, isAddressEqual, parseAbi, parseEventLogs, type Address, type Hex } from "viem";
+import type { CreateConfig } from "./config";
 import { FlowError } from "./errors";
 import { validLimits, type BotLimits } from "./persona";
+import { signAndRelay, type ChainClient, type LaunchStep } from "./relay-call";
 import type { WalletSession } from "./wallet";
-import { postRelay } from "./worker";
+
+export { createChainClient, FORWARDER_ABI, type ChainClient, type LaunchStep } from "./relay-call";
 
 // Just the items S2 uses, as parseAbi so viem infers types. abi.test.ts checks them against packages/contracts/abi.
 export const REGISTRY_ABI = parseAbi([
@@ -34,21 +17,6 @@ export const REGISTRY_ABI = parseAbi([
   "function botOf(address owner) view returns (uint256)",
   "event BotCreated(uint256 indexed botId, address indexed owner, bytes32 personaHash, uint16 maxPerCoinBps, uint8 maxTradesPerDay)",
 ]);
-export const FORWARDER_ABI = parseAbi(["function nonces(address owner) view returns (uint256)"]);
-
-// Well inside the relayer's 10 min limit, so a phone clock a few minutes fast still passes.
-const DEADLINE_SECONDS = 300;
-
-export type ChainClient = Pick<PublicClient, "readContract" | "waitForTransactionReceipt">;
-export type LaunchStep = "checking" | "signing" | "relaying";
-
-/** Fails over through NEXT_PUBLIC_QIE_RPC_URLS (default rpc3 → 4 → 5 → 1 → 2). */
-export function createChainClient(): ChainClient {
-  return createPublicClient({
-    chain: qieMainnet,
-    transport: fallback(getRpcUrls().map((url) => http(url, { timeout: 4_000, retryCount: 0 }))),
-  });
-}
 
 interface LaunchArgs {
   config: CreateConfig;
@@ -67,42 +35,19 @@ export async function launchBot({ config, client, session, personaHash, limits, 
 
   onStep?.("checking");
   let existingBot: bigint;
-  let nonce: bigint;
   try {
-    [existingBot, nonce] = await Promise.all([
-      client.readContract({ address: registry, abi: REGISTRY_ABI, functionName: "botOf", args: [from] }),
-      client.readContract({ address: forwarder, abi: FORWARDER_ABI, functionName: "nonces", args: [from] }),
-    ]);
+    existingBot = await client.readContract({ address: registry, abi: REGISTRY_ABI, functionName: "botOf", args: [from] });
   } catch {
     throw new FlowError("RPC_UNAVAILABLE", "Can't reach QIE right now. Nothing was sent. Please try again.");
   }
   if (existingBot !== 0n) throw new FlowError("ALREADY_HAS_BOT", `This wallet already has bot #${existingBot}. It's one bot per person.`);
 
-  const message: ForwardRequestMessage = {
-    from,
-    to: registry,
-    value: RELAY_LIMITS.value,
-    gas: RELAY_LIMITS.maxGas, // the relayer pays. Tune after the gas report (SPEC §11).
-    nonce,
-    deadline: Math.floor(Date.now() / 1000) + DEADLINE_SECONDS,
-    data: encodeFunctionData({
-      abi: REGISTRY_ABI,
-      functionName: "createBot",
-      args: [personaHash, limits.maxPerCoinPct * 100, limits.maxTradesPerDay],
-    }),
-  };
-
-  onStep?.("signing");
-  let signature: Hex;
-  try {
-    signature = await session.signTypedData(forwardRequestTypedData(forwarder, message));
-  } catch (e) {
-    if (e instanceof FlowError) throw e;
-    throw new FlowError("SIGN_FAILED", "The signature didn't complete. Nothing was sent.");
-  }
-
-  onStep?.("relaying");
-  return postRelay(workerUrl, session, forwardRequestToJson(toForwardRequest(message, signature)));
+  const data = encodeFunctionData({
+    abi: REGISTRY_ABI,
+    functionName: "createBot",
+    args: [personaHash, limits.maxPerCoinPct * 100, limits.maxTradesPerDay],
+  });
+  return signAndRelay({ workerUrl, forwarder, client, session, to: registry, data, onStep });
 }
 
 interface ConfirmArgs {

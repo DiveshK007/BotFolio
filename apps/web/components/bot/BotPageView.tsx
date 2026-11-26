@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ExplorerLink } from "@/components/ui/ExplorerLink";
 import { Inr } from "@/components/ui/Inr";
 import { OraclePrice } from "@/components/ui/OraclePrice";
@@ -19,7 +20,17 @@ const badge = "rounded-full px-2 py-0.5 text-xs font-semibold";
  * S4 body (SPEC §2.4). Every string from the bot (name, emoji, persona, reasons, roasts) is untrusted (#159):
  * JSX text only, inside <bdi>, never a link, HTML or attribute that runs. The play-money line is in the root layout's footer.
  */
-export function BotPageView({ page }: { page: BotPage }) {
+export function BotPageView({
+  page,
+  afterBot,
+  callAction,
+}: {
+  page: BotPage;
+  /** /me: the owner's panel, right under the bot card. */
+  afterBot?: ReactNode;
+  /** /me: "Bad call" under each call. */
+  callAction?: (decision: BotPage["decisions"][number]) => ReactNode;
+}) {
   const { bot, mark, trust } = page;
   const start = BigInt(page.start_cash_e8);
   const latest = page.versions[0];
@@ -77,6 +88,8 @@ export function BotPageView({ page }: { page: BotPage }) {
           )}
         </div>
       </section>
+
+      {afterBot}
 
       <section aria-labelledby="holdings" className={card}>
         <h2 id="holdings" className={h2}>Holdings</h2>
@@ -170,16 +183,16 @@ export function BotPageView({ page }: { page: BotPage }) {
                   <span className="text-muted">v{d.version}</span>
                   {d.reason_tag && <span className="font-mono text-muted">{d.reason_tag}</span>}
                 </div>
-                {d.reason && (
-                  <p className="mt-1 [overflow-wrap:anywhere]">
-                    <bdi>{d.reason}</bdi>
-                  </p>
-                )}
+                {/* Never a blank slot (SPEC §2.2): a call with no logged reason still says what happened. */}
+                <p className="mt-1 [overflow-wrap:anywhere]">
+                  {d.reason ? <bdi>{d.reason}</bdi> : <span className="text-muted">{callLabel(d.status)}. No reason was logged for this call.</span>}
+                </p>
                 {d.roast && (
                   <p className="mt-1 text-sm italic text-muted [overflow-wrap:anywhere]">
                     <bdi>{d.roast}</bdi>
                   </p>
                 )}
+                {callAction?.(d)}
               </li>
             ))}
           </ol>

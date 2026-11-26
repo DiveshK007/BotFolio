@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Hex } from "viem";
 import { ExplorerLink } from "@/components/ui/ExplorerLink";
 import { getCreateConfig } from "@/lib/config";
 import type { LaunchStep } from "@/lib/create-bot";
 import { sentenceSeed } from "@/lib/dna";
-import { readDraft } from "@/lib/draft";
+import { readDraft, takePendingChallenge } from "@/lib/draft";
 import { FlowError, userMessage } from "@/lib/errors";
 import type { BotLimits, PersonaDraft } from "@/lib/persona";
 import { checkSentence } from "@/lib/sentence";
@@ -33,7 +34,8 @@ type Phase =
   | { name: "review" }
   | { name: "launching"; step: LaunchStep }
   | { name: "confirming"; busy: boolean; txHash: Hex }
-  | { name: "done"; botId: bigint; txHash: Hex };
+  /** challenge: the short code of a challenge link they came from (#85); they go back there to accept. */
+  | { name: "done"; botId: bigint; txHash: Hex; challenge: string | null };
 
 const STEP_TEXT: Record<LaunchStep, string> = {
   checking: "Checking QIE…",
@@ -68,6 +70,7 @@ function PersonaLoading() {
 }
 
 export function CreateFlow() {
+  const router = useRouter();
   const [config] = useState(getCreateConfig);
   const [wallet] = useState(getWallet);
   const [qieWallet] = useState(getQieWallet);
@@ -132,7 +135,9 @@ export function CreateFlow() {
         personaHash: draft.personaHash,
         txHash,
       });
-      setPhase({ name: "done", botId, txHash });
+      const challenge = takePendingChallenge();
+      setPhase({ name: "done", botId, txHash, challenge });
+      if (challenge) router.replace(`/challenge/${challenge}`);
     } catch (e) {
       setError(userMessage(e));
       // Only a definite on-chain "no" may go back to Launch. Otherwise keep the hash and re-check that tx.
@@ -192,7 +197,13 @@ export function CreateFlow() {
         <p>
           <ExplorerLink tx={phase.txHash} label="View on explorer" />
         </p>
-        <DebutWait botId={phase.botId.toString()} />
+        {phase.challenge ? (
+          <Link href={`/challenge/${phase.challenge}`} className="inline-flex h-12 items-center justify-center rounded-full bg-accent px-6 font-semibold text-on-accent">
+            Back to the challenge
+          </Link>
+        ) : (
+          <DebutWait botId={phase.botId.toString()} />
+        )}
       </div>
     );
   }
