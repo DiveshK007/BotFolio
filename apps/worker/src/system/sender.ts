@@ -23,8 +23,9 @@ const RECEIPT_TIMEOUT_MS = 90_000;
 const GAS_MARGIN = 15_000n;
 
 /**
- * #339: every system call costs well over this (openSeason ~57k, a 1-order batch ~120k), and QIE bills at least half
- * the limit, so a floor costs < 0.0001 QIE a tx while a bogus estimate can no longer starve one.
+ * #339: most system calls cost well under this (openSeason ~57k, commitScores ~80k), and QIE bills at least half
+ * the limit, so a floor costs < 0.0001 QIE a tx while a bogus estimate can no longer starve one. Calls that can cost
+ * more pass their own `minGas` (executeBatch, closeSeason).
  */
 export const SYSTEM_MIN_GAS = 150_000n;
 const ESTIMATE_TRIES = 3;
