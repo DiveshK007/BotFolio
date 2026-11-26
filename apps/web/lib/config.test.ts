@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCreateConfig } from "./config";
+import { parseCreateConfig, parseOwnerConfig } from "./config";
 
 const forwarder = `0x${"11".repeat(20)}`;
 const registry = `0x${"22".repeat(20)}`;
@@ -25,5 +25,20 @@ describe("parseCreateConfig", () => {
     expect(parse("not a url")).toBeNull();
     expect(parseCreateConfig({ relayUrl: "https://worker.example", registry })).toBeNull();
     expect(parseCreateConfig({ relayUrl: "https://worker.example", forwarder, registry: "" })).toBeNull();
+  });
+});
+
+describe("parseOwnerConfig", () => {
+  it("keeps each deployed target and drops a bad or missing one", () => {
+    expect(parseOwnerConfig({ relayUrl: "https://worker.example/relay", forwarder, BotRegistry: registry, DailyCall: "0xnope" })).toEqual({
+      workerUrl: "https://worker.example",
+      forwarder,
+      targets: { BotRegistry: registry },
+    });
+  });
+
+  it("is null without a worker or a forwarder", () => {
+    expect(parseOwnerConfig({ forwarder })).toBeNull();
+    expect(parseOwnerConfig({ relayUrl: "https://worker.example" })).toBeNull();
   });
 });
