@@ -19,13 +19,15 @@ export interface LlmConfig {
 const PROVIDERS: readonly LlmProvider[] = ["xai", "openai", "anthropic", "fake"];
 // SPEC §6.6 default model. Config, not code: env always wins.
 const DEFAULT_MODEL = "grok-4.20-0309-non-reasoning";
+// The cheapest current Claude model (Nov 26 2026 decision: launch on Claude, $5 budget).
+const DEFAULT_ANTHROPIC_MODEL = "claude-haiku-5-5";
 
 export function loadLlmConfig(env: Env = process.env): LlmConfig {
   const provider = (env.LLM_PROVIDER || "xai").toLowerCase() as LlmProvider;
   if (!PROVIDERS.includes(provider)) {
     throw new Error(`LLM_PROVIDER must be one of ${PROVIDERS.join("|")}, got "${env.LLM_PROVIDER}"`);
   }
-  const decision = env.LLM_MODEL_DECISION || DEFAULT_MODEL;
+  const decision = env.LLM_MODEL_DECISION || (provider === "anthropic" ? DEFAULT_ANTHROPIC_MODEL : DEFAULT_MODEL);
   return {
     provider,
     models: {
@@ -33,7 +35,8 @@ export function loadLlmConfig(env: Env = process.env): LlmConfig {
       persona: env.LLM_MODEL_PERSONA || decision,
       v2: env.LLM_MODEL_V2 || decision,
     },
-    temperature: optionalNumber(env.LLM_TEMPERATURE, "LLM_TEMPERATURE") ?? 0,
+    // Claude rejects a non-default temperature (claude-haiku-5-5), so it defaults to unset there.
+    temperature: optionalNumber(env.LLM_TEMPERATURE, "LLM_TEMPERATURE") ?? (provider === "anthropic" ? undefined : 0),
     timeoutMs: optionalNumber(env.LLM_TIMEOUT_MS, "LLM_TIMEOUT_MS") ?? 20_000,
     monthlyBudgetUsd: optionalNumber(env.LLM_MONTHLY_BUDGET_USD, "LLM_MONTHLY_BUDGET_USD") ?? null,
     promptVersion: env.PROMPT_VERSION || "prompt-v1",

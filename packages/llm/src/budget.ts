@@ -14,6 +14,8 @@ export interface ModelPrice {
 export const DEFAULT_PRICES: Record<string, ModelPrice> = {
   "grok-4.20-0309-non-reasoning": { inPerM: 1.25, outPerM: 2.5 },
   "grok-4.7": { inPerM: 2, outPerM: 6 },
+  // Anthropic list price for prompts up to 100K tokens, from the Claude API reference (cached Nov 3 2026).
+  "claude-haiku-5-5": { inPerM: 0.1, outPerM: 0.5 },
 };
 
 export function estimateCostUsd(model: string, usage: LlmUsage, prices: Record<string, ModelPrice> = DEFAULT_PRICES): number {

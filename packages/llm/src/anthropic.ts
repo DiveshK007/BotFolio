@@ -44,7 +44,12 @@ export class AnthropicClient extends BaseLlmClient {
       messages: [{ role: "user", content: JSON.stringify(req.input) }],
       tools: [{ name: req.schemaName, description: `Return the ${req.schemaName} object.`, input_schema: req.schema }],
       tool_choice: { type: "tool", name: req.schemaName },
+      // Built for claude-haiku-5-5 (Nov 26 2026): thinking is on by default there, and a forced tool call
+      // needs it off; off is allowed at the default effort. Opus 5.5 / Sonnet 5.5 reject both forced tools
+      // and disabled thinking, so they would need structured outputs instead.
+      thinking: { type: "disabled" },
     };
+    // Current Claude models reject a non-default temperature, so it is only sent when LLM_TEMPERATURE is set.
     if (req.temperature !== undefined) body.temperature = req.temperature;
     return body;
   }
