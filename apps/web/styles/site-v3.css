@@ -623,3 +623,4 @@
 @media(max-width:440px){.bf .nav-cta .btn.accent{display:none}}.bf .device-form{margin-top:14px;background:var(--surface);border:2px solid var(--ink);border-radius:18px;padding:14px;color:var(--ink)}
 .bf .party-bar{top:0}
 .bf .arena .badge.live,.bf .ticker .badge.live{color:#3DDC97}
+.bf .ticker .badge.delayed{color:#FFC24D;background:#3A2E12}

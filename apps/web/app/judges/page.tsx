@@ -13,7 +13,8 @@ import { START_CASH_LINE } from "@/lib/site/format";
 import { getContracts } from "@/lib/site/data";
 
 export const metadata: Metadata = { title: "For judges: the 90-second tour", description: "What BotFolio is, live QIE mainnet proof, QIE components used, and user-signed traction." };
-export const revalidate = 60;
+// Live trades and traction: render per request so a cached page never shows old numbers. Worker fetches keep their own cache.
+export const dynamic = "force-dynamic";
 const SENTENCE = "Raise an AI trader in one sentence, coach it every season, and let QIE keep score.";
 // Only an https link is shown; the env is ours, but a typo must not become a javascript: href.
 const VIDEO = /^https:\/\//.test(process.env.NEXT_PUBLIC_DEMO_VIDEO_URL ?? "") ? process.env.NEXT_PUBLIC_DEMO_VIDEO_URL : null;

@@ -5,7 +5,7 @@ import { priceAge, short } from "@/lib/site/format";
 import { isExampleHash } from "@/lib/site/sample";
 import type { DataStatus } from "@/lib/site/types";
 
-type BadgeKind = "example" | "live" | "coming" | "verified" | "house" | "new" | "ph";
+type BadgeKind = "example" | "live" | "coming" | "verified" | "house" | "new" | "ph" | "delayed";
 export function Badge({ kind, children, title }: { kind: BadgeKind; children: ReactNode; title?: string }) {
   return <span className={`badge ${kind}`} title={title}>{children}</span>;
 }

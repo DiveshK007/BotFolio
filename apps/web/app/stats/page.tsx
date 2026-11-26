@@ -8,7 +8,8 @@ export const metadata: Metadata = {
   description: "BotFolio activity on QIE mainnet: actions users signed themselves, counted by signer, and our system txs shown apart.",
 };
 
-export const revalidate = 60;
+// Live counts: render per request so a cached page never shows old numbers. The worker fetch keeps its own 60 s cache.
+export const dynamic = "force-dynamic";
 
 const card = "rounded-r3 border border-line bg-surface p-4 shadow-card";
 const n = (v: number) => v.toLocaleString("en-US");
