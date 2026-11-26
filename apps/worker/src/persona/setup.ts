@@ -17,6 +17,8 @@ interface PersonaSetup {
 export function setUpPersona(opts: { env: Env; cfg: WorkerConfig; health: HealthState; log: Log }): PersonaSetup {
   const { env, cfg, health, log } = opts;
   const off = (problems: string[]): PersonaSetup => ({ service: null, problems, stop: async () => {} });
+  // The kill switch (docs/env.md, runbook): POST /persona answers PERSONA_DISABLED and no LLM call is made.
+  if (env.PERSONA_DISABLED?.trim() === "true") return off(["PERSONA_DISABLED"]);
 
   const problems: string[] = [];
   const database = databaseConfig(env.DATABASE_URL);

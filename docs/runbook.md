@@ -95,7 +95,7 @@ QIE's feeds sometimes stop updating: gold for more than 6 h, crypto for more tha
 ### 3c. Monthly budget reached
 **Symptom:** `/healthz` reason `LLM budget above 80 %` (state `alert`) or `LLM budget used up — bots resting` (state `resting`). Log line `{"event":"llm.budget","state":"resting"}` before each slot.
 
-**What the system already does:** spend is summed from the `decisions` table, so a restart doesn't reset it. At `resting` the runner skips the LLM, every bot holds with "<name> is resting this slot. Holding until it's back.", and `POST /persona` answers `503 BUDGET_RESTING`. Persona and v2 calls are not counted in the spend (SPEC §6.6 puts them under 10 %).
+**What the system already does:** spend is summed from the `decisions` table, so a restart doesn't reset it. At `resting` the runner skips the LLM, every bot holds with "<name> is resting this slot. Holding until it's back.", and `POST /persona` answers `503 BUDGET_RESTING`. Persona calls are counted too, failed ones at an assumed size (#349), but only in memory: a restart forgets them until the next month. v2 calls are not counted (SPEC §6.6 puts them under 10 %). Talk to a bot (`/api/site/talk`, on Vercel) is never in this spend, which is why it is off unless `TALK_ENABLED=true` (#352).
 
 **Fix:** decide with Divesh whether to raise `LLM_MONTHLY_BUDGET_USD`. If yes, set it in Render and restart. The budget resets on the 1st of the month (UTC).
 
@@ -202,6 +202,8 @@ If the key leaked, revoke the old address's role first. That stops the attacker 
 | To stop | Do | Effect |
 |---|---|---|
 | All relayed user actions | `RELAY_ENABLED=false`, restart | `/relay` answers `RELAY_DISABLED`. Nothing is broadcast |
+| Making new bots (persona LLM calls) | `PERSONA_DISABLED=true`, restart | `POST /persona` answers `503 PERSONA_DISABLED`. No LLM call |
+| Talk to a bot | Remove `TALK_ENABLED` in Vercel, redeploy | Chat box hidden; `/api/site/talk` answers `503 talk_disabled` |
 | Runner trades | Remove `RUNNER_PRIVATE_KEY`, restart | `slot job not started: needs RUNNER_PRIVATE_KEY`. No decisions, no trades |
 | A runner or committer on-chain | Admin revokes its role (section 6) | Its txs revert at the estimate and nothing is spent |
 

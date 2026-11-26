@@ -11,7 +11,7 @@ import type { Authenticator } from "../../src/auth/types";
 import { hashJson } from "../../src/canonical";
 import { HealthState } from "../../src/health";
 import { DRAFTS_KEPT, personaDraft } from "../../src/persona/drafts";
-import { PERSONA_PER_WALLET_PER_DAY, personaRoutes } from "../../src/persona/route";
+import { PERSONA_PER_IP_PER_HOUR, PERSONA_PER_WALLET_PER_DAY, callUsage, personaRoutes } from "../../src/persona/route";
 import type { Db, Queryable } from "../../src/relay/db";
 import { createWorkerServer } from "../../src/server";
 import { parsePersonaDraft } from "../../../web/lib/persona";
@@ -163,6 +163,26 @@ describe("POST /persona", () => {
     expect(llm.calls).toHaveLength(PERSONA_PER_WALLET_PER_DAY);
   });
 
+  it("limits each IP per hour, so throwaway wallets can't hold the global quota", async () => {
+    let n = 0;
+    const auth: Authenticator = { authenticate: async () => ({ kind: "siwe", wallets: [`0x${(n++).toString(16).padStart(40, "0")}`] }) };
+    const post = await serve({ auth });
+    for (let i = 0; i < PERSONA_PER_IP_PER_HOUR; i++) expect((await post(ok)).status).toBe(200);
+    const res = await post(ok);
+    expect(res.status).toBe(429);
+    expect(res.body.error.code).toBe("RATE_LIMITED_IP");
+    expect(llm.calls).toHaveLength(PERSONA_PER_IP_PER_HOUR);
+  });
+
+  it("counts a failed call against the monthly cap", async () => {
+    llm = new FakeLlmClient([{ ...PERSONA, secret_key_from_model: "x" }]);
+    const post = await serve({ capUsd: 0.004 });
+    expect((await post(ok)).status).toBe(502);
+    const res = await post(ok);
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe("BUDGET_RESTING");
+  });
+
   it("keeps a bounded number of drafts", async () => {
     let n = 0;
     llm = new FakeLlmClient(() => ({ ...PERSONA, name: `Wolf ${n++}` }));
@@ -201,5 +221,13 @@ describe("POST /persona", () => {
   it("is off until configured", async () => {
     const res = await (await serve({ off: true }))(ok);
     expect(res.body.error.code).toBe("PERSONA_DISABLED");
+  });
+});
+
+describe("callUsage", () => {
+  it("counts every try, and assumes two full tries when a failure has no count", () => {
+    expect(callUsage({ usage: { inTok: 100, outTok: 50 }, attempts: 2 }, "x")).toEqual({ inTok: 200, outTok: 100 });
+    expect(callUsage({ usage: { inTok: 100, outTok: 50 }, attempts: null }, "x")).toEqual({ inTok: 100, outTok: 50 });
+    expect(callUsage({ usage: null, attempts: null }, "abcdef")).toEqual({ inTok: 2 * 1002, outTok: 800 });
   });
 });
