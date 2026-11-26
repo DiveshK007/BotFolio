@@ -287,6 +287,19 @@
   },
   {
     "type": "function",
+    "name": "seasonLedger",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "supportsInterface",
     "inputs": [
       {
@@ -523,6 +536,17 @@
         "name": "version",
         "type": "bytes32",
         "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ScoresLocked",
+    "inputs": [
+      {
+        "name": "season",
+        "type": "uint32",
+        "internalType": "uint32"
       }
     ]
   },

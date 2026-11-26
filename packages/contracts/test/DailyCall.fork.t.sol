@@ -83,6 +83,7 @@ contract DailyCallForkTest is LedgerFixture {
         assertEq(daily.BOT_VIEW_TYPEHASH(), TYPEHASH);
         assertEq(daily.CALL_CUTOFF(), 20 hours);
         assertEq(daily.SETTLE_FROM(), 21 hours);
+        assertEq(daily.SETTLE_WINDOW(), 1 days);
         assertEq(daily.MAX_AGE(), 1800);
         assertEq(daily.btcFeed(), FEEDS[BTC]);
         assertEq(daily.btcFeed(), ledger.feed(BTC));
@@ -188,6 +189,24 @@ contract DailyCallForkTest is LedgerFixture {
             vm.prank(callers[i]);
             daily.call(aliceBot, true, true, sig);
         }
+    }
+
+    /// #219 item 6.
+    function test_call_bannedBotReverts() public {
+        vm.prank(admin);
+        reg.setActive(aliceBot, false);
+        bytes memory sig = _viewSig(runnerPk, aliceBot, day, true);
+        vm.expectRevert(abi.encodeWithSelector(IDailyCall.BotBanned.selector, aliceBot));
+        vm.prank(alice);
+        daily.call(aliceBot, true, true, sig);
+    }
+
+    function test_call_pausedBotWorks() public {
+        vm.prank(alice);
+        reg.setActive(aliceBot, false);
+        _call(true, false);
+        (,,,, uint64 calledAt,,,) = daily.calls(aliceBot, day);
+        assertEq(calledAt, block.timestamp);
     }
 
     function test_call_sigFromUserReverts() public {
@@ -326,6 +345,28 @@ contract DailyCallForkTest is LedgerFixture {
         _settle();
         (bool settled,,) = _result();
         assertTrue(settled);
+    }
+
+    function test_settle_lastSecondOfWindowWorks() public {
+        _call(true, false);
+        _warpIst(day + 1, 21 hours - 1);
+        _settle();
+        (bool settled,,) = _result();
+        assertTrue(settled);
+    }
+
+    /// #219 item 5: from 21:00 the next day the call stays void, even with a fresh price.
+    function test_settle_afterWindowSkipsForever() public {
+        _call(true, false);
+        _warpIst(day + 1, 21 hours);
+        vm.recordLogs();
+        _settle();
+        assertEq(vm.getRecordedLogs().length, 0);
+        _assertNotSettled();
+
+        _warpIst(day + 3, 9 hours);
+        _settle();
+        _assertNotSettled();
     }
 
     function test_settle_onlyOnce() public {

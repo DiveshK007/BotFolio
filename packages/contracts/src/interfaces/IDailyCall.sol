@@ -50,6 +50,8 @@ interface IDailyCall is IAccessControl, IERC165, IERC5267 {
     error PriceTooOld();
     /// @notice `botSig` is malformed or not from a RUNNER_ROLE key.
     error InvalidBotSignature(address recovered);
+    /// @notice The admin banned this bot. A paused bot may still call.
+    error BotBanned(uint256 botId);
 
     /// @notice Role of the runner key that signs bot views.
     function RUNNER_ROLE() external view returns (bytes32);
@@ -61,6 +63,8 @@ interface IDailyCall is IAccessControl, IERC165, IERC5267 {
     function CALL_CUTOFF() external view returns (uint32);
     /// @notice Seconds into the IST day the settle price must be at or after (75600 = 21:00).
     function SETTLE_FROM() external view returns (uint32);
+    /// @notice Seconds after SETTLE_FROM during which `settle` works (86400). Later, the call stays unsettled (void).
+    function SETTLE_WINDOW() external view returns (uint32);
     /// @notice Max BTC price age in seconds (1800).
     function MAX_AGE() external view returns (uint32);
 
@@ -98,7 +102,7 @@ interface IDailyCall is IAccessControl, IERC165, IERC5267 {
     /// @param botUp The bot's call.
     function hashBotView(uint256 botId, uint32 day, bool botUp) external view returns (bytes32);
 
-    /// @notice Makes today's call (via forwarder, bot owner only), before 20:00 IST. Reads BTC now
+    /// @notice Makes today's call (via forwarder, bot owner only, not for a banned bot), before 20:00 IST. Reads BTC now
     ///         and reverts if the price is older than 30 min.
     /// @param botId Bot id.
     /// @param userUp The owner's call: true = BTC higher at settle.
@@ -107,7 +111,8 @@ interface IDailyCall is IAccessControl, IERC165, IERC5267 {
     function call(uint256 botId, bool userUp, bool botUp, bytes calldata botSig) external;
 
     /// @notice Settles calls for `day`. COMMITTER_ROLE only. If BTC is not fresh or was last updated
-    ///         before 21:00 IST that day, does nothing (no revert); the worker retries. Bots with no
+    ///         before 21:00 IST that day, does nothing (no revert); the worker retries. From 21:00 IST the
+    ///         next day (SETTLE_WINDOW) it always does nothing, so a late call stays void. Bots with no
     ///         call or already settled are skipped.
     /// @param botIds Bots to settle.
     /// @param day IST day number.
