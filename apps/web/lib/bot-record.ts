@@ -5,7 +5,7 @@
  */
 import { ASSETS, type AssetId } from "@botfolio/shared";
 import { workerBase } from "./config";
-import { priceAge } from "./format";
+import { assetName, priceAge } from "./format";
 
 export const BOT_ID = /^[1-9]\d{0,19}$/;
 export const BOT_PAGE_PATH = "/bot-page";
@@ -46,6 +46,10 @@ export interface BotDecision {
   reason: string | null;
   reason_tag: string | null;
   roast: string | null;
+  /** A mined trade came from this call. Missing from an older worker: then the status alone is shown. */
+  traded?: boolean;
+  /** Assets held because QIE's price was too old, with its age at the call. */
+  stale?: { asset: AssetId; age_s: number }[];
 }
 export interface BotSeason {
   season: number;
@@ -138,7 +142,13 @@ export function parseBotPage(json: unknown): BotPage | null {
     trust: isObj(p.trust) && typeof p.trust.total === "number" ? (p.trust as unknown as BotTrust) : null,
     start_cash_e8: p.start_cash_e8,
     mark,
-    decisions: (p.decisions as unknown[]).filter((d): d is BotDecision => isObj(d) && typeof d.id === "string" && typeof d.status === "string"),
+    decisions: (p.decisions as unknown[])
+      .filter((d): d is BotDecision => isObj(d) && typeof d.id === "string" && typeof d.status === "string")
+      .map((d) => ({
+        ...d,
+        traded: typeof d.traded === "boolean" ? d.traded : undefined,
+        stale: (Array.isArray(d.stale) ? d.stale : []).filter((s) => isObj(s) && isAsset(s.asset) && Number.isSafeInteger(s.age_s) && s.age_s >= 0),
+      })),
   };
 }
 
@@ -180,6 +190,36 @@ const CALL_LABEL: Record<string, string> = {
   invalid: "Held · no valid answer",
 };
 export const callLabel = (status: string) => CALL_LABEL[status] ?? "Held";
+
+/**
+ * A call's badge on the bot page. `executed` only means the gate accepted an order (#370): with no mined trade the
+ * newest call is still on its way, and an older one didn't land. Needs the worker's `traded`; without it, the status.
+ */
+export function callBadge(d: Pick<BotDecision, "status" | "traded">, newest: boolean): string {
+  if (d.status === "executed" && d.traded === false) return newest ? "Sending to QIE" : "Didn't reach QIE, tries again next call";
+  return callLabel(d.status);
+}
+
+const ageText = (s: number) => (s < 7200 ? `${Math.floor(s / 60)} min` : `${Math.floor(s / 3600)} h`);
+/** "QIE's Bitcoin price was 52 min old, so it held." Null for a call that traded or held for another reason. */
+export function staleNote(d: Pick<BotDecision, "status" | "stale">): string | null {
+  if (d.status === "executed" || !d.stale?.length) return null;
+  return `QIE's ${d.stale.map((s) => `${assetName(s.asset)} price was ${ageText(s.age_s)} old`).join(" and ")}, so it held.`;
+}
+
+/** The LLM's reason_tag (SPEC §6.3) in plain words. Unknown tags are left out rather than shown raw. */
+const REASON_TAG: Record<string, string> = {
+  trend_up: "Riding the trend up",
+  trend_down: "Trend is down",
+  buy_dip: "Buying the dip",
+  take_profit: "Taking profit",
+  cut_loss: "Cutting a loss",
+  rebalance: "Rebalancing",
+  persona_preference: "Sticking to its style",
+  coach_feedback: "Following its coach",
+  stay_cash: "Staying in cash",
+};
+export const reasonTagText = (tag: string | null) => (tag && Object.hasOwn(REASON_TAG, tag) ? REASON_TAG[tag]! : null);
 
 const IST = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
 /** "26 Nov, 09:00 IST". */

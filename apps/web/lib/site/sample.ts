@@ -30,7 +30,7 @@ export const SAMPLE_BOTS: Record<number, Bot> = {
   52: { id: 52, name: "XRP Express", emoji: "🚄", color: "#2B6CD9", ownerWallet: exAddr(52), isHouse: false },
   58: { id: 58, name: "Chai Break", emoji: "☕", color: "#B0643A", ownerWallet: exAddr(58), isHouse: false },
   1: { id: 1, name: "Steady Sam", emoji: "⚖️", color: "#6B7280", ownerWallet: exAddr(1), isHouse: true, houseRule: "Equal 20% in all 5 assets" },
-  2: { id: 2, name: "Gold Granny", emoji: "👵", color: "#C9A227", ownerWallet: exAddr(2), isHouse: true, houseRule: "60% Gold, 40% cash" },
+  2: { id: 2, name: "Gold Granny", emoji: "👵", color: "#C9A227", ownerWallet: exAddr(2), isHouse: true, houseRule: "50% Gold, 50% cash" },
   3: { id: 3, name: "Momentum Max", emoji: "🚀", color: "#D9480F", ownerWallet: exAddr(3), isHouse: true, houseRule: "Holds whatever rose 2% in 24 h" },
 };
 

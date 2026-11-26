@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { ExplorerLink } from "@/components/ui/ExplorerLink";
 import { isAddress } from "@/lib/format";
 import { VerifyTx } from "@/components/site/extras";
+import { START_CASH_LINE } from "@/lib/site/format";
 
 export const metadata: Metadata = {
   title: "Proof",
@@ -61,6 +62,7 @@ export default function ProofPage() {
             Solidity 0.8.24, OpenZeppelin 5.0.2. The source is open in our repo and is verified on the QIE explorer at
             deploy. Feed addresses are fixed at deploy with no setter, so prices can&apos;t be swapped.
           </p>
+          <p className="text-sm text-muted">{START_CASH_LINE}</p>
           <ul className="flex flex-col gap-2">
             {CONTRACTS.map(({ name, address, does }) => (
               <li key={name} className={`${card} flex flex-col gap-2`}>

@@ -41,4 +41,25 @@ it("empty states for a brand-new bot", () => {
   expect(html).toContain("Scored at the first season close.");
   expect(html).toContain("No calls yet.");
   expect(html).toContain("No trades on chain yet.");
+  expect(html).toContain("the first mark comes with its first trade on QIE");
+});
+
+it("an accepted call with no trade on QIE never reads Traded; a stale hold says which price and how old (#370)", () => {
+  const page = { ...samplePage(), trades: [], mark: null };
+  const d = page.decisions[0]!;
+  page.decisions = [
+    { ...d, id: "d3", slot_time: "2026-11-26T11:30:00.000Z", status: "skipped_stale", reason: null, reason_tag: "stay_cash", stale: [{ asset: "BTC", age_s: 52 * 60 }], traded: false },
+    { ...d, id: "d2", slot_time: "2026-11-26T07:30:00.000Z", traded: false },
+  ];
+  let html = render(page);
+  expect(html).not.toContain("Traded");
+  expect(html).toContain("QIE&#x27;s Bitcoin price was 52 min old, so it held.");
+  expect(html).toContain("Held · price too old. No reason was logged for this call.");
+  expect(html).toContain("Staying in cash");
+  expect(html).not.toContain("stay_cash");
+  expect(html).toContain("Didn&#x27;t reach QIE, tries again next call");
+
+  page.decisions = [page.decisions[1]!];
+  html = render(page);
+  expect(html).toContain("Sending to QIE");
 });

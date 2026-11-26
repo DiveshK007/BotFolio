@@ -1,12 +1,13 @@
 /**
  * /judges data from the worker (HANDOFF follow-up #2), the same public reads the app uses:
  *  - traction: GET /stats (lib/stats.ts), mapped onto the site's ActivityStats tiles;
- *  - latest trades: GET /leaderboards for the bots on the board, then GET /bot-page for each (no trades feed yet).
+ *  - latest trades: GET /leaderboards for the bots on the board (else GET /bots), then GET /bot-page for each (no trades feed yet).
  * No worker configured → traction says "counting starts at deploy" and trades fall back to labelled EXAMPLE data.
  * A worker that fails → error state with the proof link. Never made-up numbers in live mode.
  */
 import { getWorkerUrl } from "@/lib/config";
 import { fetchBotPage, type BotPage, type BotPageResult } from "@/lib/bot-record";
+import { fetchBots, type PublicBot } from "@/lib/bots";
 import { fetchLeaderboards, type Leaderboards } from "@/lib/leaderboards";
 import { fetchStats, type ActivityStats as WorkerStats, type StatsResult } from "@/lib/stats";
 import { SAMPLE_TRADES } from "./sample";
@@ -73,14 +74,25 @@ export function boardBotIds(b: Leaderboards, n = TRADE_BOTS): string[] {
   return ids;
 }
 
+/** No board yet (S0 stays hidden, #219): real bots from GET /bots, house bots first since they trade every call. */
+export function listedBotIds(bots: PublicBot[], n = TRADE_BOTS): string[] {
+  return [...bots.filter(b => b.isHouse), ...bots.filter(b => !b.isHouse)].slice(0, n).map(b => b.botId);
+}
+
 export async function judgesTrades(
   base: string | null = getWorkerUrl(),
   boards: (base: string) => Promise<Leaderboards> = async u => (await fetchLeaderboards(u, null, AbortSignal.timeout(8000))).boards,
   page: (id: string, base: string) => Promise<BotPageResult> = (id, u) => fetchBotPage(id, u),
+  bots: (base: string) => Promise<PublicBot[] | null> = fetchBots,
 ): Promise<Loaded<Trade[]>> {
   if (!base) return { status: "example", data: SAMPLE_TRADES, updatedAt: "2026-11-26T07:30:00Z", source: "sample" };
   try {
-    const ids = boardBotIds(await boards(base));
+    let ids = await boards(base).then(b => boardBotIds(b), () => []);
+    if (ids.length === 0) {
+      const all = await bots(base);
+      if (!all) throw new Error("no bot list");
+      ids = listedBotIds(all);
+    }
     const results = await Promise.all(ids.map(id => page(id, base)));
     if (results.some(r => r.kind === "error" || r.kind === "busy")) throw new Error("bot-page failed");
     const pages = results.flatMap(r => (r.kind === "ok" ? [r.page] : []));

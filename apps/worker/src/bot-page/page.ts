@@ -33,10 +33,36 @@ export interface BotPage extends BotRecord {
     reason: string | null;
     reason_tag: string | null;
     roast: string | null;
+    /** A mined trade on QIE came from this call. `executed` alone only means the gate accepted an order. */
+    traded: boolean;
+    /** Assets the gate held because QIE's price was too old, with its age at the call in seconds (SPEC §5 rule 4). */
+    stale: StalePrice[];
   }[];
 }
 
+export interface StalePrice {
+  asset: AssetId;
+  age_s: number;
+}
+
 const isAsset = (a: string): a is AssetId => ASSETS.some((x) => x.id === a);
+
+/** From a public `decisions.gate_result`: the gate's stale drops, aged by the round it saw against its own clock. */
+export function staleAtCall(gate: unknown): StalePrice[] {
+  const g = (gate ?? {}) as {
+    events?: { kind?: string; reason?: string; asset?: string }[];
+    replay?: { input?: { nowSeconds?: number }; rounds?: { asset?: string; updatedAt?: number }[] };
+  };
+  const now = g.replay?.input?.nowSeconds;
+  if (!Array.isArray(g.events) || typeof now !== "number") return [];
+  const out: StalePrice[] = [];
+  for (const e of g.events) {
+    if (e.kind !== "drop" || e.reason !== "stale" || typeof e.asset !== "string" || !isAsset(e.asset) || out.some((x) => x.asset === e.asset)) continue;
+    const round = g.replay?.rounds?.find((r) => r.asset === e.asset);
+    if (typeof round?.updatedAt === "number") out.push({ asset: e.asset, age_s: Math.max(0, now - round.updatedAt) });
+  }
+  return out;
+}
 
 /** `portfolio_marks.holdings` is {"GOLD": {"units_e18": "…", "value_e8": "…"}}; anything else is left out. */
 export function parseHoldings(raw: unknown): Holding[] {
@@ -63,8 +89,12 @@ export async function botPage(db: Queryable, botId: bigint, startCashE8: () => P
   if (!record) return null;
   const id = botId.toString();
 
-  const { rows: decisions } = await db.query<Omit<BotPage["decisions"][number], "slot_time"> & { slot_time: Date }>(
-    `select d.id::text as id, d.version, s.slot_time, s.kind::text as slot_kind, d.status::text as status, d.reason, d.reason_tag, d.roast
+  const { rows: decisions } = await db.query<Omit<BotPage["decisions"][number], "slot_time" | "stale"> & { slot_time: Date; gate_result: unknown }>(
+    `select d.id::text as id, d.version, s.slot_time, s.kind::text as slot_kind, d.status::text as status, d.reason, d.reason_tag, d.roast,
+            exists (select 1 from trades t where t.decision_id = d.id and t.tx_hash is not null) as traded,
+            jsonb_build_object('events', d.gate_result -> 'events', 'replay', jsonb_build_object(
+              'input', jsonb_build_object('nowSeconds', d.gate_result #> '{replay,input,nowSeconds}'),
+              'rounds', d.gate_result #> '{replay,rounds}')) as gate_result
      from decisions d join slots s on s.id = d.slot_id
      where d.bot_id = $1::bigint order by s.slot_time desc, d.created_at desc limit $2::int`,
     [id, PAGE_DECISIONS],
@@ -98,6 +128,6 @@ export async function botPage(db: Queryable, botId: bigint, startCashE8: () => P
     ...record,
     start_cash_e8: (await startCashE8()).toString(),
     mark,
-    decisions: decisions.map((d) => ({ ...d, slot_time: new Date(d.slot_time).toISOString() })),
+    decisions: decisions.map(({ gate_result, ...d }) => ({ ...d, slot_time: new Date(d.slot_time).toISOString(), stale: staleAtCall(gate_result) })),
   };
 }
