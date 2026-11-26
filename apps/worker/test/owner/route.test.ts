@@ -12,6 +12,7 @@ import { OWNER_PATH, ownerRoutes } from "../../src/owner/route";
 import type { Queryable } from "../../src/scheduler/db";
 import { createWorkerServer } from "../../src/server";
 import { testDb } from "../decisions/helpers";
+import { parseChallenge, parseOwner } from "../../../web/lib/owner";
 
 const ORIGIN = "https://app.example";
 const OWNER = `0x${"7".padStart(40, "0")}` as Hex; // bot 7's owner in testDb
@@ -113,7 +114,9 @@ describe("POST /owner", () => {
     await call(today - 1, { user: true, bot: false, settled: true, userOk: true, botOk: false });
     await call(today, { user: false, bot: true });
     await start();
-    const { calls } = (await owner()).body.bots[0] as { calls: Record<string, unknown> };
+    const res = await owner();
+    expect(parseOwner(res.body)).not.toBeNull();
+    const { calls } = res.body.bots[0] as { calls: Record<string, unknown> };
     expect(calls).toEqual({
       season: 2,
       you: 1,
@@ -132,7 +135,9 @@ describe("GET /challenge", () => {
     await start();
     const res = await fetch(`${base}${CHALLENGE_PATH}?code=${CODE.slice(2, 18)}`, { headers: { origin: ORIGIN } });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({
+    const body = await res.json();
+    expect(parseChallenge(body)).not.toBeNull(); // the app reads exactly this
+    expect(body).toEqual({
       ok: true,
       challenge: {
         code: CODE,
