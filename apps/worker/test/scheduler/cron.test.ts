@@ -27,11 +27,11 @@ const stubDb: Db = {
 
 const istTime = (date: Date) => new Date(date.getTime() + 19_800_000).toISOString().slice(11, 16);
 
-/** "21:00", "21:10", … */
-function every10(from: string, to: string): string[] {
+/** "21:00", "21:10", … (every `step` minutes) */
+function every10(from: string, to: string, step = 10): string[] {
   const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
   const times: string[] = [];
-  for (let m = minutes(from); m <= minutes(to); m += 10) {
+  for (let m = minutes(from); m <= minutes(to); m += step) {
     times.push(`${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
   }
   return times;
@@ -76,8 +76,9 @@ describe.each(["UTC", "America/New_York", "Asia/Kolkata"])("a day of cron with T
       ),
     );
     // 23:59 is the check every worker start runs (#55). After it, the crons alone.
-    expect(fired.season_open).toEqual(["23:59", "00:00"]);
-    expect(fired.season_close).toEqual(["23:59", "21:30"]);
+    // Retried through the night, so one failed close doesn't hold the next open for a day (#348).
+    expect(fired.season_open).toEqual(["23:59", ...every10("00:00", "01:20")]);
+    expect(fired.season_close).toEqual(["23:59", ...every10("21:30", "23:15", 15)]);
     expect(fired.recap).toEqual(["21:35"]);
     expect(fired.big_move_sweep).toEqual(every10("00:00", "23:50"));
 

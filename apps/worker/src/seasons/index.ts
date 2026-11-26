@@ -1,7 +1,7 @@
 import { isAddress, zeroAddress, type PublicClient } from "viem";
 import { secret, type Env } from "../auth/env";
 import type { Db } from "../scheduler/db";
-import type { Log } from "../scheduler/log";
+import { errorLabel, type Log } from "../scheduler/log";
 import type { JobSet } from "../scheduler/scheduler";
 import { systemAccount } from "../system/key";
 import { createSystemSender, type SystemSender } from "../system/sender";
@@ -28,7 +28,8 @@ interface SeasonJobsOptions {
   now?: () => Date;
 }
 
-const CLOSE_ATTEMPTS = 4;
+// 3 tries 5 min apart end before the next 15-min season_close cron, which would otherwise find the lock held.
+const CLOSE_ATTEMPTS = 3;
 const CLOSE_RETRY_MS = 5 * 60_000;
 
 /** The two §6.1 season checks, or why they can't run (variable names only, never values). */
@@ -109,6 +110,13 @@ export function seasonJobs({ db, env, client, rpcUrls, log, committer, v2, now =
               }
               await new Promise((resolve) => setTimeout(resolve, CLOSE_RETRY_MS));
             }
+          }
+          if (!closeError) {
+            // A late close (a retry, a restart racing season_open) mustn't leave the next season waiting for the
+            // next open check. It never opens early: openDueSeasons checks starts_at and the chain.
+            await db
+              .withLock("job:season_open", () => openDueSeasons({ db, chain, now: at(scheduledFor), signal, log }))
+              .catch((error: unknown) => log.warn("seasons.open_after_close_failed", { error: errorLabel(error) }));
           }
         }
         try {

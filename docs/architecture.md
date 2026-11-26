@@ -69,7 +69,7 @@ Create bot, correction, approve v2, Approve Big Move, Daily Call, challenge crea
 
 ### Season close
 
-1. `season_close` runs at 21:30 IST (`0 16 * * *` UTC) and handles each `closing` season ([`season/close.ts`](../apps/worker/src/season/close.ts)).
+1. `season_close` runs at 21:30 IST and every 15 min until 23:15 (`0,15,30,45 16-17 * * *` UTC) and handles each `closing` season. After a successful close it also runs the open check, so a late close doesn't hold the next season until the next `season_open` run ([`season/close.ts`](../apps/worker/src/season/close.ts)).
 2. It computes results and battle ranks, then trust scores and their root ([`trust/scores.ts`](../apps/worker/src/trust/scores.ts)), and commits them with `TrustScoreRegistry.commitScores`.
 3. It builds `season-<n>.jsonl` ([`replay-file.ts`](../apps/worker/src/season/replay-file.ts)), checks it with `verifyOffline`, uploads it to Supabase Storage and sends `SeasonLedger.closeSeason(season, root, uri)`.
 4. Challenges are settled or expired. Each step compares with the chain first, so a re-run sends nothing twice.
