@@ -152,12 +152,14 @@ contract GasLimitsForkTest is UserActions {
     }
 
     function test_gas_openSeason() public {
+        _closeS0(); // S1 needs S0 closed
         vm.prank(cfg.committer);
         d.seasonLedger.openSeason(1, uint64(block.timestamp), uint64(block.timestamp + 2 days));
         _record("openSeason");
     }
 
     function test_gas_closeSeason() public {
+        _warpToS0End();
         vm.prank(cfg.committer);
         d.seasonLedger.closeSeason(0, keccak256("root"), URI);
         _record("closeSeason: 76-char URI");
@@ -192,8 +194,7 @@ contract GasLimitsForkTest is UserActions {
         bytes32 code = d.challenges.create(bot, 0);
         vm.prank(friend);
         d.challenges.accept(code, friendBot);
-        vm.prank(cfg.committer);
-        d.seasonLedger.closeSeason(0, keccak256("root"), URI);
+        _closeS0();
         vm.prank(cfg.committer);
         d.challenges.settle(code, bot);
         _record("Challenges.settle");
@@ -203,8 +204,7 @@ contract GasLimitsForkTest is UserActions {
         uint256 bot = _createBotAs(user);
         vm.prank(user);
         bytes32 code = d.challenges.create(bot, 0);
-        vm.prank(cfg.committer);
-        d.seasonLedger.closeSeason(0, keccak256("root"), URI);
+        _closeS0();
         vm.prank(cfg.committer);
         d.challenges.expire(code);
         _record("Challenges.expire");
@@ -243,6 +243,17 @@ contract GasLimitsForkTest is UserActions {
     }
 
     /// Logs the gas of the tx that has just run.
+    function _warpToS0End() internal {
+        (, uint64 end,,,) = d.seasonLedger.seasons(0);
+        vm.warp(end);
+    }
+
+    function _closeS0() internal {
+        _warpToS0End();
+        vm.prank(cfg.committer);
+        d.seasonLedger.closeSeason(0, keccak256("root"), URI);
+    }
+
     function _record(string memory name) internal {
         uint256 used = vm.lastCallGas().gasTotalUsed;
         emit log_string(string.concat("GAS | system | ", name, " | ", vm.toString(used)));

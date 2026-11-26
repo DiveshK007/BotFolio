@@ -96,6 +96,8 @@ contract SeasonLedger is ISeasonLedger, ForwarderAccess {
 
     function openSeason(uint32 n, uint64 start, uint64 end) external onlyRole(COMMITTER_ROLE) {
         if (n != _opened || start >= end) revert BadSeason(n);
+        // One live season at a time (#219 item 3).
+        if (n > 0 && !seasons[n - 1].closed) revert PreviousSeasonOpen(n - 1);
 
         Season storage season = seasons[n];
         season.start = start;
@@ -113,6 +115,8 @@ contract SeasonLedger is ISeasonLedger, ForwarderAccess {
         if (seasonState(n) != SeasonState.OPEN) revert SeasonNotOpen(n);
 
         Season storage season = seasons[n];
+        // The committer key can't seal a season before it ends (#219 item 2).
+        if (block.timestamp < season.end) revert SeasonNotOver(n, season.end);
         season.closed = true;
         season.dataRoot = dataRoot;
         season.dataURI = dataURI;
