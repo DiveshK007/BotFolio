@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { ExplorerLink } from "@/components/ui/ExplorerLink";
 import { Money } from "@/components/ui/Money";
 import { OraclePrice } from "@/components/ui/OraclePrice";
-import { ageAtCall, bpsPct, callBadge, formatUnits, istTime, reasonTagText, staleNote, weightPct, type BotPage } from "@/lib/bot-record";
+import { ageAtCall, bpsPct, callBadge, formatUnits, inFlight, istTime, reasonTagText, staleNote, weightPct, type BotPage } from "@/lib/bot-record";
 import { assetName, formatE8, shortHex } from "@/lib/format";
 
 const FACTORS = [
@@ -22,10 +22,13 @@ const badge = "rounded-full px-2 py-0.5 text-xs font-semibold";
  */
 export function BotPageView({
   page,
+  asOfMs,
   afterBot,
   callAction,
 }: {
   page: BotPage;
+  /** When the record was fetched: an unmined newest call older than the sending window didn't land (#378). */
+  asOfMs?: number;
   /** /me: the owner's panel, right under the bot card. */
   afterBot?: ReactNode;
   /** /me: "Bad call" under each call. */
@@ -176,7 +179,7 @@ export function BotPageView({
         {page.decisions.length ? (
           <ol className="mt-3 flex flex-col divide-y divide-line">
             {page.decisions.map((d) => {
-              const label = callBadge(d, d.slot_time === page.decisions[0]!.slot_time);
+              const label = callBadge(d, inFlight(d, d.slot_time === page.decisions[0]!.slot_time, asOfMs ?? Date.parse(d.slot_time)));
               const tag = reasonTagText(d.reason_tag);
               const stale = staleNote(d);
               return (

@@ -42,7 +42,7 @@ export default async function BotPage({ params }: Props) {
       <main className="mx-auto w-full max-w-xl px-4 pb-12 pt-2">
         {result.kind === "ok" ? (
           <>
-            <BotPageView page={result.page} />
+            <BotPageView page={result.page} asOfMs={result.fetchedAt} />
             {/* v3: DNA evolution, trust gauge, talk to the bot, share card. All from the same public record. */}
             <div className="bf" style={{ display: "grid", gap: 20, marginTop: 24 }}>
               <Evolution botId={result.page.bot.id} name={result.page.bot.name} dnaSeed={result.page.bot.dna_seed} versions={result.page.versions} />

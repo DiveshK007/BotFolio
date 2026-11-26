@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ageAtCall, bpsPct, callBadge, callLabel, fetchBotPage, formatUnits, istTime, parseBotPage, reasonTagText, staleNote, weightPct } from "./bot-record";
+import { ageAtCall, bpsPct, callBadge, inFlight, callLabel, fetchBotPage, formatUnits, istTime, parseBotPage, reasonTagText, staleNote, weightPct } from "./bot-record";
 import { samplePage } from "./bot-record.fixture";
 
 describe("parseBotPage", () => {
@@ -54,6 +54,14 @@ describe("display helpers", () => {
     expect(callBadge({ status: "executed", traded: false }, false)).toBe("Didn't reach QIE, tries again next call");
     expect(callBadge({ status: "executed" }, false)).toBe("Traded"); // older worker: no `traded`
     expect(callBadge({ status: "skipped_stale", traded: false }, true)).toBe("Held · price too old");
+  });
+
+  it("treats only the newest call within 25 min of its slot as in flight (#378)", () => {
+    const slot = { slot_time: "2026-11-26T18:11:47.000Z" };
+    const t = Date.parse(slot.slot_time);
+    expect(inFlight(slot, true, t + 60_000)).toBe(true);
+    expect(inFlight(slot, true, t + 3 * 3600_000)).toBe(false); // bot #4's debut, hours later
+    expect(inFlight(slot, false, t + 60_000)).toBe(false);
   });
 
   it("says which price was too old, and how old", () => {
