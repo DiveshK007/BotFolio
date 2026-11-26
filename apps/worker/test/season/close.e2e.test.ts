@@ -145,6 +145,7 @@ describe.skipIf(!fork)("season close on an Anvil fork", () => {
         isClosed: (n) => seasons.isClosed(n),
         closeSeason: (n, root, uri) => seasons.closeSeason(n, root, uri),
         startCashE8: () => deps.chain.startCashE8(),
+        orderUsed: (id) => deps.chain.orderUsed(id),
         scoresRoot: (n) => trust.scoresRoot(n),
         rulesPublished: (version) => trust.rulesPublished(version),
         commitScores: (n, version, root, uri) => trust.commitScores(n, version, root, uri),

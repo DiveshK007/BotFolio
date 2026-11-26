@@ -70,6 +70,8 @@ export function seasonJobs({ db, env, client, rpcUrls, log, committer, v2, now =
             closeSeason: (n: number, root: `0x${string}`, uri: string) => chain.closeSeason(n, root, uri),
             startCashE8: async () =>
               (await client.readContract({ address: ledger as Address, abi: TARGET_ABIS.PaperLedger as Abi, functionName: "START_CASH_E8" })) as bigint,
+            orderUsed: async (orderId: `0x${string}`) =>
+              (await client.readContract({ address: ledger as Address, abi: TARGET_ABIS.PaperLedger as Abi, functionName: "usedOrder", args: [orderId] })) as boolean,
             scoresRoot: (n: number) => trust.scoresRoot(n),
             rulesPublished: (version: `0x${string}`) => trust.rulesPublished(version),
             commitScores: (n: number, version: `0x${string}`, root: `0x${string}`, uri: string) => trust.commitScores(n, version, root, uri),
