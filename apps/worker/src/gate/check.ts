@@ -3,6 +3,11 @@ import type { DropReason, GateInput, Portfolio } from "./types";
 
 /** SPEC §6.4 step 6: min order = 1 % of portfolio. Step 3 uses the same 1 % for "BUY with cash < 1 %". */
 const ONE_PERCENT = 100n;
+/**
+ * A BUY clipped to the per-coin cap aims this far below it (#219). Clipped exactly to the cap, a price tick before
+ * the batch lands would make the contract's check fail and skip the order.
+ */
+export const CLIP_MARGIN_BPS = 10n;
 
 export type CheckResult =
   | { ok: false; reason: DropReason; clippedTo?: number }
@@ -12,7 +17,7 @@ export type CheckResult =
  * SPEC §6.4 steps 2–6 for one trade, against the portfolio as it stands at that point in the batch.
  *
  * Step 5 math: a BUY moves cash into the asset, so portfolio value V is unchanged and the post-trade
- * position is `held + cash`. The most we may spend is `room = floor(V × cap / 10000) − held`, and as a
+ * position is `held + cash`. The most we may spend is `room = floor(V × (cap − 10 bps margin) / 10000) − held`, and as a
  * share of cash that is `floor(room × 10000 / cash)` bps. Both round down, so the contract's check
  * passes at the same prices. That check is `position after × 10000 ≤ V before × cap` (PaperLedger uses
  * the pre-trade total), and we only clip when it would fail: rounding dust alone must not cost the bot
@@ -53,7 +58,7 @@ export function checkTrade(
     const cap = BigInt(bot.maxPerCoinBps);
     const after = applyTrade(portfolio, prices, { asset, buy, bps });
     if (positionValueE8(after, prices, asset) * BPS > value * cap) {
-      const room = (value * cap) / BPS - positionValueE8(portfolio, prices, asset);
+      const room = (value * (cap - CLIP_MARGIN_BPS)) / BPS - positionValueE8(portfolio, prices, asset);
       if (room <= 0n) return { ok: false, reason: "coin_cap" };
       bps = Number((room * BPS) / portfolio.cashE8);
       clippedTo = bps;
@@ -64,8 +69,9 @@ export function checkTrade(
   const amounts = tradeAmounts(portfolio, prices, { asset, buy, bps });
   if (amounts.unitsE18 <= 0n || amounts.cashE8 <= 0n) return { ok: false, reason: "zero", clippedTo };
 
-  // Step 6, second half.
-  if (amounts.cashE8 * BPS < value * ONE_PERCENT) return { ok: false, reason: "min_order", clippedTo };
+  // Step 6, second half. A SELL of the whole holding is exempt, so a small position can still be closed (#219).
+  const fullExit = !buy && bps >= Number(BPS);
+  if (!fullExit && amounts.cashE8 * BPS < value * ONE_PERCENT) return { ok: false, reason: "min_order", clippedTo };
 
   return { ok: true, trade: { asset, buy, bps }, clippedTo };
 }

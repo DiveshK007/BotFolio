@@ -65,13 +65,19 @@ export function gate(input: GateInput, output: unknown, rulesVersion: string): G
     events.push(...eventsFor(proposal, result));
     if (!result.ok) continue;
 
-    // An approved big move also counts toward tradesToday (SPEC §4.3), so it uses up a trade here.
-    tradesLeft--;
     // Step 9.
     if (!input.bot.isHouse && isBigMove(input, portfolio, result.trade)) {
+      // One big move per decision (#219): a second Allow could revert on the cap the first one used up.
+      if (needApproval.length > 0) {
+        events.push(...eventsFor(proposal, { ok: false, reason: "one_big_move" }));
+        continue;
+      }
+      // An approved big move also counts toward tradesToday (SPEC §4.3), so it uses up a trade here.
+      tradesLeft--;
       needApproval.push({ ...result.trade, actionIndex: proposal.actionIndex });
       continue;
     }
+    tradesLeft--;
     portfolio = applyTrade(portfolio, input.prices, result.trade);
     orders.push(toOrder(input, result.trade, proposal.actionIndex));
   }
@@ -114,7 +120,7 @@ function toProposals({ actions }: DecisionOutput | HouseOutput): Proposal[] {
   return proposals;
 }
 
-const NOT_THE_BOTS_FAULT: ReadonlySet<DropReason> = new Set(["stale", "inactive"]);
+const NOT_THE_BOTS_FAULT: ReadonlySet<DropReason> = new Set(["stale", "inactive", "one_big_move"]);
 
 /** Step 7. A trade can be both clipped and then dropped (clipped below the 1 % minimum). */
 export function eventsFor(proposal: Proposal, result: CheckResult): GateEvent[] {

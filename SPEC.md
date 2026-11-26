@@ -443,11 +443,11 @@ Persona creation call has its own schema: `{name ≤ 20, emoji, persona ≤ 120,
 2. Drop actions on stale assets.
 3. Drop SELL with no holding, BUY with cash < 1 %.
 4. Clip so trades this slot ≤ remaining `max_trades_per_day`.
-5. Clip BUY so post-trade asset weight ≤ `max_per_coin_pct`.
-6. No shorting/leverage by construction. Min order 1 % of portfolio.
+5. Clip BUY so post-trade asset weight ≤ `max_per_coin_pct`. A clipped BUY aims 10 bps under the cap, so a price tick before the batch lands can't make the ledger skip it (#219).
+6. No shorting/leverage by construction. Min order 1 % of portfolio, except a SELL of the whole holding (#219).
 7. Record each clip as a "gate event" (feeds trust factor F1).
 8. Banned content filter on `reason`/`roast` (slurs, real-money advice phrases like "buy now on…") → replace with neutral text, flag.
-9. **Big-move split (v1.1):** after clipping, any order meeting the big-move rule (§2.2: BUY → post-trade weight ≥ 30 %, or SELL ≥ 50 % of a holding) is removed from the batch and becomes a `big_moves` row: runner signs the `ApprovedOrder` (EIP-712), deadline = now + 2 h, user is notified. A big move is *not* a gate clip (no F1 penalty). House bots never produce big moves (they always execute directly).
+9. **Big-move split (v1.1):** after clipping, any order meeting the big-move rule (§2.2: BUY → post-trade weight ≥ 30 %, or SELL ≥ 50 % of a holding; both cumulative per asset within the decision, #219) is removed from the batch and becomes a `big_moves` row: runner signs the `ApprovedOrder` (EIP-712), deadline = now + 2 h, user is notified. A big move is *not* a gate clip (no F1 penalty). At most one big move per decision (#219): a second one is dropped, also without an F1 penalty. House bots never produce big moves (they always execute directly).
 10. **Expiry fallback (v1.1):** if the big move is still pending at its deadline, the runner shrinks it to just under the threshold, re-checks limits and freshness, and executes it in the next batch with the same `orderId` (contract blocks double execution; the decision's other actions are unaffected).
 
 ### 6.4.1 Bot's Daily Call view (v1.1)

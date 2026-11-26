@@ -110,8 +110,8 @@ describe("gate() SPEC §6.4 step 2: stale assets", () => {
 
     it("still values stale holdings at their last answer for the per-coin cap", () => {
       const input = gateInput({ prices: stale, portfolio: portfolio({ GOLD: 50 }), bot: { maxPerCoinBps: 2500 } });
-      // Cap = 25 % of the whole 1000 = 250, which is half of the 500 cash.
-      expect(run(input, buy("BTC", 100)).orders[0]!.bps).toBe(5000);
+      // Cap = 25 % of the whole 1000 = 250, less the 10 bps margin = 249, which is 49.8 % of the 500 cash.
+      expect(run(input, buy("BTC", 100)).orders[0]!.bps).toBe(4980);
     });
   });
 });
@@ -156,18 +156,28 @@ describe("gate() SPEC §6.4 step 4: trades per day", () => {
 });
 
 describe("gate() SPEC §6.4 step 5: max per coin", () => {
-  it("clips a BUY from cash to the cap", () => {
-    const r = run(gateInput({ bot: { maxPerCoinBps: 2500 } }), buy("BTC", 80));
-    expect(r.orders[0]!.bps).toBe(2500);
+  it("clips a BUY from cash to 10 bps under the cap (#219), so a price tick can't make the ledger skip it", () => {
+    const input = gateInput({ bot: { maxPerCoinBps: 2500 } });
+    const r = run(input, buy("BTC", 80));
+    expect(r.orders[0]!.bps).toBe(2490);
     expect(r.events).toEqual([
-      { actionIndex: 0, asset: "BTC", action: "BUY", kind: "clip", reason: "coin_cap", fromBps: 8000, toBps: 2500, countsForF1: true },
+      { actionIndex: 0, asset: "BTC", action: "BUY", kind: "clip", reason: "coin_cap", fromBps: 8000, toBps: 2490, countsForF1: true },
     ]);
+  });
+
+  it("the margin survives a price tick before the batch lands, where clipping exactly to the cap doesn't", () => {
+    const input = gateInput({ portfolio: portfolio({ BTC: 20 }), bot: { maxPerCoinBps: 2500 } });
+    const order = run(input, buy("BTC", 50)).orders[0]!;
+    const ticked = { ...input.prices, BTC: { ...input.prices.BTC, priceE8: (input.prices.BTC.priceE8 * 1003n) / 1000n } };
+    expect(executeBatch(input.bot, input.portfolio, ticked, [order]).skips).toEqual([]);
+    // Exactly to the cap: room 50 of the 800 cash.
+    expect(executeBatch(input.bot, input.portfolio, ticked, [{ ...order, bps: 625 }]).skips).toHaveLength(1);
   });
 
   it("counts what is already held", () => {
     const input = gateInput({ portfolio: portfolio({ BTC: 20 }), bot: { maxPerCoinBps: 3000 } });
-    // Room is 100 of the 800 cash.
-    expect(run(input, buy("BTC", 50)).orders[0]!.bps).toBe(1250);
+    // Room is 99 (100 less the 10 bps margin) of the 800 cash.
+    expect(run(input, buy("BTC", 50)).orders[0]!.bps).toBe(1237);
   });
 
   it("drops a BUY with no room left", () => {
@@ -177,8 +187,8 @@ describe("gate() SPEC §6.4 step 5: max per coin", () => {
 
   it("counts earlier actions on the same asset", () => {
     const r = run(gateInput({ bot: { maxPerCoinBps: 3000 } }), buy("BTC", 20), buy("BTC", 20));
-    // 200 bought, room left is 100 of the 800 cash.
-    expect(r.orders.map((o) => o.bps)).toEqual([2000, 1250]);
+    // 200 bought, room left is 99 of the 800 cash.
+    expect(r.orders.map((o) => o.bps)).toEqual([2000, 1237]);
   });
 
   it("leaves a BUY exactly at the cap alone", () => {
@@ -203,9 +213,9 @@ describe("gate() SPEC §6.4 step 6: cash only, min order 1 %", () => {
   it("never spends more cash than there is", () => {
     const input = gateInput();
     const r = run(input, buy("BTC", 100), buy("ETH", 100), buy("SOL", 100));
-    // 100 % of the 500 left is exactly the 50 % cap: not a clip, though dust makes it look a unit over.
-    expect(r.orders.map((o) => o.bps)).toEqual([5000, 10000]);
-    expect(executeBatch(input.bot, input.portfolio, input.prices, r.orders).portfolio.cashE8).toBe(0n);
+    // Each is clipped to 49.9 %: 499 of the 1000 cash, then 499 of the 501 left.
+    expect(r.orders.map((o) => o.bps)).toEqual([4990, 9960]);
+    expect(executeBatch(input.bot, input.portfolio, input.prices, r.orders).portfolio.cashE8).toBeGreaterThanOrEqual(0n);
     expect(r.events.at(-1)).toMatchObject({ actionIndex: 2, reason: "low_cash" });
   });
 
@@ -225,6 +235,16 @@ describe("gate() SPEC §6.4 step 6: cash only, min order 1 %", () => {
   it("drops an order under 1 % of the portfolio", () => {
     expect(run(gateInput({ portfolio: portfolio({ BTC: 50 }) }), buy("ETH", 1)).events[0]).toMatchObject({ reason: "min_order" });
     expect(run(gateInput({ portfolio: portfolio({ BTC: 10 }) }), sell("BTC", 5)).events[0]).toMatchObject({ reason: "min_order" });
+  });
+
+  it("lets a 100 % SELL close a position worth under 1 % (#219)", () => {
+    const tiny = { ...portfolio({ BTC: 50 }), unitsE18: { ...portfolio({ BTC: 50 }).unitsE18, SOL: portfolio({ SOL: 50 }).unitsE18.SOL / 100n } };
+    const input = gateInput({ portfolio: tiny }); // SOL is worth 0.5 %
+    const r = run(input, sell("SOL", 100));
+    expect(r.orders).toEqual([expect.objectContaining({ buy: false, bps: 10_000 })]);
+    expect(r.events).toEqual([]);
+    expect(executeBatch(input.bot, input.portfolio, input.prices, r.orders).portfolio.unitsE18.SOL).toBe(0n);
+    expect(run(input, sell("SOL", 99)).events[0]).toMatchObject({ reason: "min_order" });
   });
 
   it("records both events when a clip lands under the minimum", () => {
