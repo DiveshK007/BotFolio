@@ -1,5 +1,5 @@
 import { ASSETS, type AssetId } from "@botfolio/shared";
-import { decodeEventLog, parseAbi, type Address, type Hex, type PublicClient } from "viem";
+import { decodeEventLog, parseAbi, TransactionReceiptNotFoundError, type Address, type Hex, type PublicClient } from "viem";
 
 const LEDGER = parseAbi([
   "event Trade(uint256 indexed botId, uint8 indexed asset, bool buy, uint256 cashE8, uint256 unitsE18, uint256 priceE8, uint80 roundId, uint256 updatedAt, bytes32 indexed decisionId, uint8 actionIndex)",
@@ -39,8 +39,10 @@ export async function verifyTrade(client: PublicClient, ledger: Address, txHash:
   let receipt;
   try {
     receipt = await client.getTransactionReceipt({ hash: txHash });
-  } catch {
-    return empty("No such transaction on QIE mainnet.");
+  } catch (error) {
+    // A lagging node answers "not found" for a fresh tx; any other RPC failure goes to the caller's "try again" error.
+    if (error instanceof TransactionReceiptNotFoundError) return empty("Not found on QIE mainnet (yet). If it was just sent, try again in a minute.");
+    throw error;
   }
   if (receipt.status !== "success") return { ...empty("The transaction reverted."), block_number: receipt.blockNumber.toString() };
 
