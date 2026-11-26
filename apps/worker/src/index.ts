@@ -32,6 +32,7 @@ import { dailyCallRoutes } from "./daily-call/route";
 import { statusRoutes } from "./status/route";
 import { ownerRoutes } from "./owner/route";
 import { challengeRoutes } from "./challenges/route";
+import { correctionNoteRoutes } from "./corrections/route";
 import { createCardChain } from "./cards/build";
 import { cardJobs, startCardSweeper } from "./cards/jobs";
 import { TARGET_ABIS } from "./relay/abis";
@@ -123,6 +124,7 @@ async function main(): Promise<void> {
     ...dailyCallRoutes({ origins, auth: auth.authenticator, log: consoleLog, db: reads }),
     ...ownerRoutes({ origins, auth: auth.authenticator, log: consoleLog, db: reads }),
     ...challengeRoutes({ db: reads, origins, clientIp }),
+    ...correctionNoteRoutes({ origins, auth: auth.authenticator, log: consoleLog, db: reads }),
     ...leaderboardRoutes({ source: boards, origins, clientIp }),
     ...usdInrRoutes({ cache: usdInr, origins }),
     ...statusRoutes({ health, origins, clientIp }),
