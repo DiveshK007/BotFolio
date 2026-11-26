@@ -53,9 +53,12 @@ export function SignInStep({ blocked, busy, options, onSignIn }: SignInStepProps
         </span>
       </label>
       {options.passkey && (
-        <PrimaryButton disabled={locked} onClick={() => onSignIn("passkey")}>
-          {busy === "passkey" ? "Waiting for your passkey…" : "Continue with passkey"}
-        </PrimaryButton>
+        <>
+          <PrimaryButton disabled={locked} onClick={() => onSignIn("passkey")}>
+            {busy === "passkey" ? "Waiting for your passkey…" : "Continue with passkey"}
+          </PrimaryButton>
+          <p className="text-center text-xs text-muted">New here? This creates your account with Face ID or your fingerprint.</p>
+        </>
       )}
       {options.qie && (
         <>

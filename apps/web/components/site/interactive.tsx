@@ -7,7 +7,7 @@ import { Badge, Icon, TxChip } from "./ui";
 import { CopyButton } from "./chrome";
 import { CustodyTrace, Flap, type CustodyNode } from "./arcade";
 import { ASSETS, explorerAddress } from "@botfolio/shared";
-import { arrow, inr, pct, short, upDown } from "@/lib/site/format";
+import { arrow, money, pct, short, upDown } from "@/lib/site/format";
 import type { BoardId, BoardRow, CardPayload, DataStatus, Leaderboards } from "@/lib/site/types";
 
 /* ---------- Verify-on-QIE flip card ---------- */
@@ -145,7 +145,7 @@ function Rows({ rows, value, head, extra }: { rows: BoardRow[]; value: (r: Board
       <tbody>{rows.map((r, i) => (
         <tr key={r.bot.id}><td><span className="rank">{i + 1}</span></td>
           <td><div className="botcell"><BotHead size={40} bot={r.bot} /><div><b><Link href={`/bot/${r.bot.id}`}>{r.bot.name}</Link> <span aria-hidden="true">{r.bot.emoji}</span>{r.bot.isHouse && <> <Badge kind="house">HOUSE</Badge></>}{r.trust === null && <> <Badge kind="new">NEW</Badge></>}</b><span className="o">{r.bot.isHouse ? r.bot.houseRule : r.bot.qieName ?? short(r.bot.ownerWallet)}</span></div></div></td>
-          <td className={`num ${value(r).c ?? ""}`}><b>{value(r).t}</b></td>{extra && <td className="num opt">{inr(r.valueInr)}</td>}<td className="num opt">{r.trades}</td><td className="num">{r.trust ?? <span className="muted">new</span>}</td></tr>
+          <td className={`num ${value(r).c ?? ""}`}><b>{value(r).t}</b></td>{extra && <td className="num opt">{money(r.valueDisplay)}</td>}<td className="num opt">{r.trades}</td><td className="num">{r.trust ?? <span className="muted">new</span>}</td></tr>
       ))}</tbody></table></div>
   );
 }

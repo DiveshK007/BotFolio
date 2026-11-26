@@ -119,7 +119,7 @@ export async function markOf(db: Queryable, botId: string, slotId: string): Prom
   return m ? { slotId, slotTime: new Date(m.slot_time), valueE8: BigInt(m.value_e8), held: Object.keys(m.holdings ?? {}) as AssetId[] } : null;
 }
 
-/** The ₹ value of a mark, with the oldest price behind it for the age label (null = all cash). */
+/** The $ value of a mark, with the oldest price behind it for the age label (null = all cash). */
 export async function cardValue(db: Queryable, chain: CardChain, mark: Mark): Promise<CardValue> {
   let oldestPrice: CardOraclePrice | null = null;
   if (mark.held.length > 0) {

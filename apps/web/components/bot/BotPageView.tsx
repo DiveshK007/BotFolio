@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ExplorerLink } from "@/components/ui/ExplorerLink";
-import { Inr } from "@/components/ui/Inr";
+import { Money } from "@/components/ui/Money";
 import { OraclePrice } from "@/components/ui/OraclePrice";
 import { ageAtCall, bpsPct, callLabel, formatUnits, istTime, weightPct, type BotPage } from "@/lib/bot-record";
 import { assetName, formatE8, shortHex } from "@/lib/format";
@@ -70,10 +70,10 @@ export function BotPageView({
           {mark ? (
             <>
               <p className="font-display text-3xl font-extrabold">
-                <Inr valueE8={BigInt(mark.value_e8)} startValueE8={start} />
+                <Money valueE8={BigInt(mark.value_e8)} startValueE8={start} />
               </p>
               <p className="text-sm text-muted">
-                <Inr valueE8={BigInt(mark.value_e8)} startValueE8={start} delta /> since start · marked at the {istTime(mark.slot_time)} call
+                <Money valueE8={BigInt(mark.value_e8)} startValueE8={start} delta /> since start · marked at the {istTime(mark.slot_time)} call
               </p>
             </>
           ) : (
@@ -103,7 +103,7 @@ export function BotPageView({
                     <b>
                       {assetName(h.asset)} <span className="text-xs font-normal text-muted">{formatUnits(h.units_e18)} units · {weightPct(h.value_e8, mark.value_e8)}%</span>
                     </b>
-                    <Inr valueE8={BigInt(h.value_e8)} startValueE8={start} />
+                    <Money valueE8={BigInt(h.value_e8)} startValueE8={start} />
                   </div>
                   {p ? (
                     <span className="text-sm">
@@ -119,7 +119,7 @@ export function BotPageView({
               <b>
                 Cash <span className="text-xs font-normal text-muted">play USDT · {weightPct(mark.cash_e8, mark.value_e8)}%</span>
               </b>
-              <Inr valueE8={BigInt(mark.cash_e8)} startValueE8={start} />
+              <Money valueE8={BigInt(mark.cash_e8)} startValueE8={start} />
             </li>
           </ul>
         ) : (
@@ -215,7 +215,7 @@ export function BotPageView({
                     <b>
                       {t.side === "BUY" ? "Bought" : "Sold"} {assetName(t.asset)}{" "}
                       <span className="font-normal">
-                        <Inr valueE8={BigInt(t.cash_e8)} startValueE8={start} />
+                        <Money valueE8={BigInt(t.cash_e8)} startValueE8={start} />
                       </span>
                     </b>
                     <span className="text-xs text-muted">{istTime(t.slot_time)} call</span>

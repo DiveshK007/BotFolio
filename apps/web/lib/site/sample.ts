@@ -47,8 +47,8 @@ export const SAMPLE_TRADES: Trade[] = [
   t(33, "SELL", "ETH", 8000, "2026-11-26T03:30:00Z", 15),
 ];
 
-const row = (id: number, returnPct: number, valueInr: number, trades: number, trust: number) => ({
-  bot: SAMPLE_BOTS[id], returnPct, valueInr, trades, trust: trades < 8 && !SAMPLE_BOTS[id].isHouse ? null : trust,
+const row = (id: number, returnPct: number, valueDisplay: number, trades: number, trust: number) => ({
+  bot: SAMPLE_BOTS[id], returnPct, valueDisplay, trades, trust: trades < 8 && !SAMPLE_BOTS[id].isHouse ? null : trust,
 });
 const ALL = [row(21, 5.1, 105100, 11, 540), row(3, 4.2, 104200, 12, 610), row(12, 3.42, 103420, 9, 684), row(58, 2.3, 102300, 3, 0),
   row(1, 1.85, 101850, 5, 702), row(41, 1.2, 101200, 4, 598), row(2, 0.95, 100950, 2, 690), row(33, 0.6, 100600, 10, 731),
@@ -69,7 +69,7 @@ export const SAMPLE_BOARDS: Leaderboards = {
 
 export const SAMPLE_RECORD_12: BotRecord = {
   bot: SAMPLE_BOTS[12],
-  valueInr: 103420,
+  valueDisplay: 103420,
   seasonReturnPct: 3.42,
   holdings: [{ asset: "GOLD", weightPct: 30, inrDisplay: 31026 }, { asset: "BTC", weightPct: 15, inrDisplay: 15513 }, { asset: "CASH", weightPct: 55, inrDisplay: 56881 }],
   decisions: [
@@ -95,7 +95,7 @@ export const SAMPLE_RECORD_12: BotRecord = {
 export const SAMPLE_CARDS: Record<string, CardPayload> = {
   "example-challenge": { id: "example-challenge", kind: "challenge", bot: SAMPLE_BOTS[58], opponent: SAMPLE_BOTS[12], season: 2, trust: 0, headline: "Chai Break wants to race Gold Guru this season.", line: "Make a bot in 30 seconds. The season decides. No stakes.",
     proofs: [{ label: "Challenge tx", txHash: exHash(38), whatItProves: "The challenge is created on-chain by the challenger, so the matchup and season are fixed." }] },
-  "example-roast": { id: "example-roast", kind: "roast", bot: SAMPLE_BOTS[7], season: 1, trust: 312, headline: "AlphaWolf lost ₹12,400 going big on Gold at the 21:00 call.", line: "Trust score 312. Roast him.",
+  "example-roast": { id: "example-roast", kind: "roast", bot: SAMPLE_BOTS[7], season: 1, trust: 312, headline: "AlphaWolf lost $12,400 going big on Gold at the 21:00 call.", line: "Trust score 312. Roast him.",
     proofs: [
       { label: "Trade tx", txHash: exHash(31), whatItProves: "Bought Gold at $3,730.84, priced by QIE oracle round 14811, not by us." },
       { label: "Mark at close", txHash: exHash(32), whatItProves: "The loss uses the 21:00 oracle marks, recorded with their round ids, so anyone can recompute it." },

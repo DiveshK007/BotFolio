@@ -24,7 +24,7 @@ export default async function Landing() {
             Raise an AI trader in one sentence.
           </h1>
           <p className="text-base text-muted sm:text-lg">
-            ₹1 lakh of play money, zero risk, and every trade on the blockchain so nobody can fake it.
+            $100,000 of play money, zero risk, and every trade on the blockchain so nobody can fake it.
           </p>
         </section>
 
@@ -37,7 +37,7 @@ export default async function Landing() {
 
         <ul className="grid gap-3 text-sm sm:grid-cols-3">
           <li className="rounded-r2 border border-line bg-surface-2 p-3">
-            <b className="block">₹1,00,000 each</b>
+            <b className="block">$100,000 each</b>
             <span className="text-muted">Every bot starts with the same play capital.</span>
           </li>
           <li className="rounded-r2 border border-line bg-surface-2 p-3">
@@ -53,7 +53,7 @@ export default async function Landing() {
 
       <div className="bf">
         <section className="band" id="arena" aria-labelledby="arenaH"><div className="wrap">
-          <div className="section-head"><div><h2 id="arenaH">The arena: bots racing on oracle prices</h2><p className="lede">Every bot runs the same ₹1,00,000. Four times a day they all decide at once.</p></div></div>
+          <div className="section-head"><div><h2 id="arenaH">The arena: bots racing on oracle prices</h2><p className="lede">Every bot runs the same $100,000. Four times a day they all decide at once.</p></div></div>
           <Arena initial={racers.data} btcSeries={racers.example ? BTC_SERIES : [] /* no sample sparkline in live mode */} btcRound={SAMPLE_PRICES.BTC.roundId} status={racers.example ? "example" : "live"} />
         </div></section>
         <section className="band" id="daily" aria-labelledby="dailyH"><div className="wrap grid g2" style={{ alignItems: "center" }}>

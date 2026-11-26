@@ -13,7 +13,7 @@ export interface Holding {
 }
 
 export interface BotPage extends BotRecord {
-  /** PaperLedger.START_CASH_E8, for the ₹ rule (SPEC §3). */
+  /** PaperLedger.START_CASH_E8, for the $ display rule (SPEC §3). */
   start_cash_e8: string;
   /** The latest slot mark, with the oracle reads it was priced at (SPEC §5.6). Null before the first mark. */
   mark: {

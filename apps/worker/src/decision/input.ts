@@ -19,7 +19,7 @@ export interface DecisionInput {
   portfolio: {
     cash_pct: number;
     holdings: { asset: AssetId; pct: number; avg_entry: number | null }[];
-    value_inr_play: number;
+    value_play_usd: number;
   };
   market: { asset: AssetId; price: number; chg_24h_pct: number | null; chg_7d_pct: number | null; fresh: boolean }[];
   recent_corrections: { chip: string; note: string }[];
@@ -43,7 +43,7 @@ export interface DecisionContext {
     version: number;
   };
   portfolio: Portfolio;
-  /** PaperLedger's START_CASH_E8, for the ₹ display rule (SPEC §3). */
+  /** PaperLedger's START_CASH_E8, for the $ display rule (SPEC §3). */
   startValueE8: bigint;
   avgEntryE8: Partial<Record<AssetId, bigint>>;
   prices: Readonly<Record<AssetId, Price>>;
@@ -78,8 +78,8 @@ export function buildDecisionInput(ctx: DecisionContext): DecisionInput {
           avg_entry: entry === undefined ? null : Number(entry) / 1e8,
         };
       }),
-      // displayINR = 100000 × value / startValue (SPEC §3).
-      value_inr_play: ctx.startValueE8 > 0n ? Number((100_000n * value) / ctx.startValueE8) : 0,
+      // display $ = 100000 × value / startValue (SPEC §3).
+      value_play_usd: ctx.startValueE8 > 0n ? Number((100_000n * value) / ctx.startValueE8) : 0,
     },
     market: ASSET_IDS.map((asset) => ({
       asset,

@@ -168,7 +168,7 @@ The ones you most often need. Never paste values into an issue, PR or chat.
 
 ## Privacy and safety
 
-- **Play money only.** No real money, token, NFT, entry fee, stake, prize, cash-out or real-asset buy link. Every bot starts with the same ₹1,00,000 of play capital. Long or cash only, no shorting, no leverage.
+- **Play money only.** No real money, token, NFT, entry fee, stake, prize, cash-out or real-asset buy link. Every bot starts with the same $100,000 of play capital. Long or cash only, no shorting, no leverage.
 - **Users never pay gas.** Users sign EIP-712 requests. Our relayer pays gas and relays only an allowlist of 8 contract functions, with `value == 0`, a gas cap and a deadline of at most 10 minutes. It checks each request with `forwarder.verify()` and an `eth_call` before sending.
 - **What we store:** wallet address, Privy ID (passkey logins only) and login method; sign-up time, the 18+ / Terms confirmation and last-seen time; your last few AI-written bot personalities before you launch one; and a log of each action we relay for you. Details are on the app's `/privacy` page ([source](apps/web/app/privacy/page.tsx)).
 - **No phone or email** unless you choose Privy email login.

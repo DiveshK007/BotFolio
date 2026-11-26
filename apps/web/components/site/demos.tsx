@@ -7,7 +7,7 @@ import type { DnaMood } from "@/lib/dna";
 import { DnaBot as BotHead } from "./DnaBot";
 import { reducedMotion } from "./fx";
 import { Badge, Icon, type IconName, PriceAge, TxChip } from "./ui";
-import { assetLabel, inr, MAX_AGE_MIN, priceDecimals, short, usd } from "@/lib/site/format";
+import { assetLabel, money, MAX_AGE_MIN, priceDecimals, short, usd } from "@/lib/site/format";
 
 const subscribeRM = (cb: () => void) => { const m = matchMedia("(prefers-reduced-motion: reduce)"); m.addEventListener("change", cb); const o = new MutationObserver(cb); o.observe(document.documentElement, { attributes: true, attributeFilter: ["data-motion"] }); return () => { m.removeEventListener("change", cb); o.disconnect(); }; };
 const useReducedMotion = () => useSyncExternalStore(subscribeRM, () => reducedMotion(), () => false);
@@ -62,7 +62,7 @@ export function PetDevice({ prices, appUrl }: { prices: PriceMap; appUrl?: strin
   const launch = () => {
     if (!p) return; const a = p.asset, pr = prices[a];
     if (pr.ageMin > MAX_AGE_MIN[a]) { setLcd(<><span>{assetLabel(a)} market quiet — holding until a fresh price.</span><PriceAge asset={a} ageMin={pr.ageMin} /></>); setMood("think"); setBubble("No fresh price, no trade. Rules are rules."); }
-    else { setLcd(<><span>Bought <b>{inr(100000 * Math.min(max, 25) / 100)}</b> of {assetLabel(a)} at {usd(pr.price, priceDecimals(a))} · round {pr.roundId}</span><span className="row" style={{ gap: 8 }}><PriceAge asset={a} ageMin={pr.ageMin} /><TxChip hash={exHash(1)} label="tx" /></span></>); setMood("proud"); setMeter(5); typeOut("First trade done. Joining the arena. Wish me luck."); }
+    else { setLcd(<><span>Bought <b>{money(100000 * Math.min(max, 25) / 100)}</b> of {assetLabel(a)} at {usd(pr.price, priceDecimals(a))} · round {pr.roundId}</span><span className="row" style={{ gap: 8 }}><PriceAge asset={a} ageMin={pr.ageMin} /><TxChip hash={exHash(1)} label="tx" /></span></>); setMood("proud"); setMeter(5); typeOut("First trade done. Joining the arena. Wish me luck."); }
     if (!launched.current) { launched.current = true; dispatchEvent(new CustomEvent("bf:launch", { detail: { id: seed, name: p.name, personaText: text, ret: 0, vol: Math.min(1, max / 50), you: true, lines: [p.voice[1], "Okay that one hurt. Coach me."] } })); }
   };
   return (
@@ -142,7 +142,7 @@ export function CoachDemo({ solPrice }: { solPrice: { price: number; roundId: st
     <div className="coach">
       <ol className="stepper">{STEPS.map((s, k) => <li key={s} data-s={k < step ? "done" : k === step ? "now" : ""}><span className="d">{k + 1}</span>{s}</li>)}</ol>
       <div className="stage" id="coachStage" aria-live="polite"><div className="panel" key={step}>
-        {step === 0 && <>{wolf(<><b>AlphaWolf</b> · 21:00 call<br />Put 40% in Gold. Gold fell 3.1% overnight. Down {inr(4100)}.<span className="roast">&quot;Bought the top like it was on sale.&quot;</span></>, "sad")}
+        {step === 0 && <>{wolf(<><b>AlphaWolf</b> · 21:00 call<br />Put 40% in Gold. Gold fell 3.1% overnight. Down {money(4100)}.<span className="roast">&quot;Bought the top like it was on sale.&quot;</span></>, "sad")}
           <p className="small muted" style={{ marginTop: 14 }}>Every call comes with a one-line reason and, for losses, a roast.</p><div className="row" style={{ marginTop: 14 }}><button className="btn" onClick={() => setStep(1)}>Bad call</button></div></>}
         {step === 1 && <><h3>What went wrong?</h3><p className="muted small" style={{ marginTop: 6 }}>Pick a reason. You&apos;ve already told AlphaWolf this twice this season.</p>
           <div className="row" style={{ marginTop: 14 }} role="group" aria-label="Reason">{Object.keys(CHIP_DIFF).map(c => <button key={c} className="chip" aria-pressed={chip === c} onClick={() => setChip(c)}>{c}</button>)}</div>

@@ -54,7 +54,6 @@ Use the Render service URL (`RENDER_SERVICE_URL`). Public GET routes need no sig
 - [ ] `GET /leaderboards?season=<n>` returns the four boards
 - [ ] `GET /bot-page?bot=<botId>` returns a real bot
 - [ ] `GET /stats` shows user-signed and system txs apart
-- [ ] `GET /fx/usd-inr` returns a number (display only)
 - [ ] `GET /trust/proof?season=<n>&bot=<botId>` returns a score and proof
 - [ ] From the Vercel origin in a browser, one of the above passes CORS (no console error)
 

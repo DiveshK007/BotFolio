@@ -2,7 +2,7 @@
 import { ASSETS, explorerAddress, type AssetId } from "@botfolio/shared";
 import { DnaBot as BotHead } from "./DnaBot";
 import { Badge, ErrorFallback, Placeholder, StatusBadge, TxChip } from "./ui";
-import { assetLabel, e8ToNumber, inr, istTime, priceDecimals, short, usd } from "@/lib/site/format";
+import { assetLabel, e8ToNumber, money, istTime, priceDecimals, short, usd } from "@/lib/site/format";
 import { SAMPLE_BOTS } from "@/lib/site/sample";
 import type { ActivityStats, ContractInfo, Loaded, Trade } from "@/lib/site/types";
 
@@ -41,7 +41,7 @@ export function LatestTrades({ trades }: { trades: Loaded<Trade[]> }) {
       <div className="block-head"><div className="row"><h3>Latest trades</h3><StatusBadge status={trades.status} /></div>{trades.updatedAt && <span className="small muted">Updated {istTime(trades.updatedAt)}{trades.status === "example" ? " (example)" : ""}</span>}</div>
       <div className="card"><ul className="feed">{trades.data.map(t => {
         const b = t.bot ?? (trades.status === "example" ? SAMPLE_BOTS[t.botId] : undefined) ?? { id: t.botId, name: `Bot #${t.botId}`, emoji: "", isHouse: false, ownerWallet: "0x" as `0x${string}`, color: undefined };
-        return <li key={t.txHash}><BotHead size={40} bot={b} /><div><div className="what">{b.name}{b.isHouse && <> <Badge kind="house">HOUSE</Badge></>} {t.side === "BUY" ? "bought" : "sold"} {inr(t.inrDisplay)} of {assetLabel(t.asset as AssetId)}</div>
+        return <li key={t.txHash}><BotHead size={40} bot={b} /><div><div className="what">{b.name}{b.isHouse && <> <Badge kind="house">HOUSE</Badge></>} {t.side === "BUY" ? "bought" : "sold"} {money(t.inrDisplay)} of {assetLabel(t.asset as AssetId)}</div>
           <div className="meta"><span className="nowrap">{istTime(t.blockTime)}</span><span className="mono nowrap">{usd(e8ToNumber(t.priceE8), priceDecimals(t.asset))}</span><span className="mono nowrap">round {t.roundId}</span><span className="nowrap">{t.userSigned ? <b>signed by owner</b> : "sent by runner"}</span></div></div><TxChip hash={t.txHash} /></li>;
       })}</ul></div>
     </>
@@ -52,7 +52,7 @@ const USER_TILES: [keyof ActivityStats, string, string][] = [["uniqueSigners", "
 export function ActivityPanel({ stats }: { stats: Loaded<ActivityStats> }) {
   if (stats.status === "error") return <ErrorFallback what="Activity numbers" source={stats.source} />;
   const d = stats.data;
-  const v = (n?: number) => (d && n !== undefined ? n.toLocaleString("en-IN") : "—");
+  const v = (n?: number) => (d && n !== undefined ? n.toLocaleString("en-US") : "—");
   return (
     <>
       <div className="block-head"><div className="row"><h3>User-signed</h3>{d ? <StatusBadge status={stats.status} /> : <Badge kind="coming">COUNTING STARTS AT DEPLOY</Badge>}</div>{stats.updatedAt && d && <span className="small muted">Updated {istTime(stats.updatedAt)}</span>}</div>

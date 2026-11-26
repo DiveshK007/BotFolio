@@ -9,7 +9,7 @@ import { sweepSlotCards } from "./slot-cards";
 interface CardJobOptions {
   db: Queryable;
   log: Log;
-  /** null without PAPER_LEDGER_ADDRESS (the ₹ rule needs START_CASH_E8). */
+  /** null without PAPER_LEDGER_ADDRESS (the $ display rule needs START_CASH_E8). */
   chain: CardChain | null;
   now?: () => Date;
 }

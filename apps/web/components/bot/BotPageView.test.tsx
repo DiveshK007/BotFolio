@@ -6,9 +6,9 @@ import { BotPageView } from "./BotPageView";
 
 const render = (page = samplePage()) => renderToStaticMarkup(createElement(BotPageView, { page }));
 
-it("shows value in ₹, holdings with oracle round and age, trust factors, calls, trades with explorer links and versions", () => {
+it("shows value in $, holdings with oracle round and age, trust factors, calls, trades with explorer links and versions", () => {
   const html = render();
-  expect(html).toContain("₹1,01,000"); // 100000 × 1010 / 1000
+  expect(html).toContain("$101,000"); // 100000 × 1010 / 1000
   expect(html).toContain("QIE oracle round 50888");
   expect(html).toContain("854");
   expect(html).toContain("Explains its trades");

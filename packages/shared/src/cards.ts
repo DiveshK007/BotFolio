@@ -2,11 +2,11 @@
  * Share card payloads: what the worker writes to `cards.payload` and what the renderer and Verify-on-QIE panel read.
  * FROZEN INTERFACE (SPEC §12.2). Change only through one announced PR.
  *
- * Sources: SPEC §9 (kinds, content, sizes), §3 (cards table, ₹ rule), §5.7 (price age).
+ * Sources: SPEC §9 (kinds, content, sizes), §3 (cards table, $ rule), §5.7 (price age).
  * Rules for whoever fills or renders these:
  *  - Data only from indexed on-chain records + logged decision text. Nothing newly invented.
  *  - JSON-safe: uint values are decimal strings, times are ISO 8601. No bigint, no Date.
- *  - ₹ is never stored. displayINR = 100000 × valueE8 / startCashE8.
+ *  - $ is never stored. display = 100000 × valueE8 / startCashE8.
  *  - Names, emoji, lines and change text come from users or the LLM: untrusted plain text, always escape (#159).
  *  - Every txHash anywhere in a payload also appears in `cites`.
  */
@@ -58,10 +58,10 @@ export interface CardOraclePrice {
   readAt: string;
 }
 
-/** The ₹ value on the card. */
+/** The $ value on the card. */
 export interface CardValue {
   valueE8: UintString;
-  /** PaperLedger.START_CASH_E8: the startValue of the ₹ rule, not the value at season open. */
+  /** PaperLedger.START_CASH_E8: the startValue of the $ display rule, not the value at season open. */
   startCashE8: UintString;
   markedAt: string;
   /** Oldest price behind the mark, for the age label. null = all cash. */
