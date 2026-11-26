@@ -396,8 +396,8 @@ Render cron schedules are evaluated in UTC ([Render cron docs](https://render.co
 |---|---|---|
 | Decision slots | 09:00, 13:00, 17:00, 21:00 daily | `30 3,7,11,15 * * *` |
 | Stale retries | +5, +10, +15 min after each slot | `35,40,45 3,7,11,15 * * *` (only bots/assets still pending) |
-| Season close check (v1.1) | daily 21:30 — closes any season whose `ends_at` slot has passed | `0 16 * * *` |
-| Season open check (v1.1) | daily 00:00 — opens any season whose `starts_at` has arrived | `30 18 * * *` (18:30 UTC previous day) |
+| Season close check (v1.1) | daily 21:30, then every 15 min until 23:15 — closes any season whose `ends_at` slot has passed; a run after the close is done changes nothing. A successful close also runs the open check, so a late close doesn't wait for the next open run | `0,15,30,45 16-17 * * *` (16:00–17:45 UTC) |
+| Season open check (v1.1) | daily 00:00, then every 10 min until 01:20 — opens any season whose `starts_at` has arrived; the chain decides what is already open, so a rerun opens nothing twice | `30,40,50 18 * * *`; `*/10 19 * * *` (18:30–19:50 UTC, previous day) |
 | Daily recap cards (v1.1) | daily 21:35 (after close check) | `5 16 * * *` |
 | DailyCall settle (v1.1) | 21:00, then every 10 min until 23:50; once more at the next 09:00. No fresh price → skip, don't revert | `30,40,50 15 * * *`; `*/10 16-17 * * *`; `0,10,20 18 * * *` (every 10 min, 15:30–18:20 UTC); `30 3 * * *` (next 09:00) |
 | Big-move expiry sweep (v1.1) | every 10 min — pending big moves past deadline → clipped order into next batch | `*/10 * * * *` |
