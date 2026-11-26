@@ -25,3 +25,30 @@ export function readDraft(): string {
     return inMemory;
   }
 }
+
+const CHALLENGE_KEY = "bf-pending-challenge";
+const SHORT = /^[0-9a-f]{16}$/;
+
+/**
+ * A newcomer who opened a challenge link and tapped "Make a bot" (#85): after createBot, /create sends them back
+ * to /challenge/<code> to accept. Only an 8-byte hex code is kept, never free text.
+ */
+export function savePendingChallenge(code: string): void {
+  if (!SHORT.test(code)) return;
+  try {
+    sessionStorage.setItem(CHALLENGE_KEY, code);
+  } catch {
+    // Storage blocked: they reopen the link by hand, as the page says.
+  }
+}
+
+/** The pending challenge code, removed as it is read. */
+export function takePendingChallenge(): string | null {
+  try {
+    const code = sessionStorage.getItem(CHALLENGE_KEY);
+    sessionStorage.removeItem(CHALLENGE_KEY);
+    return code && SHORT.test(code) ? code : null;
+  } catch {
+    return null;
+  }
+}

@@ -8,6 +8,7 @@ import type { WalletSession } from "@/lib/wallet";
 import { bigMoveLine } from "./BigMoveCard";
 import { DailyCallCard } from "./DailyCallCard";
 import { MeView, type MeData } from "./MeScreen";
+import { SignInCard } from "./relay-ui";
 import { watching } from "./ThinkingFeed";
 
 const addr = (b: string) => `0x${b.repeat(20)}` as `0x${string}`;
@@ -113,4 +114,35 @@ it("watches the biggest holding, else BTC", () => {
   page.mark!.holdings = [...page.mark!.holdings, { asset: "GOLD", units_e18: "1", value_e8: "99000000000" }];
   expect(watching(page)).toBe("GOLD");
   expect(watching({ mark: null })).toBe("BTC");
+});
+
+describe("SignInCard", () => {
+  const w = (available: boolean) => ({ available, signIn: async () => session });
+  const card = (passkey: boolean, qie: boolean) => renderToStaticMarkup(createElement(SignInCard, { why: "Sign in.", wallets: { passkey: w(passkey), qie: w(qie) } }));
+
+  it("offers whichever wallet the device has, and says not live only when it has neither", () => {
+    expect(card(true, false)).toContain("Sign in with passkey");
+    expect(card(true, false)).not.toContain("Connect QIE Wallet");
+    expect(card(false, true)).toContain("Connect QIE Wallet");
+    expect(card(false, true)).not.toContain("live yet");
+    expect(card(false, false)).toContain("live yet");
+  });
+});
+
+describe("pending challenge (newcomer path)", () => {
+  it("keeps only an 8-byte hex code, and hands it over once", async () => {
+    const store = new Map<string, string>();
+    const { savePendingChallenge, takePendingChallenge } = await import("@/lib/draft");
+    (globalThis as { sessionStorage?: unknown }).sessionStorage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    };
+    savePendingChallenge("../evil");
+    expect(takePendingChallenge()).toBeNull();
+    savePendingChallenge("c0".repeat(8));
+    expect(takePendingChallenge()).toBe("c0".repeat(8));
+    expect(takePendingChallenge()).toBeNull();
+    delete (globalThis as { sessionStorage?: unknown }).sessionStorage;
+  });
 });

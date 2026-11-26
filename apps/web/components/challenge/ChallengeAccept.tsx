@@ -4,19 +4,36 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { isAddressEqual } from "viem";
 import { PrimaryButton } from "@/components/create/controls";
-import { ActionStatus, NotLive, SignInCard, useRelay } from "@/components/me/relay-ui";
+import { ActionStatus, NotLive, SessionLoading, SignInCard, useRelay } from "@/components/me/relay-ui";
 import { getOwnerConfig } from "@/lib/config";
+import { savePendingChallenge } from "@/lib/draft";
 import { REGISTRY_ABI } from "@/lib/create-bot";
-import type { PublicChallenge } from "@/lib/owner";
+import { shortCode, type PublicChallenge } from "@/lib/owner";
 import { createChainClient } from "@/lib/relay-call";
-import { useOwnerSession } from "@/lib/use-owner-session";
+import { useSession } from "@/lib/wallet";
+
+/** Newcomer path (SPEC §2.5): make a bot, and /create brings them back here to accept. */
+function MakeBot({ code }: { code: PublicChallenge["code"] }) {
+  return (
+    <>
+      <Link
+        href="/"
+        onClick={() => savePendingChallenge(shortCode(code))}
+        className="inline-flex h-12 items-center justify-center rounded-full bg-accent px-6 font-semibold text-on-accent"
+      >
+        Make a bot in 30 seconds
+      </Link>
+      <p className="text-center text-xs text-muted">You come straight back here to accept.</p>
+    </>
+  );
+}
 
 type Mine = { kind: "loading" } | { kind: "failed" } | { kind: "ok"; botId: bigint };
 
 /** #85 accept: the friend signs Challenges.accept(fullCode, theirBot). The full code came from the worker. */
 export function ChallengeAccept({ challenge }: { challenge: PublicChallenge }) {
   const [config] = useState(getOwnerConfig);
-  const { available, session, busy, error, signIn } = useOwnerSession();
+  const { session, loading } = useSession();
   const relay = useRelay(config, session);
   const [mine, setMine] = useState<Mine>({ kind: "loading" });
   const registry = config?.targets.BotRegistry;
@@ -33,14 +50,12 @@ export function ChallengeAccept({ challenge }: { challenge: PublicChallenge }) {
   }, [session, registry]);
 
   if (!config || !registry || !config.targets.Challenges) return <NotLive>Accepting challenges isn&apos;t switched on yet.</NotLive>;
+  if (!session && loading) return <SessionLoading />;
   if (!session) {
     return (
       <div className="flex flex-col gap-3">
-        <Link href="/" className="inline-flex h-12 items-center justify-center rounded-full bg-accent px-6 font-semibold text-on-accent">
-          Make a bot in 30 seconds
-        </Link>
-        <p className="text-center text-xs text-muted">Then open this link again to accept.</p>
-        <SignInCard available={available} busy={busy} error={error} onSignIn={signIn} why="Already have a bot? Sign in to accept with it." />
+        <MakeBot code={challenge.code} />
+        <SignInCard why="Already have a bot? Sign in to accept with it." />
       </div>
     );
   }
@@ -50,10 +65,7 @@ export function ChallengeAccept({ challenge }: { challenge: PublicChallenge }) {
     return (
       <div className="flex flex-col gap-2">
         <p className="text-sm">This wallet has no bot yet.</p>
-        <Link href="/" className="inline-flex h-12 items-center justify-center rounded-full bg-accent px-6 font-semibold text-on-accent">
-          Make a bot in 30 seconds
-        </Link>
-        <p className="text-center text-xs text-muted">Then open this link again to accept.</p>
+        <MakeBot code={challenge.code} />
       </div>
     );
   }

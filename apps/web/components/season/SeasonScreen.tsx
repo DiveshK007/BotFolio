@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { PrimaryButton } from "@/components/create/controls";
-import { ActionStatus, NotLive, SignInCard, useRelay } from "@/components/me/relay-ui";
+import { ActionStatus, NotLive, SessionLoading, SignInCard, useRelay } from "@/components/me/relay-ui";
 import { loadMe, MeView, type MeData } from "@/components/me/MeScreen";
 import type { OwnerCtx } from "@/components/me/OwnerActions";
 import { bpsPct, istTime } from "@/lib/bot-record";
@@ -11,7 +11,7 @@ import { getOwnerConfig } from "@/lib/config";
 import { userMessage } from "@/lib/errors";
 import { shortHex } from "@/lib/format";
 import type { OwnerBot } from "@/lib/owner";
-import { useOwnerSession } from "@/lib/use-owner-session";
+import { useSession } from "@/lib/wallet";
 
 const card = "flex flex-col gap-3 rounded-r3 border border-line bg-surface p-4 shadow-card";
 const h2 = "font-display text-xl font-extrabold";
@@ -149,7 +149,7 @@ export function SeasonView({ n, data, ctx }: { n: number; data: MeData; ctx: Own
 
 export function SeasonScreen({ n }: { n: number }) {
   const [config] = useState(getOwnerConfig);
-  const { available, session, busy, error, signIn } = useOwnerSession();
+  const { session, loading } = useSession();
   const [data, setData] = useState<MeData>({ kind: "loading" });
   const load = useCallback(() => {
     if (!config || !session) return;
@@ -162,7 +162,7 @@ export function SeasonScreen({ n }: { n: number }) {
     return (
       <div className="flex flex-col gap-4">
         <h1 className="font-display text-3xl font-extrabold tracking-tight">Season {n}</h1>
-        <SignInCard available={available} busy={busy} error={error} onSignIn={signIn} why="Sign in to see your bot's season result and approve its next version." />
+        {loading ? <SessionLoading /> : <SignInCard why="Sign in to see your bot's season result and approve its next version." />}
         <Link href={`/leaderboards?season=${n}`} className="min-h-11 self-start font-semibold text-accent-ink">
           Season {n} leaderboards
         </Link>

@@ -8,7 +8,8 @@ import { ExplorerLink } from "@/components/ui/ExplorerLink";
 import type { OwnerConfig } from "@/lib/config";
 import { FlowError, userMessage } from "@/lib/errors";
 import { confirmAction, createChainClient, relayAction, type ActionEvent, type LaunchStep, type OwnerAction } from "@/lib/relay-call";
-import type { WalletSession } from "@/lib/wallet";
+import type { SignInKind } from "@/components/create/SignInStep";
+import { getQieWallet, getWallet, type Wallet, type WalletSession } from "@/lib/wallet";
 
 export type RelayPhase =
   | { name: "idle" }
@@ -100,28 +101,65 @@ export function ActionStatus({ phase, done, onRecheck }: { phase: RelayPhase; do
 
 const card = "rounded-r3 border border-line bg-surface p-4 shadow-card";
 
-/** Sign-in for the owner screens. The button is the passkey trigger (a fresh tap, for iOS). */
-export function SignInCard({ available, busy, error, onSignIn, why }: { available: boolean; busy: boolean; error: string | null; onSignIn: () => void; why: string }) {
-  if (!available) {
+export type Wallets = Record<SignInKind, Wallet>;
+
+/**
+ * Sign-in for the owner screens: passkey (Privy) and/or Connect QIE Wallet, whichever this device has. The session
+ * lands in the wallet store, so useSession() picks it up. Each button calls signIn() inside the tap (iOS WebAuthn).
+ */
+export function SignInCard({ why, wallets: given }: { why: string; wallets?: Wallets }) {
+  const [wallets] = useState<Wallets>(() => given ?? { passkey: getWallet(), qie: getQieWallet() });
+  const [busy, setBusy] = useState<SignInKind | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  if (!wallets.passkey.available && !wallets.qie.available) {
     return (
       <section role="status" className="rounded-r3 border border-line bg-amber-soft p-4">
         <h2 className="font-semibold text-amber">Sign-in isn&apos;t live yet</h2>
-        <p className="mt-1 text-sm">Passkey sign-in isn&apos;t switched on on this site yet. Every bot&apos;s public page still works.</p>
+        <p className="mt-1 text-sm">Sign-in isn&apos;t switched on on this site yet. Every bot&apos;s public page still works.</p>
         <Link href="/leaderboards" className="mt-2 inline-flex min-h-11 items-center font-semibold text-accent-ink">
           See the leaderboards
         </Link>
       </section>
     );
   }
+  function signIn(kind: SignInKind) {
+    setBusy(kind);
+    setError(null);
+    wallets[kind]
+      .signIn()
+      .catch((e: unknown) => setError(userMessage(e)))
+      .finally(() => setBusy(null));
+  }
   return (
     <section className={`${card} flex flex-col gap-3`}>
       <p className="text-sm">{why}</p>
-      <PrimaryButton disabled={busy} onClick={onSignIn}>
-        {busy ? "Waiting for your passkey…" : "Sign in with passkey"}
-      </PrimaryButton>
+      {wallets.passkey.available && (
+        <PrimaryButton disabled={busy !== null} onClick={() => signIn("passkey")}>
+          {busy === "passkey" ? "Waiting for your passkey…" : "Sign in with passkey"}
+        </PrimaryButton>
+      )}
+      {wallets.qie.available && (
+        <button
+          type="button"
+          disabled={busy !== null}
+          onClick={() => signIn("qie")}
+          className="inline-flex h-12 w-full items-center justify-center rounded-full border border-line bg-surface px-6 font-semibold text-ink disabled:opacity-60"
+        >
+          {busy === "qie" ? "Check your wallet…" : "Connect QIE Wallet"}
+        </button>
+      )}
       <p className="text-center text-xs text-muted">No seed phrase, no gas. You never pay.</p>
       {error && <ErrorNote>{error}</ErrorNote>}
     </section>
+  );
+}
+
+/** While the wallet store is still restoring a session: don't flash "sign in" at someone who is signed in. */
+export function SessionLoading() {
+  return (
+    <p role="status" className="text-sm text-muted">
+      Checking your sign-in…
+    </p>
   );
 }
 

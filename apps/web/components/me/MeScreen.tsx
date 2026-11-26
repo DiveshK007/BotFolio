@@ -10,12 +10,11 @@ import { REGISTRY_ABI } from "@/lib/create-bot";
 import { userMessage } from "@/lib/errors";
 import { fetchBigMoves, fetchDailyCall, fetchOwner, type DailyCallToday, type OwnerBot, type PendingBigMove } from "@/lib/owner";
 import { createChainClient } from "@/lib/relay-call";
-import { useOwnerSession } from "@/lib/use-owner-session";
-import type { WalletSession } from "@/lib/wallet";
+import { useSession, type WalletSession } from "@/lib/wallet";
 import { BigMoveCard } from "./BigMoveCard";
 import { DailyCallCard } from "./DailyCallCard";
 import { ChallengeButton, CorrectCall, PauseToggle, type OwnerCtx } from "./OwnerActions";
-import { NotLive, SignInCard } from "./relay-ui";
+import { NotLive, SessionLoading, SignInCard } from "./relay-ui";
 import { ThinkingFeed } from "./ThinkingFeed";
 
 export type MeData =
@@ -186,7 +185,7 @@ export function MeView({ data, ctx, now, onReload }: { data: MeData; ctx: OwnerC
 /** S3 /me (SPEC §2.4, #77): the owner's bot, its prompts and every coaching action. */
 export function MeScreen() {
   const [config] = useState(getOwnerConfig);
-  const { available, session, busy, error, signIn } = useOwnerSession();
+  const { session, loading } = useSession();
   const [data, setData] = useState<MeData>({ kind: "loading" });
   const now = useNow();
 
@@ -207,7 +206,7 @@ export function MeScreen() {
     return (
       <div className="flex flex-col gap-4">
         <h1 className="font-display text-3xl font-extrabold tracking-tight">Your bot</h1>
-        <SignInCard available={available} busy={busy} error={error} onSignIn={signIn} why="Sign in to see your bot, answer its prompts and coach it." />
+        {loading ? <SessionLoading /> : <SignInCard why="Sign in to see your bot, answer its prompts and coach it." />}
       </div>
     );
   }
