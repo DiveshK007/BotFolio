@@ -10,6 +10,7 @@ import {
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { confirmBot, launchBot, REGISTRY_ABI, type ChainClient, type LaunchStep } from "./create-bot";
+import { FlowError } from "./errors";
 import type { WalletSession } from "./wallet";
 
 // Mocked relay and chain; the signature is real, from a key generated per run.
@@ -92,6 +93,24 @@ describe("launchBot against a mocked /relay", () => {
       launchBot({ config, client: chain(), session: { ...session, signTypedData }, personaHash, limits }),
     ).rejects.toMatchObject({ code: "SIGN_FAILED" });
     expect(relay).not.toHaveBeenCalled();
+  });
+
+  it("a closed signature sheet stays a cancel (not a failure) and sends nothing", async () => {
+    const relay = mockRelay();
+    const signTypedData = async () => Promise.reject(new FlowError("CANCELLED", "You closed the signature. Nothing was sent."));
+    await expect(
+      launchBot({ config, client: chain(), session: { ...session, signTypedData }, personaHash, limits }),
+    ).rejects.toMatchObject({ code: "CANCELLED" });
+    expect(relay).not.toHaveBeenCalled();
+  });
+
+  it("a rate-limited relay reaches the user in the relayer's words", async () => {
+    const body = { ok: false, error: { code: "RATE_LIMITED_IP", message: "Too many new bots from here today.", retryAfterSeconds: 3600 } };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(body), { status: 429 })));
+    await expect(launchBot({ config, client: chain(), session, personaHash, limits })).rejects.toMatchObject({
+      code: "RATE_LIMITED_IP",
+      message: "Too many new bots from here today.",
+    });
   });
 
   it("sends nothing for limits off the slider steps", async () => {

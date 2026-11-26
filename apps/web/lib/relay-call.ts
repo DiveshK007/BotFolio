@@ -6,7 +6,6 @@
 import {
   forwardRequestToJson,
   forwardRequestTypedData,
-  QIE_RPC_URLS,
   qieMainnet,
   RELAY_LIMITS,
   toForwardRequest,
@@ -26,7 +25,7 @@ import {
   type Hex,
   type PublicClient,
 } from "viem";
-import type { OwnerConfig } from "./config";
+import { getRpcUrls, type OwnerConfig } from "./config";
 import { FlowError } from "./errors";
 import type { WalletSession } from "./wallet";
 import { postRelay } from "./worker";
@@ -36,12 +35,11 @@ export const FORWARDER_ABI = parseAbi(["function nonces(address owner) view retu
 export type ChainClient = Pick<PublicClient, "readContract" | "waitForTransactionReceipt">;
 export type LaunchStep = "checking" | "signing" | "relaying";
 
-/** rpc3 → 4 → 5 → 1 → 2, like the worker: rpc1/rpc2 drop TLS sometimes. */
+/** Fails over through NEXT_PUBLIC_QIE_RPC_URLS (default rpc3 → 4 → 5 → 1 → 2). */
 export function createChainClient(): ChainClient {
-  const urls = [...QIE_RPC_URLS.slice(2), ...QIE_RPC_URLS.slice(0, 2)];
   return createPublicClient({
     chain: qieMainnet,
-    transport: fallback(urls.map((url) => http(url, { timeout: 4_000, retryCount: 0 }))),
+    transport: fallback(getRpcUrls().map((url) => http(url, { timeout: 4_000, retryCount: 0 }))),
   });
 }
 
