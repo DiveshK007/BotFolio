@@ -10,6 +10,7 @@ import {
   confirmAction,
   DAILY_CALL_ABI,
   encodeAction,
+  joinableSeason,
   OWNER_REGISTRY_ABI,
   PAPER_LEDGER_ABI,
   relayAction,
@@ -123,5 +124,18 @@ describe("confirmAction", () => {
     await expect(confirmAction({ config, client: receipt("reverted", []), action, txHash })).rejects.toMatchObject({ code: "REVERTED" });
     const slow = { waitForTransactionReceipt: async () => Promise.reject(new Error("timeout")) } as unknown as ChainClient;
     await expect(confirmAction({ config, client: slow, action, txHash })).rejects.toMatchObject({ code: "NOT_CONFIRMED" });
+  });
+});
+
+describe("joinableSeason (#359)", () => {
+  // currentSeason 3, nextSeason 4; only seasonState(3) changes between the close and the next open.
+  const ledger = (state: number) =>
+    ({
+      readContract: async ({ functionName }: { functionName: string }) => ({ currentSeason: 3, nextSeason: 4, seasonState: state })[functionName],
+    }) as unknown as ChainClient;
+
+  it("joins the live season while it is open, and the next one once it has closed", async () => {
+    expect(await joinableSeason(ledger(1), targets.SeasonLedger)).toEqual({ season: 3, next: false });
+    expect(await joinableSeason(ledger(2), targets.SeasonLedger)).toEqual({ season: 4, next: true });
   });
 });
