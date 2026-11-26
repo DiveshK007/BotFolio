@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { samplePage } from "@/lib/bot-record.fixture";
 import type { OwnerConfig } from "@/lib/config";
 import type { OwnerBot, PendingBigMove } from "@/lib/owner";
+import type { BotCardLink } from "@/lib/site/data";
 import type { WalletSession } from "@/lib/wallet";
 import { bigMoveLine } from "./BigMoveCard";
 import { DailyCallCard } from "./DailyCallCard";
@@ -50,7 +51,7 @@ describe("MeView", () => {
   });
 
   it("shows the big move, controls, thinking feed, Daily Call, season and Bad call on every call", () => {
-    const html = view({ kind: "ok", page: samplePage(), owner: owner(), daily: { day: 1, closesAt: "2026-11-26T14:30:00.000Z", bots: [{ botId: "7", botName: "AlphaWolf", state: "open" }] }, moves: [move] });
+    const html = view({ kind: "ok", page: samplePage(), owner: owner(), daily: { day: 1, closesAt: "2026-11-26T14:30:00.000Z", bots: [{ botId: "7", botName: "AlphaWolf", state: "open" }] }, moves: [move], cards: [] });
     expect(html).toContain("AlphaWolf wants to put 35% of its cash into Gold. Allow?");
     expect(html).toContain("Decide within 1h 30m");
     for (const text of ["Allow", "Shrink to safe size", "Block", "Pause bot", "Next call in 3h 0m · watching BTC", "BTC up or down", "Closes at 26 Nov, 20:00 IST", "Bad call", "Challenge a friend", "Season 1 result"]) {
@@ -62,14 +63,14 @@ describe("MeView", () => {
 
   it("links an open v2 proposal with its approval deadline", () => {
     const config2 = { version: 2, season: 3, rules: "r", max_per_coin_bps: 2500, max_trades_per_day: 4, from: { version: 1, rules: "r", max_per_coin_bps: 4000, max_trades_per_day: 4 }, changes: [{ what: "x", because_correction_id: 1 }], approve_by: "2026-11-27T03:00:00.000Z" };
-    const html = view({ kind: "ok", page: samplePage(), owner: owner({ proposal: { version: 2, configHash: h("ab"), config: config2, approveBy: config2.approve_by } }), daily: null, moves: [] });
+    const html = view({ kind: "ok", page: samplePage(), owner: owner({ proposal: { version: 2, configHash: h("ab"), config: config2, approveBy: config2.approve_by } }), daily: null, moves: [], cards: [] });
     expect(html).toContain('href="/season/3"');
     expect(html).toContain("Approve by 27 Nov, 08:30 IST, or it keeps v1");
   });
 
   it("dates the first result at the next visible close, never the hidden S0 one (#360)", () => {
     const page = { ...samplePage(), seasons: [] };
-    expect(view({ kind: "ok", page, owner: owner(), daily: null, moves: [] })).toContain("next close, 30 Nov, 21:30 IST");
+    expect(view({ kind: "ok", page, owner: owner(), daily: null, moves: [], cards: [] })).toContain("next close, 30 Nov, 21:30 IST");
     const at = (ist: string) => nextVisibleClose(Date.parse(`${ist}+05:30`));
     expect(at("2026-11-27T02:30:00")).toBe("2026-11-30T16:00:00.000Z"); // during S0
     expect(at("2026-11-30T21:30:00")).toBe("2026-12-02T16:00:00.000Z"); // S1 just closed
@@ -77,8 +78,19 @@ describe("MeView", () => {
     expect(at("2026-12-13T21:30:00")).toBe("2026-12-20T16:00:00.000Z");
   });
 
+  it("lists the bot's cards, each linking to /card/<id>, with an empty and a failed state (#82)", () => {
+    const withCards = (cards: BotCardLink[] | null) => view({ kind: "ok", page: samplePage(), owner: owner(), daily: null, moves: [], cards });
+    const html = withCards([{ id: "trade-12", headline: "Bought BTC", createdAt: "2026-11-27T04:00:00.000Z" }]);
+    expect(html).toContain("Your cards");
+    expect(html).toContain('href="/card/trade-12"');
+    expect(html).toContain("Bought BTC");
+    expect(html).toContain("27 Nov, 09:30 IST");
+    expect(withCards([])).toContain("Your first card appears after your bot&#x27;s first trade.");
+    expect(withCards(null)).toContain("Your cards didn&#x27;t load");
+  });
+
   it("still shows the bot when the owner reads fail", () => {
-    const html = view({ kind: "ok", page: samplePage(), owner: null, daily: null, moves: [] });
+    const html = view({ kind: "ok", page: samplePage(), owner: null, daily: null, moves: [], cards: [] });
     expect(html).toContain("AlphaWolf");
     expect(html).toContain("Daily Call and your season scores didn");
   });

@@ -30,7 +30,7 @@ const proposal: NonNullable<OwnerBot["proposal"]> = {
 };
 const owner = (p: OwnerBot["proposal"]): OwnerBot => ({ botId: "7", name: "AlphaWolf", status: "active", proposal: p, calls: { season: 1, you: 0, bot: 0, streak: 0, today: null } });
 const season = (n: number, p: OwnerBot["proposal"]) =>
-  renderToStaticMarkup(createElement(SeasonView, { n, data: { kind: "ok", page: samplePage(), owner: owner(p), daily: null, moves: [] }, ctx: { config, session } }));
+  renderToStaticMarkup(createElement(SeasonView, { n, data: { kind: "ok", page: samplePage(), owner: owner(p), daily: null, moves: [], cards: [] }, ctx: { config, session } }));
 
 describe("SeasonView", () => {
   it("shows the battle result, the v2 diff tied to coaching, the window and Approve", () => {
