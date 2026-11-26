@@ -19,7 +19,7 @@
 <br/>
 
 > [!IMPORTANT]
-> **Hackathon build, in active development (Nov 20 – Nov 30 2026).** The contracts are not on QIE mainnet yet ([#25](https://github.com/DiveshK007/BotFolio/issues/25)), so there are no contract addresses, live app URL or demo video to list. They go in [Submission links](#submission-links) when they exist.
+> **Hackathon build (Nov 20 – Nov 30 2026). All 7 contracts are live and verified on QIE mainnet (chain 1990) since Nov 26 2026** — addresses in [Contracts](#contracts), deploy record in [`packages/contracts/deployments/1990.env`](packages/contracts/deployments/1990.env). The live app URL and demo video go in [Submission links](#submission-links) when they exist.
 >
 > **Play money. Not investment advice. No prizes.**
 
@@ -207,20 +207,20 @@ Solidity 0.8.24, `evm_version = "shanghai"`, OpenZeppelin 5.0.2. Source in [pack
 
 | Contract | What it does | Mainnet address |
 | :--- | :--- | :--- |
-| `BotForwarder` | OpenZeppelin `ERC2771Forwarder`: runs the user-signed requests the relayer sends | pending deploy ([#25](https://github.com/DiveshK007/BotFolio/issues/25)) |
-| `BotRegistry` | `createBot`, `setActive`; bot owner and limits | pending deploy (#25) |
-| `PaperLedger` | Play balances and the trade log. `executeBatch` (runner) and `executeApproved` (user-approved big move) read the oracle on-chain | pending deploy (#25) |
-| `SeasonLedger` | Open and close seasons with the data root, `commitVersion`, `recordCorrection` | pending deploy (#25) |
-| `TrustScoreRegistry` | `publishRules`, `commitScores`, `verifyScore` (Merkle) | pending deploy (#25) |
-| `DailyCall` | You vs your bot: BTC up or down by 21:00. Records the oracle price at call time | pending deploy (#25) |
-| `Challenges` | `create`, `accept`, `settle` at season close; max 10 open per bot | pending deploy (#25) |
+| `BotForwarder` | OpenZeppelin `ERC2771Forwarder`: runs the user-signed requests the relayer sends | [`0x4540…B63b`](https://mainnet.qie.digital/address/0x4540D079EdD350388d1B3d40e7F71Db2E8DfB63b) (verified) |
+| `BotRegistry` | `createBot`, `setActive`; bot owner and limits | [`0xcb0a…Bb22`](https://mainnet.qie.digital/address/0xcb0a69339d987Dcdd43F3d4f774f1d46a23dBb22) (verified) |
+| `PaperLedger` | Play balances and the trade log. `executeBatch` (runner) and `executeApproved` (user-approved big move) read the oracle on-chain | [`0x6B63…7401`](https://mainnet.qie.digital/address/0x6B63231303bBE1C92c0BA6FE16731848f8077401) (verified) |
+| `SeasonLedger` | Open and close seasons with the data root, `commitVersion`, `recordCorrection` | [`0x3288…f902`](https://mainnet.qie.digital/address/0x32883A866e73BABB980c457C6c6A256fb6D9f902) (verified) |
+| `TrustScoreRegistry` | `publishRules`, `commitScores`, `verifyScore` (Merkle) | [`0xe914…5A0F`](https://mainnet.qie.digital/address/0xe91451560c0F1069D4C561863c2ae95cEF845A0F) (verified) |
+| `DailyCall` | You vs your bot: BTC up or down by 21:00. Records the oracle price at call time | [`0x1C09…e77d`](https://mainnet.qie.digital/address/0x1C0963871a960fC5d2a2de5C11d5Cd75548ce77d) (verified) |
+| `Challenges` | `create`, `accept`, `settle` at season close; max 10 open per bot | [`0x78c7…6d83`](https://mainnet.qie.digital/address/0x78c7337b8Ab2A8bA2A99647a90e8d9A5C0B76d83) (verified) |
 
 ### QIE components
 
 | Component | Where it is used | Status |
 | :--- | :--- | :--- |
 | **QIE oracle feeds** (BTC, ETH, SOL, XRP, Gold) | Read inside `PaperLedger` and `DailyCall` (`src/lib/OracleReader.sol`); re-read by `verify_trade` and the replay script | In the code |
-| **QIE mainnet** (chain 1990) | All 7 contracts; RPC failover over rpc1–rpc5 | Deploy pending (#25) |
+| **QIE mainnet** (chain 1990) | All 7 contracts; RPC failover over rpc1–rpc5 | Live, verified (Nov 26) |
 | **QIE Wallet** | "Connect QIE Wallet" login next to passkey ([#86](https://github.com/DiveshK007/BotFolio/issues/86), PR #322); relay auth for it is in the worker (`/auth/nonce`, `/auth/verify`) | Connect live; EIP-712 signing on chain 1990 not tested yet ([#99](https://github.com/DiveshK007/BotFolio/issues/99)) |
 | **QIE ID / `.qie` names** | `name.qie` instead of `0x…` on bot pages, leaderboards and cards ([#87](https://github.com/DiveshK007/BotFolio/issues/87), [#104](https://github.com/DiveshK007/BotFolio/issues/104)) | In the code (PR #321); lookups checked live Nov 26 |
 | **QIE Wallet MCP** | Server-side `.qie` reverse lookups (`qie_reverse_lookup`, cached 24 h) ([#104](https://github.com/DiveshK007/BotFolio/issues/104)) | In the code (PR #321); checked live Nov 26 |
@@ -232,7 +232,7 @@ Solidity 0.8.24, `evm_version = "shanghai"`, OpenZeppelin 5.0.2. Source in [pack
 | :--- | :--- |
 | Live app | coming at submission |
 | Demo video | coming at submission ([#116](https://github.com/DiveshK007/BotFolio/issues/116)) |
-| Contract addresses | pending deploy ([#25](https://github.com/DiveshK007/BotFolio/issues/25)) |
+| Contract addresses | [Contracts](#contracts) · [`deployments/1990.env`](packages/contracts/deployments/1990.env) |
 | Explorer | [mainnet.qie.digital](https://mainnet.qie.digital) |
 
 ## Tech stack
@@ -339,7 +339,7 @@ curl localhost:10000/healthz   # "reasons" lists what is still degraded
 - [x] Risk gate, scheduler, big moves, v2 proposals, house bots logic, trust scores and season close
 - [x] Replay script, leaderboards, BotFolio MCP server code
 - [x] `/proof`, `/about`, `/terms`, `/privacy`, bot page and leaderboards pages
-- [ ] Deploy the 7 contracts to QIE mainnet ([#25](https://github.com/DiveshK007/BotFolio/issues/25))
+- [x] Deploy the 7 contracts to QIE mainnet and verify them ([#25](https://github.com/DiveshK007/BotFolio/issues/25), [#26](https://github.com/DiveshK007/BotFolio/issues/26))
 - [x] Passkey sign-in with Privy on chain 1990, code (PR #322); real-phone check pending ([#71](https://github.com/DiveshK007/BotFolio/issues/71))
 - [ ] Newcomer path end to end on mainnet in under 30 s ([#76](https://github.com/DiveshK007/BotFolio/issues/76))
 - [x] Public API `GET /api/v1/bots/:id/record` ([#106](https://github.com/DiveshK007/BotFolio/issues/106)) and `/stats` ([#92](https://github.com/DiveshK007/BotFolio/issues/92))
