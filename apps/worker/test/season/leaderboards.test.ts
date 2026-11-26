@@ -186,6 +186,28 @@ describe("GET /leaderboards", () => {
     expect(((await (await fetch(`${url}?season=1`)).json()) as Body).currentSeason).toBe(2);
   });
 
+  it("hides S0, the test season: never current, 404 by number, and its trust scores never on a board (#219)", async () => {
+    await pg.query(
+      "insert into seasons (id, starts_at, ends_at, kind, provisional_min_trades, status) values (0, $1, $2, 'sprint', 8, 'closed')",
+      [ist("2026-11-24T00:00:00"), ist("2026-11-25T21:30:00")],
+    );
+    await trust(0, 7, 800);
+    await pg.query("delete from seasons where id > 0");
+    const url = await start({ source: { db, startCashE8: startCash }, origins: new Set(), clientIp: () => "1.2.3.4", now: () => ist("2026-11-26T12:00:00").getTime() });
+    expect((await fetch(url)).status).toBe(404); // only S0 exists: no season has started, as far as the public goes
+    expect((await fetch(`${url}?season=0`)).status).toBe(404);
+  });
+
+  it("an open S1 shows no Most Trusted from S0's scores", async () => {
+    await pg.query(
+      "insert into seasons (id, starts_at, ends_at, kind, provisional_min_trades, status) values (0, $1, $2, 'sprint', 8, 'closed')",
+      [ist("2026-11-24T00:00:00"), ist("2026-11-25T21:30:00")],
+    );
+    await trust(0, 7, 800);
+    await pg.query("update seasons set status = 'open' where id = 1");
+    expect((await leaderboards(db, 1, startCash))!).toMatchObject({ trustSeason: null, mostTrusted: [] });
+  });
+
   it("is 404 when no season has started", async () => {
     await pg.exec("delete from seasons");
     const url = await start({ source: { db, startCashE8: startCash }, origins: new Set(), clientIp: () => "1.2.3.4" });

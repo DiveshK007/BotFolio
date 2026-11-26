@@ -6,8 +6,8 @@ Two versions are published with `publishRules`. They score the same way and diff
 
 | Version | Seasons | Provisional when |
 |---|---|---|
-| `trust-v1-sprint` | S0 to S5 (sprint seasons) | fewer than **8** executed trades, or no completed season |
-| `trust-v1` | S6 onwards (weekly seasons) | fewer than **20** executed trades, or no completed season |
+| `trust-v1-sprint` | S0 to S4 (sprint seasons) | fewer than **8** executed trades, or no completed season |
+| `trust-v1` | S5 onwards (weekly seasons) | fewer than **20** executed trades, or no completed season |
 
 The version of each season is in `TrustScoreRegistry.rulesVersionOf(season)`. A version is never edited; a rule change means a new version, and old seasons keep theirs.
 
@@ -29,7 +29,7 @@ Each factor is an integer from 0 to 250, rounded down. The total is their sum.
 
 `F1 = floor(250 × (1 − penalised / max(1, proposed)))`
 
-An action is penalised when the risk gate clipped or dropped it because of the bot's own choice: for example, too much in one coin, too many trades in a day, not enough cash, nothing to sell, or an order below the minimum size. An action dropped because the oracle price was stale, or because the bot was paused, is not penalised. Each action is penalised at most once: one that was clipped and then dropped counts once, and so does a stale action whose retry is clipped. Big moves the owner allowed are not penalised.
+An action is penalised when the risk gate clipped or dropped it because of the bot's own choice: for example, too much in one coin, too many trades in a day, not enough cash, nothing to sell, or an order below the minimum size. An action dropped because the oracle price was stale, because the bot was paused, or because it was a second big move in one decision (only one per decision can wait for the owner's approval), is not penalised. Each action is penalised at most once: one that was clipped and then dropped counts once, and so does a stale action whose retry is clipped. Big moves the owner allowed are not penalised.
 
 ### F2: drawdown control
 

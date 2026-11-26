@@ -72,11 +72,11 @@ export async function botRecord(db: Queryable, botId: bigint): Promise<BotRecord
   );
   const { rows: seasons } = await db.query<{ season: number; return_bps: number; max_dd_bps: number; sortino: string | null; trades: number; battle_rank: number | null }>(
     `select season_id as season, return_bps, max_dd_bps, sortino::text as sortino, trades, battle_rank
-     from season_results where bot_id = $1::bigint order by season_id desc`,
+     from season_results where bot_id = $1::bigint and season_id > 0 order by season_id desc`, // S0 is hidden (#219)
     [id],
   );
   const { rows: scored } = await db.query<{ season: number }>(
-    "select max(season_id) as season from trust_scores where bot_id = $1::bigint",
+    "select max(season_id) as season from trust_scores where bot_id = $1::bigint and season_id > 0",
     [id],
   );
   const trustSeason = scored[0]?.season;

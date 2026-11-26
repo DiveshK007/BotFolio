@@ -341,7 +341,9 @@ export const RELAY_ERROR_CODES = [
   "GAS_TOO_HIGH", // gas > RELAY_LIMITS.maxGas
   "DEADLINE_EXPIRED",
   "DEADLINE_TOO_FAR", // deadline > now + 10 min
-  "RATE_LIMITED_USER", // 30 relays/wallet/day
+  "TERMS_NOT_ACCEPTED", // no users row with terms_accepted_at (18+ and Terms, SPEC §11) for the signed-in user (#219)
+  "PICK_MISMATCH", // DailyCall.call whose userUp isn't the pick the worker stored before serving the bot view (#219)
+  "RATE_LIMITED_USER", // 30 relays/user/day (all of a Privy user's wallets together)
   "RATE_LIMITED_IP", // 3 new bots per IP/day (createBot only)
   "RATE_LIMITED_GLOBAL", // 2000 relays/hour
   "INVALID_SIGNATURE", // forwarder.verify() returned false (bad sig, wrong nonce or domain, target doesn't trust the forwarder)
@@ -362,6 +364,8 @@ export const RELAY_ERROR_HTTP_STATUS: Record<RelayErrorCode, number> = {
   GAS_TOO_HIGH: 400,
   DEADLINE_EXPIRED: 400,
   DEADLINE_TOO_FAR: 400,
+  TERMS_NOT_ACCEPTED: 403,
+  PICK_MISMATCH: 409,
   RATE_LIMITED_USER: 429,
   RATE_LIMITED_IP: 429,
   RATE_LIMITED_GLOBAL: 429,

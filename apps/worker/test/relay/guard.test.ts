@@ -81,8 +81,18 @@ describe("per-wallet limit (#39)", () => {
     expect((await t.guard.reserve(attempt({ wallet: lower(OTHER.address) }))).id).toBeTruthy();
   });
 
+  it("is per Privy user: all of the user's wallets share one 30 (#219)", async () => {
+    const t = await setup();
+    await t.seed("confirmed", 30); // all from USER's wallet
+    const both = [lower(USER.address), lower(OTHER.address)];
+    await expect(t.guard.reserve(attempt({ wallet: lower(OTHER.address), userWallets: both }))).rejects.toMatchObject(
+      refused("RATE_LIMITED_USER"),
+    );
+  });
+
   it("counts a SIWE login and a Privy login for one wallet together", async () => {
     const t = await setup({ perWalletPerDay: 1 });
+    await t.pg.query("insert into users (wallet_address, terms_accepted_at) values ($1, now())", [lower(USER.address)]);
     const send = async (kind: "siwe" | "privy") => {
       const auth = { authenticate: async () => ({ kind, wallets: [lower(USER.address)] }) };
       const sender = {
@@ -317,6 +327,18 @@ describe("limits and DB from env (#39)", () => {
       ok: false,
       problems: ["RELAY_MAX_GLOBAL_PER_HOUR"],
     });
+  });
+
+  it("hasAcceptedTerms: any of the user's wallets, or the Privy DID, with a users row (#219)", async () => {
+    const t = await setup();
+    const user = { wallets: [lower(USER.address)], privyDid: "did:privy:1" };
+    expect(await t.guard.hasAcceptedTerms(user)).toBe(false);
+    await t.pg.query("insert into users (wallet_address, privy_did, terms_accepted_at) values ($1, 'did:privy:1', now())", [
+      lower(OTHER.address),
+    ]);
+    expect(await t.guard.hasAcceptedTerms(user)).toBe(true); // same Privy user, other wallet
+    expect(await t.guard.hasAcceptedTerms({ wallets: [lower(OTHER.address)] })).toBe(true);
+    expect(await t.guard.hasAcceptedTerms({ wallets: [walletNo(77)] })).toBe(false);
   });
 
   it("wants TLS for a remote database", () => {

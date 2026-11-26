@@ -41,6 +41,7 @@ export async function retryStale(
       strategy: HouseStrategy;
       seasonStart: string | null;
       chg24hPct: Record<string, number | null>;
+      pendingRebalance?: (typeof ASSET_IDS)[number][];
     };
     output = houseDecision({
       strategy: input.strategy,
@@ -49,6 +50,7 @@ export async function retryStale(
       portfolio: state.portfolio,
       prices: market.prices,
       chg24hPct: input.chg24hPct,
+      pendingRebalance: input.pendingRebalance,
       alreadyTraded: plannedOrders(decision).map((order) => ASSET_IDS[order.asset]!),
     });
   }

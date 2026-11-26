@@ -1,14 +1,20 @@
 import { LlmError, type BudgetState, type LlmClient, type LlmConfig, type LlmUsage } from "@botfolio/llm";
+import type { AssetId } from "@botfolio/shared";
 import type { Hex } from "viem";
 import { hashJson } from "../canonical";
+import { callsCloseAt } from "../decisions/secrecy";
 import { isNineAmSlot } from "../ist";
 import type { DecisionInput } from "./input";
 import { decisionPrompt } from "./prompt";
 import { decisionSchemaFor, type DecisionOutput } from "./schema";
 
-/** SPEC §6.4.1: the 09:00 slot and the debut decision also return the bot's Daily Call view. */
+/**
+ * SPEC §6.4.1: the 09:00 slot and the debut decision also return the bot's Daily Call view. Not a debut from 20:00
+ * IST on (#219): that day's calls are closed, so its view could never be used. The bot joins the next 09:00.
+ */
 export function wantsDailyCall(slot: { kind: "scheduled" | "debut"; time: Date }): boolean {
-  return slot.kind === "debut" || isNineAmSlot(slot.time);
+  if (slot.kind === "debut") return slot.time < callsCloseAt(slot.time);
+  return isNineAmSlot(slot.time);
 }
 
 const DAILY_CALL_SCHEMA_NAME = "decision_v1_daily_call";
@@ -103,7 +109,7 @@ async function decide({ llm, config, input, slot, budget }: DecisionCallOptions)
     const res = await llm.complete<DecisionOutput>({
       system: prompt.system,
       input,
-      schema: decisionSchemaFor(withDailyCall),
+      schema: decisionSchemaFor(withDailyCall, debutAssets(slot, input)),
       schemaName,
       model: config.models.decision,
       temperature: config.temperature,
@@ -133,6 +139,16 @@ async function decide({ llm, config, input, slot, budget }: DecisionCallOptions)
       log: { ...base, rawOutputJson, outputHash, error: `${e.kind}: ${e.message}` },
     };
   }
+}
+
+/**
+ * #219 item 18: the debut is the newcomer's first trade and has no stale retry, and SOL, XRP and Gold are often
+ * too old. So its request only offers the assets the input marks fresh (usually BTC and ETH), and structured
+ * output keeps the model to them. Derived from the logged input, so nothing extra needs logging. With nothing
+ * fresh the full list stays: nothing can trade anyway, and an empty enum isn't a schema.
+ */
+export function debutAssets(slot: { kind: "scheduled" | "debut" }, input: DecisionInput): AssetId[] | undefined {
+  return slot.kind === "debut" ? input.market.filter((m) => m.fresh).map((m) => m.asset) : undefined;
 }
 
 function shortName(name: string): string {

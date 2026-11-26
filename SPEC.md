@@ -136,16 +136,15 @@ Checked Nov 20 2026. QIE Wallet `signTypedData` on chain 1990 is still to be tes
 
   | Season | Opens | Last slot | Closes | Type |
   |---|---|---|---|---|
-  | S0 (test, hidden) | Nov 24 00:00 | Nov 25 21:00 | Nov 25 21:30 | sprint |
-  | S1 | Nov 26 00:00 | Nov 27 21:00 | Nov 27 21:30 | sprint |
-  | S2 | Nov 28 00:00 | Nov 29 21:00 | Nov 29 21:30 | sprint |
-  | S3 | Nov 30 00:00 | Dec 1 21:00 | Dec 1 21:30 | sprint |
-  | S4 | Dec 2 00:00 | Dec 3 21:00 | Dec 3 21:30 | sprint |
-  | S5 | Dec 4 00:00 | Dec 6 21:00 (Sun) | Dec 6 21:30 | sprint (3 days, bridges to weekly) |
-  | S6+ | Mon Dec 7 00:00 | Sun 21:00 | Sun 21:30 | weekly |
+  | S0 (test, hidden) | Nov 27 00:00 | Nov 28 21:00 | Nov 28 21:30 | sprint |
+  | S1 | Nov 29 00:00 | Nov 30 21:00 | Nov 30 21:30 | sprint |
+  | S2 | Dec 1 00:00 | Dec 2 21:00 | Dec 2 21:30 | sprint |
+  | S3 | Dec 3 00:00 | Dec 4 21:00 | Dec 4 21:30 | sprint |
+  | S4 | Dec 5 00:00 | Dec 6 21:00 (Sun) | Dec 6 21:30 | sprint |
+  | S5+ | Mon Dec 7 00:00 | Sun 21:00 | Sun 21:30 | weekly |
 
-  Result: S1 and S2 are closed before submission (Nov 30); S3–S5 close during or right after demo week, so judges see live season results.
-- **Launch threshold (v1.1):** until S6 starts, "provisional" = fewer than **8** executed trades or **0** completed seasons. From S6 it reverts to 20 trades / 1 season (§7). Store the active threshold in `trust_rules_version` so old scores stay reproducible.
+  Re-seeded Nov 26 (`docs/decisions.md`): the contracts deploy ~Nov 27–28 and `SeasonLedger` opens S(n+1) only after S(n) closes, so no season may start before the deploy. Result: S1 closes Nov 30 21:30, before the submission deadline (04:29 IST Dec 1); S2–S4 close during demo week, so judges see live season results.
+- **Launch threshold (v1.1):** until S5 starts, "provisional" = fewer than **8** executed trades or **0** completed seasons. From S5 it reverts to 20 trades / 1 season (§7). Store the active threshold in `trust_rules_version` so old scores stay reproducible.
 - Example prompts are crypto/gold only (QIE has no stock feeds).
 - Hackathon track: **AI + Autonomous Agents** (locked).
 - LLM: **Grok via the xAI API** behind a provider-agnostic interface (§6.6). Hosting: **Render** for the worker + relayer (§10).
@@ -251,7 +250,7 @@ trust_scores(season_id, bot_id, rules_version, f_rules int, f_drawdown int, f_co
 cards(id text pk, bot_id, kind enum(trade,roast,battle,season,recap,evolution,challenge,call), payload jsonb, created_at)
 relay_log(id pk, user_wallet, target text, selector text, status, tx_hash, gas_used, created_at)
 -- v1.1
-seasons: + kind enum(sprint,weekly), + provisional_min_trades int   -- 8 during sprint, 20 from S6
+seasons: + kind enum(sprint,weekly), + provisional_min_trades int   -- 8 during sprint, 20 from S5
 big_moves(id pk, decision_id, action_index int, order_id bytea32, bot_id, asset, side, bps int, runner_sig bytea, deadline timestamptz,
      status enum(pending,approved,shrunk,blocked,expired), user_tx text, created_at)
 daily_calls(id pk, bot_id, user_wallet, day int, asset, user_up bool, bot_up bool, bot_up_sig bytea, price_at_call_e8 numeric,
@@ -444,11 +443,11 @@ Persona creation call has its own schema: `{name ≤ 20, emoji, persona ≤ 120,
 2. Drop actions on stale assets.
 3. Drop SELL with no holding, BUY with cash < 1 %.
 4. Clip so trades this slot ≤ remaining `max_trades_per_day`.
-5. Clip BUY so post-trade asset weight ≤ `max_per_coin_pct`.
-6. No shorting/leverage by construction. Min order 1 % of portfolio.
+5. Clip BUY so post-trade asset weight ≤ `max_per_coin_pct`. A clipped BUY aims 10 bps under the cap, so a price tick before the batch lands can't make the ledger skip it (#219).
+6. No shorting/leverage by construction. Min order 1 % of portfolio, except a SELL of the whole holding (#219).
 7. Record each clip as a "gate event" (feeds trust factor F1).
 8. Banned content filter on `reason`/`roast` (slurs, real-money advice phrases like "buy now on…") → replace with neutral text, flag.
-9. **Big-move split (v1.1):** after clipping, any order meeting the big-move rule (§2.2: BUY → post-trade weight ≥ 30 %, or SELL ≥ 50 % of a holding) is removed from the batch and becomes a `big_moves` row: runner signs the `ApprovedOrder` (EIP-712), deadline = now + 2 h, user is notified. A big move is *not* a gate clip (no F1 penalty). House bots never produce big moves (they always execute directly).
+9. **Big-move split (v1.1):** after clipping, any order meeting the big-move rule (§2.2: BUY → post-trade weight ≥ 30 %, or SELL ≥ 50 % of a holding; both cumulative per asset within the decision, #219) is removed from the batch and becomes a `big_moves` row: runner signs the `ApprovedOrder` (EIP-712), deadline = now + 2 h, user is notified. A big move is *not* a gate clip (no F1 penalty). At most one big move per decision (#219): a second one is dropped, also without an F1 penalty. House bots never produce big moves (they always execute directly).
 10. **Expiry fallback (v1.1):** if the big move is still pending at its deadline, the runner shrinks it to just under the threshold, re-checks limits and freshness, and executes it in the next batch with the same `orderId` (contract blocks double execution; the decision's other actions are unaffected).
 
 ### 6.4.1 Bot's Daily Call view (v1.1)
@@ -482,7 +481,7 @@ Computed over the bot's whole history up to the season close (all-time), integer
 | F4 Explains its trades | share of executed decisions whose reason passes a deterministic check: 10–140 chars, names the traded asset, valid `reason_tag`, tag consistent with action (e.g. `take_profit`/`cut_loss` only on SELL, `buy_dip` only on BUY after negative 24 h change) | `250 × valid / max(1, executed)` |
 
 - Rounding: `floor` per factor.
-- `provisional = trades < N OR completed_seasons < 1` (shown with a "new" badge), with **N = 8 during sprint seasons (until S6), 20 from S6**, read from the active trust rules version (`trust-v1-sprint` → `trust-v1`). Both versions are published via `publishRules`.
+- `provisional = trades < N OR completed_seasons < 1` (shown with a "new" badge), with **N = 8 during sprint seasons (until S5), 20 from S5**, read from the active trust rules version (`trust-v1-sprint` → `trust-v1`). Both versions are published via `publishRules`.
 - Trades executed through Approve Big Move count as executed trades and as "follows its rules" (F1) — the owner signed off.
 - Every bot starts with the same capital, so factors are comparable.
 - Rules change only by publishing `trust-v2`; old seasons keep their version.
@@ -495,11 +494,11 @@ Computed at each season close (and refreshed after every slot for "live" view). 
 
 1. **Top Returns:** `R = V_end / V_start − 1`. Tiebreak: lower maxDD.
 2. **Best Risk-Adjusted (Sortino, simple):** daily returns `r_d` from 21:00 marks; `downside = sqrt(mean(min(r_d,0)^2))`, floor 0.001; `S = mean(r_d) / downside`. Eligible: ≥ 3 executed trades and ≥ 3 daily returns in the season. Tiebreak: higher R.
-3. **Most Trusted:** trust score total. Eligible: not provisional (§7: **≥ 8 trades during sprint seasons, ≥ 20 from S6**, plus ≥ 1 completed season). Tiebreak: earlier `createdAt`.
+3. **Most Trusted:** trust score total. Eligible: not provisional (§7: **≥ 8 trades during sprint seasons, ≥ 20 from S5**, plus ≥ 1 completed season). Tiebreak: earlier `createdAt`.
 4. **Coach vs Bot (v1.1):** Daily Call win rate this season (min 2 calls during sprint seasons, 4 weekly). Shows the human's score, not the bot's.
-- **Season battle:** your bot vs 3 house bots ranked by season R (plus any accepted challenges, §2.5). House bots (deterministic, no LLM, created by admin):
+- **Season battle:** your bot vs 3 house bots ranked by season R (plus any accepted challenges, §2.5). House bots (deterministic, no LLM, created by admin). An asset a season rebalance could not trade because its price was too old is tried again at each later slot of the season until it trades (#219):
   - *Steady Sam* — equal 20 % in all 5 assets, rebalanced at the first 09:00 slot of each season.
-  - *Gold Granny* — 60 % Gold, 40 % cash, rebalanced at the first 09:00 slot of each season.
+  - *Gold Granny* — 50 % Gold, 50 % cash (the `createHouseBot` per-coin maximum; was 60/40, changed Nov 26 on #219), rebalanced at the first 09:00 slot of each season.
   - *Momentum Max* — each slot: hold assets with 24 h change > +2 % (up to 25 % each), sell those < −2 %.
 - House bots appear on leaderboards with a "house" badge; excluded from rank #1 display ("Top human-raised bot").
 - No prizes; recognition only (Bot of the Week post).
@@ -622,13 +621,13 @@ APP_URL=
 ## 11. Security and abuse
 
 - **Relayer allowlist (v1.1):** only `forwarder.execute` where `(request.to, selector)` ∈ {`BotRegistry.createBot`, `BotRegistry.setActive`, `SeasonLedger.commitVersion`, `SeasonLedger.recordCorrection`, `PaperLedger.executeApproved`, `DailyCall.call`, `Challenges.create`, `Challenges.accept`}; `value == 0`; `gas ≤ 300k` (tune after gas report; `executeApproved` reads several feeds, so measure it); deadline ≤ 10 min; verify with `forwarder.verify()` (staticcall) before sending. Also `eth_call` the inner request first and refuse to relay anything that would revert (saves gas on stale-price reverts).
-- **Rate limits:** per wallet 30 relays/day, 1 bot per wallet, 3 new bots per IP/day, 20 corrections/day per bot (also on-chain), global 2,000 relays/hour. **Relay auth (v1.1 fix):** `POST /relay` on the Render service requires **either** a Privy session token (verified server-side) **or**, for QIE Wallet users who have no Privy session, a short-lived JWT from a SIWE-style login: `GET /auth/nonce` → the wallet signs an EIP-4361 message (domain `SIWE_DOMAIN`) → `POST /auth/verify` returns a 15-min JWT signed with `RELAY_JWT_SECRET` and bound to that address. Rate limits apply per wallet on both paths.
+- **Rate limits:** per user 30 relays/day (all of a Privy user's wallets together; refused relays don't count, #219), 1 bot per wallet, 3 new bots per IP/day, 20 corrections/day per bot (also on-chain), global 2,000 relays/hour. **Relay auth (v1.1 fix):** `POST /relay` on the Render service requires **either** a Privy session token (verified server-side) **or**, for QIE Wallet users who have no Privy session, a short-lived JWT from a SIWE-style login: `GET /auth/nonce` → the wallet signs an EIP-4361 message (domain `SIWE_DOMAIN`) → `POST /auth/verify` returns a 15-min JWT signed with `RELAY_JWT_SECRET` and bound to that address. Rate limits apply per wallet on both paths.
 - **Hot wallets:** relayer, runner, committer are separate keys with small floats; admin role on a separate key not on servers; low-balance alerts; pause switch (`RELAY_ENABLED=false`).
 - **Contracts:** no real funds, no `payable`, no token transfers; feeds immutable; runner cannot set prices; batch never reverts on one bad order.
 - **LLM safety:** prompt injection via persona text can only affect that bot's play trades (gate caps everything); content filter on persona/reason/roast; persona length cap; no URLs in persona.
 - **Sybil/metrics honesty:** report unique `_msgSender` signers and weekly active coaches; never present relayer/runner tx counts as user activity.
 - **User-signed tx metric (v1.1):** the public `/stats` page splits on-chain activity into **user-signed** (createBot, corrections, v2 approvals, approved big moves, daily calls, challenges — counted by `_msgSender`) and **system** (runner batches, settlements, season roots). Lead with user-signed numbers in the deck; show system numbers separately. Optional "verified human" count from QIE Pass when enabled.
-- **Legal / India gaming law:** no entry fees, no stakes, no prizes or rewards, no token, no cash-out, no real-asset purchase links. Copy on every page footer: "Play money. Not investment advice. No prizes." Recognition-only season shoutouts. Users must be 18+ (stated in the Terms of use and at sign-up as a one-line confirmation, decided Nov 20). That confirmation is stored as `users.terms_accepted_at timestamptz not null` (§3). The team also meets the hackathon 18+ rule.
+- **Legal / India gaming law:** no entry fees, no stakes, no prizes or rewards, no token, no cash-out, no real-asset purchase links. Copy on every page footer: "Play money. Not investment advice. No prizes." Recognition-only season shoutouts. Users must be 18+ (stated in the Terms of use and at sign-up as a one-line confirmation, decided Nov 20). That confirmation is stored as `users.terms_accepted_at timestamptz not null` (§3), and `POST /relay` refuses with `TERMS_NOT_ACCEPTED` until the signed-in user has that row (#219). The team also meets the hackathon 18+ rule.
 - **Privacy:** store wallet address and Privy DID only; no phone/email unless the user opts into Privy email login.
 
 ---

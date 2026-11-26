@@ -12,6 +12,13 @@ import { LIMITS, PERSONA_SCHEMA, type PersonaOutput } from "./schema";
  */
 export const MAX_SENTENCE_CHARS = 160;
 
+/**
+ * `personaHash` (BotRegistry.createBot) = keccak256 of the UTF-8 bytes of this object's canonical JSON (#219):
+ * exactly the four keys emoji, name, persona, rules, sorted by key, no whitespace, strings escaped as
+ * JSON.stringify does (non-ASCII such as the emoji stays as raw UTF-8, not \u escapes). The text is the sanitised
+ * text the app shows. Example: {"emoji":"🐺","name":"AlphaWolf","persona":"Bold.","rules":"Buys strength."}.
+ * A test pins this, so an app or a judge can recompute the hash the owner signed.
+ */
 export interface Persona {
   name: string;
   emoji: string;

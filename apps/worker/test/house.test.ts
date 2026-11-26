@@ -142,6 +142,17 @@ describe("Steady Sam", () => {
       expect(r.staleDrops).toEqual(["GOLD"]);
     });
 
+    it("a later slot of the season buys only what the 09:00 rebalance couldn't (#219 item 19)", () => {
+      const first = play("steady_sam", { prices: stale }, { maxPerCoinBps: 5000 });
+      const later = play("steady_sam", { slot: ONE_PM, portfolio: first.after, pendingRebalance: first.staleDrops });
+      expect(later.traded).toEqual(["SOL", "XRP", "GOLD"]);
+      for (const asset of ASSET_IDS) expect(later.weight(asset)).toBeCloseTo(20, 0);
+      expect(later.output.reason_tag).toBe("rebalance");
+      // Not on a debut, and not outside a season.
+      expect(play("steady_sam", { slot: { kind: "debut", time: ONE_PM.time }, pendingRebalance: ["SOL"] }).traded).toEqual([]);
+      expect(play("steady_sam", { slot: ONE_PM, seasonStart: null, pendingRebalance: ["SOL"] }).traded).toEqual([]);
+    });
+
     it("the retry finishes the rebalance with stable indexes", () => {
       const first = play("steady_sam", { prices: stale });
       const retry = play(
@@ -159,22 +170,17 @@ describe("Steady Sam", () => {
 });
 
 describe("Gold Granny", () => {
-  it("aims at 60 % Gold, and the 50 % contract maximum clips her there", () => {
+  it("goes 50 / 50, inside the 50 % per-coin maximum, so the gate never clips her (#219 item 9)", () => {
     const r = play("gold_granny");
-    expect(r.output.actions).toEqual([{ asset: "GOLD", action: "BUY", bps: 6000 }]);
+    expect(r.output.actions).toEqual([{ asset: "GOLD", action: "BUY", bps: 5000 }]);
     expect(r.weight("GOLD")).toBeCloseTo(50, 0);
-    expect(r.result.events).toMatchObject([{ kind: "clip", reason: "coin_cap", fromBps: 6000, toBps: 5000 }]);
-  });
-
-  it("reaches 60 / 40 if the cap ever allows it", () => {
-    const r = play("gold_granny", {}, { maxPerCoinBps: 6000 });
-    expect(r.weight("GOLD")).toBeCloseTo(60, 0);
     expect(r.result.events).toEqual([]);
+    expect(r.output.reason).toBe("Gold Granny moved Gold toward 50%, the rest in cash.");
   });
 
-  it("trims Gold above 60 %", () => {
+  it("trims Gold above 50 %", () => {
     const r = play("gold_granny", { portfolio: portfolio({ GOLD: 80 }) });
-    expect(r.weight("GOLD")).toBeCloseTo(60, 0);
+    expect(r.weight("GOLD")).toBeCloseTo(50, 0);
   });
 
   it("holds in every other slot", () => {

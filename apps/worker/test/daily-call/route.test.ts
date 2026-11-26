@@ -173,7 +173,7 @@ describe("POST /daily-call/view", () => {
   it("serves the runner-signed view, which recovers to the runner", async () => {
     await decided(7, NINE);
     await view(7, NINE, true);
-    const res = await call(DAILY_CALL_VIEW_PATH, { botId: "7" });
+    const res = await call(DAILY_CALL_VIEW_PATH, { botId: "7", userUp: true });
     expect(res.status).toBe(200);
     const served = res.body.view as { botId: string; day: number; botUp: boolean; botSig: Hex };
     expect(served).toMatchObject({ botId: "7", day: DAY, botUp: true });
@@ -191,22 +191,22 @@ describe("POST /daily-call/view", () => {
     clock = at("2026-11-25T14:11:00");
     await decided(7, debut, "debut");
     await view(7, debut, false);
-    const res = await call(DAILY_CALL_VIEW_PATH, { botId: 7 });
+    const res = await call(DAILY_CALL_VIEW_PATH, { botId: 7, userUp: false });
     expect(res.status).toBe(200);
     expect(res.body.view).toMatchObject({ botId: "7", day: DAY, botUp: false });
   });
 
   it("refuses with the state the app shows", async () => {
     await decided(7, NINE);
-    expect((await call(DAILY_CALL_VIEW_PATH, { botId: "7" })).body).toMatchObject({
+    expect((await call(DAILY_CALL_VIEW_PATH, { botId: "7", userUp: true })).body).toMatchObject({
       error: { code: "JOINS_TOMORROW", message: "Your bot joins tomorrow's call." },
     });
     await view(7, NINE, true);
     clock = at("2026-11-25T20:00:00");
-    expect((await call(DAILY_CALL_VIEW_PATH, { botId: "7" })).body).toMatchObject({ error: { code: "CLOSED" } });
+    expect((await call(DAILY_CALL_VIEW_PATH, { botId: "7", userUp: true })).body).toMatchObject({ error: { code: "CLOSED" } });
     clock = at("2026-11-25T12:00:00");
     await pg.query("update daily_calls set user_wallet = $1, user_up = false where bot_id = 7", [OWNER]);
-    const res = await call(DAILY_CALL_VIEW_PATH, { botId: "7" });
+    const res = await call(DAILY_CALL_VIEW_PATH, { botId: "7", userUp: true });
     expect(res.status).toBe(409);
     expect(res.body).toMatchObject({ error: { code: "ALREADY_CALLED" } });
   });
@@ -214,10 +214,32 @@ describe("POST /daily-call/view", () => {
   it("someone else's bot is not found, and the botId is checked", async () => {
     await decided(8, NINE);
     await view(8, NINE, true);
-    expect((await call(DAILY_CALL_VIEW_PATH, { botId: "8" })).status).toBe(404);
+    expect((await call(DAILY_CALL_VIEW_PATH, { botId: "8", userUp: true })).status).toBe(404);
     for (const botId of [undefined, "abc", "0", -1, 1.5, "0x07"]) {
       expect((await call(DAILY_CALL_VIEW_PATH, { botId })).status).toBe(400);
     }
-    expect((await call(DAILY_CALL_VIEW_PATH, { botId: "7" }, null)).status).toBe(401);
+    expect((await call(DAILY_CALL_VIEW_PATH, { botId: "7", userUp: true }, null)).status).toBe(401);
+  });
+
+  it("serves the view only for a pick, stores the pick first, and never lets it change (#219 item 21)", async () => {
+    await decided(7, NINE);
+    await view(7, NINE, false);
+    for (const userUp of [undefined, "true", 1, null]) {
+      const res = await call(DAILY_CALL_VIEW_PATH, { botId: "7", userUp });
+      expect(res.status).toBe(400);
+      expect(JSON.stringify(res.body)).not.toMatch(/botUp|botSig/);
+    }
+    const pick = async () => (await pg.query<{ up: boolean | null }>("select user_up as up from daily_calls where bot_id = 7")).rows[0]!.up;
+    expect(await pick()).toBeNull();
+
+    expect((await call(DAILY_CALL_VIEW_PATH, { botId: "7", userUp: true })).status).toBe(200);
+    expect(await pick()).toBe(true);
+    // Asking again with the same pick (say the relay failed) is fine; the other way is not.
+    expect((await call(DAILY_CALL_VIEW_PATH, { botId: "7", userUp: true })).status).toBe(200);
+    const flipped = await call(DAILY_CALL_VIEW_PATH, { botId: "7", userUp: false });
+    expect(flipped.status).toBe(409);
+    expect(flipped.body).toMatchObject({ error: { code: "PICK_LOCKED" } });
+    expect(JSON.stringify(flipped.body)).not.toMatch(/botUp|botSig/);
+    expect(await pick()).toBe(true);
   });
 });

@@ -3,13 +3,20 @@ import { BPS, portfolioValueE8, positionValueE8, tradeAmounts, type Trade } from
 import type { BigMove, GateInput, Portfolio } from "./types";
 
 /**
- * SPEC §2.2 / §6.4 step 9, both thresholds inclusive:
- *   BUY  → post-trade weight ≥ 30 %: (held + spend) × 10000 ≥ threshold × V
- *   SELL → ≥ 50 % of the holding:    bps ≥ threshold
+ * SPEC §2.2 / §6.4 step 9, both thresholds inclusive, and cumulative per asset within one decision (#219):
+ *   BUY  → post-trade weight ≥ 30 %: (held + spend) × 10000 ≥ threshold × V. `portfolio` already has this
+ *          decision's earlier batch trades, so two BUYs of one asset count together.
+ *   SELL → ≥ 50 % of the holding the decision started with, counting this decision's earlier SELLs of it:
+ *          two SELLs of 40 % are 64 % and need approval.
  * V is the same before and after a trade at the oracle price, and cross-multiplying avoids dividing.
  */
-export function isBigMove(input: Pick<GateInput, "prices" | "bigMove">, portfolio: Portfolio, trade: Trade): boolean {
-  if (!trade.buy) return trade.bps >= input.bigMove.sellBps;
+export function isBigMove(input: Pick<GateInput, "prices" | "bigMove" | "portfolio">, portfolio: Portfolio, trade: Trade): boolean {
+  if (!trade.buy) {
+    if (trade.bps >= input.bigMove.sellBps) return true;
+    const start = input.portfolio.unitsE18[trade.asset];
+    const left = portfolio.unitsE18[trade.asset] - tradeAmounts(portfolio, input.prices, trade).unitsE18;
+    return (start - left) * BPS >= start * BigInt(input.bigMove.sellBps);
+  }
   const after = positionValueE8(portfolio, input.prices, trade.asset) + tradeAmounts(portfolio, input.prices, trade).cashE8;
   return after * BPS >= portfolioValueE8(portfolio, input.prices) * BigInt(input.bigMove.buyWeightBps);
 }
