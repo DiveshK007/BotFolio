@@ -2,6 +2,7 @@ import type { Hex } from "viem";
 import { InternalFailure } from "../auth/log";
 import type { Identity } from "../auth/types";
 import { Throttle } from "../auth/throttle";
+import { SEASON_OPEN } from "../big-moves/route";
 import type { Db } from "./db";
 import { RelayRefusal } from "./errors";
 import { NewBotIpLimit } from "./ip-limit";
@@ -174,6 +175,14 @@ export class PgRelayGuard implements RelayGuard {
       [botId.toString(), day],
     );
     return rows[0]?.user_up ?? null;
+  }
+
+  async bigMoveSeasonEnded(orderId: Hex): Promise<boolean> {
+    const { rows } = await this.db.query<{ ended: boolean }>(
+      `select exists (select 1 from big_moves m where m.order_id = decode($1::text, 'hex') and not ${SEASON_OPEN}) as ended`,
+      [orderId.slice(2).toLowerCase()],
+    );
+    return rows[0]?.ended === true;
   }
 
   /** Rows a previous process broadcast but didn't see mined, so their outcome can still be recorded. */

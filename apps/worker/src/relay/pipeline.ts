@@ -1,5 +1,5 @@
 import type { IncomingHttpHeaders } from "node:http";
-import { istDay, type RelayResponse, type RelayTargetAddresses } from "@botfolio/shared";
+import { istDay, orderIdOf, type RelayResponse, type RelayTargetAddresses } from "@botfolio/shared";
 import { decodeFunctionData, type Address, type Hex } from "viem";
 import { errorLabel, type Log } from "../auth/log";
 import type { Authenticator } from "../auth/types";
@@ -58,6 +58,7 @@ export function createRelay(deps: RelayDeps) {
       // The 18+ tick is enforced here, not only in the app (#219).
       if (!(await deps.guard.hasAcceptedTerms(identity))) throw new RelayRefusal("TERMS_NOT_ACCEPTED");
       if (attempt.action.contract === "DailyCall") await checkDailyCallPick(deps.guard, request.data, now());
+      if (attempt.action.fn === "executeApproved") await checkBigMoveSeason(deps.guard, request.data);
 
       reservation = await deps.guard.reserve(attempt);
       const call = await deps.chain.prepare(request);
@@ -96,4 +97,16 @@ async function checkDailyCallPick(guard: RelayGuard, data: Hex, nowSeconds: numb
   const { args } = decodeFunctionData({ abi: TARGET_ABIS.DailyCall, data });
   const [botId, userUp] = args as readonly [bigint, boolean, boolean, Hex];
   if ((await guard.dailyCallPick(botId, istDay(nowSeconds))) !== userUp) throw new RelayRefusal("PICK_MISMATCH");
+}
+
+/**
+ * A big move whose season has ended can't be allowed any more (#355): the season's replay root is already committed
+ * without it, so its trade would be in no season's file. The frozen code list has no better fit than DEADLINE_EXPIRED.
+ */
+async function checkBigMoveSeason(guard: RelayGuard, data: Hex): Promise<void> {
+  const { args } = decodeFunctionData({ abi: TARGET_ABIS.PaperLedger, data });
+  const [order] = args as readonly [{ decisionId: Hex; actionIndex: number }, Hex];
+  if (await guard.bigMoveSeasonEnded(orderIdOf(order.decisionId, order.actionIndex))) {
+    throw new RelayRefusal("DEADLINE_EXPIRED", { message: "That big move's season has ended, so it can't trade any more. Nothing was sent." });
+  }
 }

@@ -27,6 +27,8 @@ interface PendingMove {
   actionIndex: number;
   orderId: Hex;
   deadline: number;
+  /** Its decision's season has ended: the replay root is committed without this trade (#355). */
+  seasonEnded: boolean;
 }
 
 type Status = "approved" | "shrunk" | "expired";
@@ -51,10 +53,14 @@ export async function sweepBigMoves(deps: RunnerDeps, signal: AbortSignal): Prom
     action_index: number;
     order_id: string;
     deadline: string;
+    season_ended: boolean;
   }>(
     `select id::text as id, decision_id::text as decision, bot_id::text as bot_id, asset::text as asset,
             side::text as side, bps, action_index, '0x' || encode(order_id, 'hex') as order_id,
-            extract(epoch from deadline)::bigint::text as deadline
+            extract(epoch from deadline)::bigint::text as deadline,
+            coalesce((select se.ends_at <= to_timestamp($1::float8)
+                      from decisions d join slots sl on sl.id = d.slot_id join seasons se on se.id = sl.season_id
+                      where d.id = big_moves.decision_id), false) as season_ended
      from big_moves where status = 'pending' and deadline < to_timestamp($1::float8)
      order by bot_id, created_at, id`,
     [chainNow],
@@ -69,6 +75,7 @@ export async function sweepBigMoves(deps: RunnerDeps, signal: AbortSignal): Prom
     actionIndex: r.action_index,
     orderId: r.order_id as Hex,
     deadline: Number(r.deadline),
+    seasonEnded: r.season_ended,
   }));
   if (moves.length === 0) return { shrunk: 0, expired: 0 };
 
@@ -92,6 +99,11 @@ export async function sweepBigMoves(deps: RunnerDeps, signal: AbortSignal): Prom
         // Used without a shrink of ours: the owner's Allow got there first. The indexer adds its tx.
         if (await chain.orderUsed(move.orderId)) {
           await setStatus(move, (await shrinkLogged(deps, move)) ? "shrunk" : "approved");
+          continue;
+        }
+        if (move.seasonEnded) {
+          await setStatus(move, "expired");
+          expired++;
           continue;
         }
         const pending: ApprovedOrder = {

@@ -39,8 +39,11 @@ async function bot(id: number, owner: string, name: string) {
 }
 
 /** A pending big move signed the way the runner signs it. Returns its orderId. */
-async function bigMove(botId: number, opts: { deadline?: Date; actionIndex?: number; wrongKey?: boolean } = {}): Promise<Hex> {
-  const { rows: slot } = await pg.query<{ id: string }>("insert into slots (slot_time, kind) values (now(), 'scheduled') returning id::text as id");
+async function bigMove(botId: number, opts: { deadline?: Date; actionIndex?: number; wrongKey?: boolean; season?: number } = {}): Promise<Hex> {
+  const { rows: slot } = await pg.query<{ id: string }>(
+    "insert into slots (slot_time, kind, season_id) values (now(), 'scheduled', $1) returning id::text as id",
+    [opts.season ?? null],
+  );
   const { rows: d } = await pg.query<{ id: string }>(
     `insert into decisions (bot_id, version, slot_id, prompt_version, model, input_json, input_hash, reason, status)
      values ($1, 1, $2, 'p', 'm', '{}', $3, 'Gold looks great, going big.', 'executed') returning id::text as id`,
@@ -118,6 +121,17 @@ describe("POST /big-moves (#52)", () => {
     expect((await call(BIG_MOVES_PATH, {})).body.bigMoves).toEqual([]);
     expect(log).toHaveBeenCalledWith("big_moves.order_mismatch", expect.anything());
     expect((await call(BIG_MOVES_PATH, {}, null)).status).toBe(401);
+  });
+
+  it("stops serving a big move once its season has ended, and won't shrink it (#355)", async () => {
+    await pg.exec(`insert into seasons (id, starts_at, ends_at, kind, provisional_min_trades) values
+      (0, now() - interval '2 days', now() - interval '1 minute', 'sprint', 8),
+      (1, now() - interval '1 hour', now() + interval '1 day', 'sprint', 8)`);
+    const ended = await bigMove(7, { season: 0 });
+    const open = await bigMove(7, { season: 1 });
+    const moves = (await call(BIG_MOVES_PATH, {})).body.bigMoves as { orderId: Hex }[];
+    expect(moves.map((m) => m.orderId)).toEqual([open]);
+    expect((await call(BIG_MOVES_SHRINK_PATH, { orderId: ended })).status).toBe(404);
   });
 });
 
