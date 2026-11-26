@@ -2,6 +2,7 @@ import { createLlmClient } from "@botfolio/llm";
 import type { Env } from "../auth/env";
 import { errorLabel, type Log } from "../auth/log";
 import type { WorkerConfig } from "../config";
+import { POOL_MAX } from "../database-url";
 import type { HealthState } from "../health";
 import { databaseConfig, openDb } from "../relay/db";
 import type { PersonaRouteOptions } from "./route";
@@ -25,7 +26,7 @@ export function setUpPersona(opts: { env: Env; cfg: WorkerConfig; health: Health
 
   try {
     const llm = createLlmClient({ env });
-    const db = openDb(database, log);
+    const db = openDb({ ...database, max: POOL_MAX.persona }, log);
     return { service: { db, llm, config: cfg.llm, health }, problems: [], stop: () => db.close() };
   } catch (error) {
     log("persona.setup_failed", { cause: errorLabel(error) });

@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { POOL_MAX } from "../database-url";
 import type { DatabaseConfig } from "./config";
 
 export interface Queryable {
@@ -15,7 +16,7 @@ export interface Db extends Queryable {
 export function createPgDb(database: DatabaseConfig): Db {
   const pool = new Pool({
     ...database,
-    max: 2, // one loop, one transaction at a time
+    max: POOL_MAX.indexer,
     connectionTimeoutMillis: 10_000,
     // A dead socket must not hang the loop for good. Client side, because a pooler can refuse startup parameters.
     query_timeout: 30_000,
