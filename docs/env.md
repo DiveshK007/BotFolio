@@ -50,7 +50,9 @@ All of these are public (they end up in the browser bundle), so only addresses a
 | `NEXT_PUBLIC_QIE_RPC_URLS` | optional; the browser's RPC list (defaults to the 5 mainnet RPCs) |
 | `NEXT_PUBLIC_QIE_EXPLORER_URL` | optional; `https://mainnet.qie.digital` |
 | `APP_URL` | the production URL (server-side: card and share links) |
-| `SITE_DATA_MODE` | optional (website v3): `live` once contracts and the worker are up |
+| `SITE_DATA_MODE` | `live` once contracts and the worker are up (default `example` shows labelled sample data) |
+| `SUPABASE_URL` | Supabase Project URL (server-side reads of the public `site_*` views in live mode) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → API Keys → Legacy → `anon` (public by design: RLS lets it read only the `site_*` views) |
 | `QIE_RPC_URLS` | optional, server-side reads (e.g. Verify any tx) |
 
 ## Local only (never on a server)
