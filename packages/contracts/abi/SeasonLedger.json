@@ -705,12 +705,39 @@
   },
   {
     "type": "error",
+    "name": "PreviousSeasonOpen",
+    "inputs": [
+      {
+        "name": "previous",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "SeasonNotOpen",
     "inputs": [
       {
         "name": "n",
         "type": "uint32",
         "internalType": "uint32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SeasonNotOver",
+    "inputs": [
+      {
+        "name": "n",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "end",
+        "type": "uint64",
+        "internalType": "uint64"
       }
     ]
   }
