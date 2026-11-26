@@ -54,6 +54,7 @@ All of these are public (they end up in the browser bundle), so only addresses a
 | `SUPABASE_URL` | Supabase Project URL (server-side reads of the public `site_*` views in live mode) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → API Keys → Legacy → `anon` (public by design: RLS lets it read only the `site_*` views) |
 | `QIE_RPC_URLS` | optional, server-side reads (e.g. Verify any tx) |
+| `TALK_ENABLED` | optional, server-side. `true` turns on Talk to a bot (`/api/site/talk`), which also needs `LLM_PROVIDER` and its API key on Vercel. Off by default: these calls are outside the worker's `LLM_MONTHLY_BUDGET_USD`, so use a separate key with a hard spend limit set in the provider console, never the worker's key (#352) |
 
 ## Local only (never on a server)
 
