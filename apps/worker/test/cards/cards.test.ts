@@ -211,6 +211,18 @@ describe("daily recap cards", () => {
     const day = istDay(Math.floor(clock.getTime() / 1000));
     expect((await card<RecapCardPayload>(`recap-7-${day}`))!.seasonId).toBeNull();
   });
+
+  it("during the hidden S0 a recap has no season, rank or S0 trust score (#219)", async () => {
+    await pg.query("insert into seasons (id, starts_at, ends_at, kind, provisional_min_trades) values (0, $1, $2, 'sprint', 8)", [ist("2026-11-28T00:00:00"), ist("2026-11-28T21:30:00")]);
+    await pg.exec(`insert into trust_scores (season_id, bot_id, rules_version, f_rules, f_drawdown, f_consistency, f_explains, total, provisional, leaf_hash)
+      values (0, 7, 'trust-v1-sprint', 100, 100, 100, 100, 400, true, decode(repeat('00', 32), 'hex'))`);
+    const last = await slot("2026-11-28T21:00:00");
+    await mark(7, last, 1000n * E8, {});
+    clock = ist("2026-11-28T21:35:00");
+    await makeRecaps(deps(), signal);
+    const day = istDay(Math.floor(clock.getTime() / 1000));
+    expect((await card<RecapCardPayload>(`recap-7-${day}`))!).toMatchObject({ seasonId: null, trust: null, recap: { rank: null } });
+  });
 });
 
 it("refuses a card that shows a tx hash it doesn't cite", async () => {

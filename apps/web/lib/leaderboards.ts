@@ -5,6 +5,11 @@
 import { FlowError } from "./errors";
 
 export const LEADERBOARDS_PATH = "/leaderboards";
+/**
+ * S0 stays hidden (#219), so until S1 opens every season-shaped view says this instead.
+ * shortcut: a fixed date, right only until S1 has opened and has marks; drop it once S1 is live.
+ */
+export const S1_STARTS = "Season 1 starts Sun Nov 29, 00:00 IST.";
 const TIMEOUT_MS = 15_000;
 
 export interface BoardEntry {

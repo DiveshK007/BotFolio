@@ -30,7 +30,7 @@ export const SAMPLE_BOTS: Record<number, Bot> = {
   52: { id: 52, name: "XRP Express", emoji: "🚄", color: "#2B6CD9", ownerWallet: exAddr(52), isHouse: false },
   58: { id: 58, name: "Chai Break", emoji: "☕", color: "#B0643A", ownerWallet: exAddr(58), isHouse: false },
   1: { id: 1, name: "Steady Sam", emoji: "⚖️", color: "#6B7280", ownerWallet: exAddr(1), isHouse: true, houseRule: "Equal 20% in all 5 assets" },
-  2: { id: 2, name: "Gold Granny", emoji: "👵", color: "#C9A227", ownerWallet: exAddr(2), isHouse: true, houseRule: "60% Gold, 40% cash" },
+  2: { id: 2, name: "Gold Granny", emoji: "👵", color: "#C9A227", ownerWallet: exAddr(2), isHouse: true, houseRule: "50% Gold, 50% cash" },
   3: { id: 3, name: "Momentum Max", emoji: "🚀", color: "#D9480F", ownerWallet: exAddr(3), isHouse: true, houseRule: "Holds whatever rose 2% in 24 h" },
 };
 
@@ -97,7 +97,7 @@ export const SAMPLE_CARDS: Record<string, CardPayload> = {
     proofs: [{ label: "Challenge tx", txHash: exHash(38), whatItProves: "The challenge is created on-chain by the challenger, so the matchup and season are fixed." }] },
   "example-roast": { id: "example-roast", kind: "roast", bot: SAMPLE_BOTS[7], season: 1, trust: 312, headline: "AlphaWolf lost $12,400 going big on Gold at the 21:00 call.", line: "Trust score 312. Roast him.",
     proofs: [
-      { label: "Trade tx", txHash: exHash(31), whatItProves: "Bought Gold at $3,730.84, priced by QIE oracle round 14811, not by us." },
+      { label: "Trade tx", txHash: exHash(31), whatItProves: "Bought Gold at $3,730.84, priced by QIE oracle round 14811, not by us.", oracle: { asset: "GOLD", roundId: "14811" } },
       { label: "Mark at close", txHash: exHash(32), whatItProves: "The loss uses the 21:00 oracle marks, recorded with their round ids, so anyone can recompute it." },
       { label: "Bot version", txHash: exHash(33), whatItProves: "AlphaWolf was on v1 when it made this call." },
     ] },

@@ -1,10 +1,10 @@
 import type { CardBot, CardCitation, CardPayload, CardValue, RecapCardPayload, RoastCardPayload, TradeCardPayload } from "@botfolio/shared";
+import { getStoredCard } from "@/lib/site/data";
 
 /**
  * Mock card payloads for #102, shaped like what the worker writes to `cards.payload` (apps/worker/src/cards).
  * Ids end in "-mock" so they can't collide with real ids (`trade-<botId>`, `roast-<botId>-<slotId>`, `recap-<botId>-<day>`).
- * Never served in production (404 there), and the tx hashes are plainly fake, so a screenshot can't pass as a real card.
- * shortcut: the route serves only these; replace `loadCard` with a worker fetch when real cards are wired up.
+ * Never served in production, and the tx hashes are plainly fake, so a screenshot can't pass as a real card.
  */
 
 const TX1 = `0x${"0".repeat(63)}1` as const;
@@ -114,11 +114,11 @@ const recap: RecapCardPayload = {
 
 const FIXTURES: Record<string, CardPayload> = { [trade.cardId]: trade, [roast.cardId]: roast, [recap.cardId]: recap };
 
-/** The seam the worker fetch replaces: a card id in, its stored payload (or null) out. */
+/** A card id in, its stored payload (or null) out. Real cards come from `site_cards`; throws when that read fails. */
 export async function loadCard(cardId: string): Promise<CardPayload | null> {
   // Vercel previews set VERCEL_ENV=preview (with NODE_ENV=production), so they still get the mocks.
-  if ((process.env.VERCEL_ENV ?? process.env.NODE_ENV) === "production") return null;
-  return FIXTURES[cardId] ?? null;
+  const prod = (process.env.VERCEL_ENV ?? process.env.NODE_ENV) === "production";
+  return (!prod && Object.hasOwn(FIXTURES, cardId) && FIXTURES[cardId]) || getStoredCard(cardId);
 }
 
 export const MOCK_CARDS = { trade, roast, recap };

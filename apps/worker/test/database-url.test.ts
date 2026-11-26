@@ -1,5 +1,6 @@
 import pg from "pg";
 import { describe, expect, it } from "vitest";
+import { POOL_MAX, SESSION_POOLER_LIMIT } from "../src/database-url";
 import { CONTRACT_NAMES } from "../src/indexer/abi";
 import { ADDRESS_ENV, loadIndexerConfig } from "../src/indexer/config";
 import { databaseConfig as relayConfig } from "../src/relay/db";
@@ -61,5 +62,14 @@ describe.each(Object.entries(READERS))("DATABASE_URL in the %s", (_name, read) =
 
   it("refuses an unencrypted Supabase URL", () => {
     expect(read("postgresql://postgres.abc:pw@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=disable")).toBeNull();
+  });
+});
+
+// #351: all the worker's pools at once must fit the session pooler.
+describe("pool caps", () => {
+  it("add up to the session pooler's client limit or less", () => {
+    const maxes = Object.values(POOL_MAX);
+    expect(maxes.reduce((sum, max) => sum + max, 0)).toBeLessThanOrEqual(SESSION_POOLER_LIMIT);
+    expect(maxes.every((max) => max >= 1)).toBe(true);
   });
 });

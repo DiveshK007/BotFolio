@@ -2,7 +2,7 @@
 
 What to do when something breaks on the live service. Each section is symptom → check → fix → who. Rolling back a bad deploy is in [`rollback.md`](rollback.md).
 
-Steps marked **UNVERIFIED** were written from the code and the docs, not tried on the live service. Never paste a key, `DATABASE_URL` or any other secret into a chat, an issue or this file.
+Steps marked **UNVERIFIED** were written from the code and the docs, not tried on the live service. First-run checks for each scheduled path are in section 9, the Dec 1–7 on-call table in section 10, and the daily no-merge windows in [`release.md`](release.md) section 8. Never paste a key, `DATABASE_URL` or any other secret into a chat, an issue or this file.
 
 ## Where to look first
 
@@ -29,7 +29,7 @@ Steps marked **UNVERIFIED** were written from the code and the docs, not tried o
 |---|---|
 | Worker, relayer, runner, scheduler, indexer (WS B) | Gokul |
 | Hot wallets, top-ups, QIE checks | Divesh |
-| Admin cold key (role grants and revokes) | Holder of `ADMIN_ADDRESS`. **UNVERIFIED** who; write the name here after the deploy (#25) |
+| Admin cold key (role grants and revokes) | Holder of `ADMIN_ADDRESS` 0x24bA066120Dbb76bd6EbF86bc66236E1D9CD7457 (deployed Nov 26, `docs/decisions.md`). **UNVERIFIED** who; write the name here (H24) |
 | Render and Vercel dashboards | Whoever has access. **UNVERIFIED**: list the names here |
 
 ---
@@ -84,18 +84,18 @@ QIE's feeds sometimes stop updating: gold for more than 6 h, crypto for more tha
 
 **Fix:**
 1. Short outage (under about an hour): wait. The next slot recovers by itself.
-2. Long outage: switch provider. Set `LLM_PROVIDER=openai` and `OPENAI_API_KEY` (or `anthropic` and `ANTHROPIC_API_KEY`) in Render, and the model vars `LLM_MODEL_DECISION`, `LLM_MODEL_PERSONA`, `LLM_MODEL_V2` to that provider's model names. Then restart (section 1). Log the switch in `docs/decisions.md`. **UNVERIFIED**: the OpenAI and Anthropic clients have not run against the live decision schema.
+2. Long outage: switch provider. Production is `LLM_PROVIDER=anthropic` (Claude Haiku 5.5). Set `LLM_PROVIDER=xai` and `XAI_API_KEY` (or `openai` and `OPENAI_API_KEY`) in Render, and the model vars `LLM_MODEL_DECISION`, `LLM_MODEL_PERSONA`, `LLM_MODEL_V2` to that provider's model names. Then restart (section 1). Log the switch in `docs/decisions.md`. **UNVERIFIED**: the OpenAI and Anthropic clients have not run against the live decision schema.
 3. Never set `LLM_PROVIDER=fake` in production. The runner refuses to start the slot job with it (`slot job not started: needs LLM_PROVIDER`).
 
 ### 3b. Key missing or wrong
-**Symptom:** `/healthz` reason `slot job not started: needs XAI_API_KEY` (or the key for the chosen provider). Or every call fails with `http` status 401/403.
+**Symptom:** `/healthz` reason `slot job not started: needs ANTHROPIC_API_KEY` (production runs `LLM_PROVIDER=anthropic` with Claude Haiku 5.5 since Nov 26; `XAI_API_KEY` for `xai`). Or every call fails with `http` status 401/403.
 
 **Fix:** set the right key in Render env and restart. Get a new key from the provider console if it was revoked.
 
 ### 3c. Monthly budget reached
 **Symptom:** `/healthz` reason `LLM budget above 80 %` (state `alert`) or `LLM budget used up — bots resting` (state `resting`). Log line `{"event":"llm.budget","state":"resting"}` before each slot.
 
-**What the system already does:** spend is summed from the `decisions` table, so a restart doesn't reset it. At `resting` the runner skips the LLM, every bot holds with "<name> is resting this slot. Holding until it's back.", and `POST /persona` answers `503 BUDGET_RESTING`. Persona and v2 calls are not counted in the spend (SPEC §6.6 puts them under 10 %).
+**What the system already does:** spend is summed from the `decisions` table, so a restart doesn't reset it. At `resting` the runner skips the LLM, every bot holds with "<name> is resting this slot. Holding until it's back.", and `POST /persona` answers `503 BUDGET_RESTING`. Persona calls are counted too, failed ones at an assumed size (#349), but only in memory: a restart forgets them until the next month. v2 calls are not counted (SPEC §6.6 puts them under 10 %). Talk to a bot (`/api/site/talk`, on Vercel) is never in this spend, which is why it is off unless `TALK_ENABLED=true` (#352).
 
 **Fix:** decide with Divesh whether to raise `LLM_MONTHLY_BUDGET_USD`. If yes, set it in Render and restart. The budget resets on the 1st of the month (UTC).
 
@@ -202,6 +202,8 @@ If the key leaked, revoke the old address's role first. That stops the attacker 
 | To stop | Do | Effect |
 |---|---|---|
 | All relayed user actions | `RELAY_ENABLED=false`, restart | `/relay` answers `RELAY_DISABLED`. Nothing is broadcast |
+| Making new bots (persona LLM calls) | `PERSONA_DISABLED=true`, restart | `POST /persona` answers `503 PERSONA_DISABLED`. No LLM call |
+| Talk to a bot | Remove `TALK_ENABLED` in Vercel, redeploy | Chat box hidden; `/api/site/talk` answers `503 talk_disabled` |
 | Runner trades | Remove `RUNNER_PRIVATE_KEY`, restart | `slot job not started: needs RUNNER_PRIVATE_KEY`. No decisions, no trades |
 | A runner or committer on-chain | Admin revokes its role (section 6) | Its txs revert at the estimate and nothing is spent |
 
@@ -225,7 +227,7 @@ Two checks, done before Sun Dec 6:
    cast call $TRUST_REGISTRY_ADDRESS "rulesDocHash(bytes32)(bytes32)" $(cast format-bytes32-string trust-v1) \
      --rpc-url https://rpc3mainnet.qie.digital
    ```
-   If it returns zero, the admin key holder publishes it with `script/Admin.s.sol:PublishRules` and `RULES_VERSION=trust-v1` ([`packages/contracts/README.md`](../packages/contracts/README.md), "Publish trust rules"). Use the same `docs/trust-rules.md` bytes, URI and hash as `trust-v1-sprint`: that doc defines both versions. **UNVERIFIED**: whether `trust-v1-sprint` and `trust-v1` are already published on mainnet.
+   If it returns zero, the admin key holder publishes it with `script/Admin.s.sol:PublishRules` and `RULES_VERSION=trust-v1` ([`packages/contracts/README.md`](../packages/contracts/README.md), "Publish trust rules"). Use the same `docs/trust-rules.md` bytes, URI and hash as `trust-v1-sprint`: that doc defines both versions. Both were published on Nov 26 (txs in `docs/decisions.md`); on Nov 27 `rulesDocHash(trust-v1-sprint)` returned `0xba735a34…326ea1` on rpc3, so this check should pass.
 
 Without step 2, S5's close still commits the data root, but not the trust scores (`season.trust_rules_unpublished` in the logs). Publishing later is enough: the next close run commits them.
 
@@ -237,3 +239,274 @@ On the day, check the logs:
 Known limit: S18 is the last seeded row. From Mon Mar 15 2027 00:00 IST, `season_open` logs `seasons.no_next_row` each day (no job failure, #313) and opens nothing until rows from S19 on are added to the seed.
 
 **Who:** Gokul for the database check. The admin key holder for `publishRules`.
+
+## 9. First-run checks (paths not yet seen working on mainnet)
+
+Written Nov 27 2026, about 02:30 IST, from the code on `main` at 5ac9411. At that time the chain said: S0 open (`nextSeason() = 1`, `seasonState(0) = 1`), `nextBotId() = 5` (house bots 1–3 plus user bot #4), bot #4 with its starting cash and no holdings, and no `Trade` event yet. None of the paths below had run on mainnet, so every expected log line and result here is **UNVERIFIED** until someone sees it and writes the date next to it.
+
+All checks are read-only: `/healthz`, the Render logs, SQL in the Supabase SQL editor, and `cast call`. Nothing here sends a transaction. The manual fallbacks at the end of 9.3 and 9.4 do send one, and only a key holder runs them.
+
+**Setup, once per shell:**
+
+```bash
+cd packages/contracts
+set -a; . deployments/1990.env; set +a      # public contract addresses only
+RPC=https://rpc3mainnet.qie.digital
+W=<RENDER_SERVICE_URL>                      # the worker's public URL
+curl -s $W/healthz | jq '{status, reasons, startedAt, lastSlotRun, jobs, feeds: [.oracle.feeds[] | {asset, ageSeconds, maxAgeSeconds, fresh, error}], llm}'
+cast call $DAILY_CALL_ADDRESS "today()(uint32)" --rpc-url $RPC   # today's IST day number: Nov 27 = 20784, Nov 28 = 20785
+```
+
+- In the Render logs, search for the `event` value, e.g. `runner.batch_sent`. Each line is one JSON object.
+- `cast logs` on QIE answers for at most **10,000 blocks** per query (about 10 h at about 3.6 s a block). Use `--from-block $(( $(cast block-number --rpc-url $RPC) - 9000 ))`.
+- SQL times are UTC. Add `at time zone 'Asia/Kolkata'` to read them in IST.
+- Hot wallets: runner 0x33b62A52e8522816bC6BCE0E9026eD01D622A181, committer 0xd27710cB6166560fe86d0aE4Ad412904F7f15D45, relayer 0x59556d09E63D96FF1053fE065c0f678906f58004. Their txs are system txs, never user activity.
+- Enum values that `cast call` prints as numbers: season state 0 NONE, 1 OPEN, 2 CLOSED. Challenge status 0 NONE, 1 OPEN, 2 ACCEPTED, 3 SETTLED, 4 EXPIRED. `OrderSkipped.reason` 0 STALE, 1 LIMIT, 2 INACTIVE, 3 ZERO, 4 USED.
+
+### 9.1 Scheduled slot (09:00, 13:00, 17:00, 21:00 IST, retries +5, +10, +15 min)
+
+**Before the slot:** `/healthz` `jobs.slot.state` is `scheduled`, not `not_started` (its `detail` names the missing variable). Note which `feeds[]` are `fresh`. A stale asset holds for the slot, which is expected (section 2).
+
+**Logs, in order:**
+1. `llm.decision` per raised bot (`status` `ok`, or `invalid` with an `error`), then `runner.decided` with `botId`, `status` (`executed` / `held` / `skipped_stale` / `invalid`), `orders` and `bigMoves`.
+2. `runner.batch_sent` with `orders` and `txHash`. If there is no order (every bot held), there is no batch line.
+3. At +5, +10 and +15 min, for orders held back by a stale price: `runner.retried` with `attempt` and `orders`.
+4. `scheduler.slot_done` with `slotId`, `slotTime`, `attempt` and `failed`. `failed > 0` is how many bots errored.
+
+**/healthz after:** `lastSlotRun.slotTime` is this slot and `lastSlotRun.kind` is `scheduled`. `jobs.slot.lastRun.problem` is empty. A value of `failed for N bot(s)` also shows in `reasons`.
+
+**SQL:**
+```sql
+-- the last day's slots and what each decided
+select s.id, s.slot_time at time zone 'Asia/Kolkata' as ist, s.kind, s.season_id,
+       count(d.id) as decisions,
+       count(*) filter (where d.status = 'executed') as executed,
+       count(*) filter (where d.status = 'held') as held,
+       count(*) filter (where d.status = 'skipped_stale') as stale,
+       count(*) filter (where d.status = 'invalid') as invalid
+from slots s left join decisions d on d.slot_id = s.id
+where s.slot_time > now() - interval '1 day'
+group by s.id order by s.slot_time desc;
+
+-- one slot: prices it saw, then trades (tx_hash null = sent but not indexed yet)
+select asset, round_id, updated_at at time zone 'Asia/Kolkata' as price_time, fresh from oracle_reads where slot_id = <slot id>;
+select t.bot_id, t.asset, t.side, t.tx_hash, t.block_number
+from trades t join decisions d on d.id = t.decision_id where d.slot_id = <slot id> order by t.id;
+```
+
+**On-chain:**
+```bash
+cast nonce 0x33b62A52e8522816bC6BCE0E9026eD01D622A181 --rpc-url $RPC            # goes up by 1 per batch
+cast call $PAPER_LEDGER_ADDRESS "portfolios(uint256)(uint128,uint16,uint8,bool)" <botId> --rpc-url $RPC   # cash, lastDay, tradesToday, init
+cast call $PAPER_LEDGER_ADDRESS "holdings(uint256)(uint256[5])" <botId> --rpc-url $RPC                     # BTC ETH SOL XRP GOLD units, 18 decimals
+cast logs --from-block <block> --address $PAPER_LEDGER_ADDRESS \
+  "OrderSkipped(uint256 indexed botId,uint8 indexed asset,bytes32 indexed decisionId,uint8 actionIndex,uint8 reason)" --rpc-url $RPC
+```
+Open the `txHash` from `runner.batch_sent` on `https://mainnet.qie.digital/tx/<hash>`. It is from the runner, to PaperLedger, with `Trade` and maybe `OrderSkipped` events.
+
+**If it fails:**
+| What you see | Do |
+|---|---|
+| No `scheduler.slot_done` by +20 min, and no `scheduler.started` near the slot | The worker was asleep or down. Check that the UptimeRobot ping is green and Render shows the service live. A restart inside the 20-min window reruns the slot (section 1). After that the slot is skipped (`scheduler.slot_outside_window`), and bots hold until the next one. |
+| `jobs.slot.state` is `not_started` | Fix the named env variable in Render, then restart. |
+| Every decision `skipped_stale` or `held` with stale reasons | Expected when QIE's feeds are old (section 2). Nothing to fix. |
+| Most `llm.decision` lines `invalid` | Section 3a. |
+| `runner.batch_failed` | Runner balance (section 5), RPC (section 4). The orders are sent again on the next retry inside the window. If the tx was mined but reverted out of gas, it may be the QIE gas-estimate problem (#339, PRs #340 and #341). Send Gokul or Claude the log line. |
+| `runner.bot_failed` with a `stage` | One bot. The others went on. Send the `botId` and `stage`. |
+
+### 9.2 Debut (first trade of a new bot, within about 10 s of `createBot`)
+
+**Logs:** `persona.created`, then `relay.submitted` with selector `0xf429b088` (`createBot`). Within seconds, `llm.decision` and `runner.decided` with the new `botId`, then `runner.batch_sent`. On failure: `debut.failed` with `botId` and `error` (up to 3 tries, within 10 min of the bot's creation), or `debut.poll_failed` (the `nextBotId` poll can't read the chain; logged once per outage).
+
+**/healthz:** a debut doesn't show there at all. `lastSlotRun` is only set by scheduled slots, and a debut failure isn't a `reason` (master plan A2 adds one). Read the logs.
+
+**SQL:**
+```sql
+select b.id, b.created_at at time zone 'Asia/Kolkata' as created, b.created_tx is not null as indexed,
+       s.id as slot, d.status, d.reason_tag, d.reason,
+       jsonb_array_length(coalesce(d.gate_result -> 'orders', '[]')) as orders,
+       jsonb_array_length(coalesce(d.gate_result -> 'bigMoves', '[]')) as big_moves
+from bots b
+left join decisions d on d.bot_id = b.id
+left join slots s on s.id = d.slot_id
+where b.id = <botId> and (s.kind = 'debut' or s.id is null);
+select asset, side, tx_hash from trades where bot_id = <botId> order by id;
+```
+
+**On-chain:** `cast call $BOT_REGISTRY_ADDRESS "nextBotId()(uint256)" --rpc-url $RPC` is one above the new id. `portfolios(<botId>)` shows `init = true`. After a BUY the cash is below `107800000000` (START_CASH_E8) and `holdings(<botId>)` is non-zero.
+
+**App:** `/bot/<botId>` lists the trade with an explorer link. `GET /api/v1/bots/<botId>/record` has a non-empty `trades`.
+
+**If it fails:**
+- Debut `held` / `skipped_stale` because no asset was fresh. This is expected: the debut offers only fresh assets (#219 item 18). The first trade comes at the next scheduled slot with a fresh feed. There is no re-debut path (master plan D7).
+- `debut.failed` three times. The bot waits for the next scheduled slot. Send the `error` label to Gokul or Claude. Never send a trade by hand.
+- A bot older than 10 min that never debuted (for example, the worker was down) also just waits for its next slot.
+
+### 9.3 Season close, trust commit and next season open (S0: Sat Nov 28 21:30 IST, S1 opens Sun Nov 29 00:00)
+
+Timeline from the code (`seasons/index.ts`, `season/close.ts`, `seasons/checks.ts`):
+1. **21:00–21:15** last slot of the season and its retries. Daily Call settles run from 21:00 (9.4).
+2. **21:30** `season_close`: `seasons.closing` with `season: 0`. Then, for the closing season: results and battle ranks; trust scores, and `commitScores` if the rules are published (`season.scores_committed`, or `season.no_trust_scores` / `season.trust_rules_unpublished`); the replay file is built and checked (`season.replay_failed` if it doesn't verify), uploaded as `season-0.jsonl`, then `closeSeason`: **`season.closed`** with `root`, `lines` and `uri`. Then challenges (`challenge.settled` / `challenge.expired`), then v2 proposals (`v2.proposed` per bot). Last, `scheduler.job_done` with `job: season_close`. A failed close is tried 4 times, 5 min apart (until about 21:50), then `scheduler.job_failed`. A Wave A PR (A1) may add retries every 15 min until 23:15. Check `apps/worker/src/scheduler/jobs.ts` on `main` before the night.
+3. **21:35** `recap` (9.5).
+4. After `season.closed`, the indexer reads the `SeasonClosed` event and the DB row becomes `closed`.
+5. **00:00** `season_open`: **`seasons.opened`** with `season: 1`. If S0 is not closed on-chain yet, it logs `seasons.previous_not_closed` and opens nothing.
+
+**/healthz:** `jobs.season_close.lastRun` at about 21:30 without `problem`. Then `jobs.season_open.lastRun` after 00:00 without `problem`. `season_close failed` or `season_open failed` in `reasons` means a failure.
+
+**SQL:**
+```sql
+select id, status, starts_at at time zone 'Asia/Kolkata' as opens, ends_at at time zone 'Asia/Kolkata' as closes,
+       data_root, data_uri, root_tx, trust_rules_version, scores_root, scores_tx
+from seasons where id between 0 and 2 order by id;
+select count(*) as bots, count(battle_rank) as ranked from season_results where season_id = 0;
+select count(*) as scored, count(*) filter (where provisional) as provisional from trust_scores where season_id = 0;
+select status, count(*) from challenges where season_id = 0 group by status;
+select bot_id, version, max_per_coin_bps, max_trades_per_day from bot_versions
+where source = 'season_v2' and committed_tx is null order by bot_id;           -- v2 proposals waiting for the owner
+```
+Expect S0 `closed` with `data_root`, `data_uri` and `root_tx` set, and S1 `open`. S0 is hidden from the public boards, results and trust views (`site_*`), so `/leaderboards` stays empty until S1 results exist. That is intended (#219).
+
+**On-chain:**
+```bash
+cast call $SEASON_LEDGER_ADDRESS "seasonState(uint32)(uint8)" 0 --rpc-url $RPC                        # 2 = CLOSED
+cast call $SEASON_LEDGER_ADDRESS "seasons(uint32)(uint64,uint64,bytes32,string,bool)" 0 --rpc-url $RPC  # start, end, dataRoot, dataURI, closed
+cast call $TRUST_REGISTRY_ADDRESS "scoresRoot(uint32)(bytes32)" 0 --rpc-url $RPC                       # non-zero once scores are committed
+cast call $TRUST_REGISTRY_ADDRESS "rulesVersionOf(uint32)(bytes32)" 0 --rpc-url $RPC                   # trust-v1-sprint, as bytes32
+# after 00:00
+cast call $SEASON_LEDGER_ADDRESS "nextSeason()(uint32)" --rpc-url $RPC                                 # 2 once S1 is open
+cast call $SEASON_LEDGER_ADDRESS "seasons(uint32)(uint64,uint64,bytes32,string,bool)" 1 --rpc-url $RPC  # 1795890600, 1796054400 (Nov 29 00:00 → Nov 30 21:30 IST)
+```
+Then replay it (D6): `pnpm --filter @botfolio/replay build && pnpm replay 0 --ledger $SEASON_LEDGER_ADDRESS`. Exit code 0 means the root and every trade match. A mismatch is a P0, to fix before the S1 close.
+
+**If it fails.** Find the first failing step in the logs, then:
+
+| What you see | Do |
+|---|---|
+| `season.close_not_configured` with `needs` | A missing env variable (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `INDEXER_START_BLOCK`, an address). Set it in Render and restart. The close runs again at start. |
+| `scheduler.job_failed` for `season_close`, with an RPC or gas label | Committer balance (section 5), RPC (section 4). Then **restart the worker** (section 1). `season_close` and `season_open` both run at every start, so a restart is the first retry. Restart after 21:20, never inside the 21:00 slot window. |
+| `season.replay_failed` | The file doesn't verify, so nothing was committed. **Do not close by hand.** This is a code bug: send the `findings` to Gokul or Claude. |
+| `seasons.previous_not_closed` at 00:00 | S0 isn't closed on-chain yet. Fix the close first. A restart after the close succeeds also opens S1 (season_open runs at start). Otherwise the next automatic open is at 00:00 the next day, which costs S1 a day. |
+| `season.closed` logged but `seasonState(0)` still 1 | An RPC lag. Wait a minute and check again on rpc4. |
+| `season.trust_rules_unpublished` | Not expected: both versions were published Nov 26 (section 8). The data root still closes. The next close run commits the scores. |
+| `season.scores_locked` | The chain already has a different root for a closed season. Leave it, and tell Gokul. A locked root can't be replaced (#219 item 4). |
+
+**Manual fallback, only for a close whose replay file is uploaded but whose `closeSeason` tx keeps failing** (for example, after the restart, past about 23:00). Who: the person holding the committer key backup (`docs/deploy.md` step 1, password manager). **UNVERIFIED**: never run on mainnet.
+1. Check that the file is public and verifies: `pnpm replay https://<SUPABASE_URL>/storage/v1/object/public/replay/season-0.jsonl --offline`. Exit 0, and note the `root 0x…` it prints. `SUPABASE_URL` is the public project URL, the same as `NEXT_PUBLIC_SUPABASE_URL`.
+2. Import the committer key into a Foundry keystore on your own machine (`cast wallet import botfolio-committer --interactive`). It never goes into a chat, a file or a commit.
+3. Dry run. The script checks that the season is open, that its end has passed, and that the root and URI are set. Without `--broadcast` it sends nothing:
+   ```bash
+   SEASON=0 DATA_ROOT=<root> DATA_URI=<the https URL from step 1> \
+     forge script script/Admin.s.sol:CloseSeason --rpc-url $RPC --account botfolio-committer --sender 0xd27710cB6166560fe86d0aE4Ad412904F7f15D45
+   ```
+4. Send it. Add `--broadcast` to the same command. If forge's own gas estimate comes out bogus on QIE (#339: about 21k), send it with an explicit limit instead. closeSeason measured 167,259 gas (`docs/gas.md`):
+   `cast send $SEASON_LEDGER_ADDRESS "closeSeason(uint32,bytes32,string)" 0 <root> <uri> --gas-limit 400000 --account botfolio-committer --rpc-url $RPC`
+   The worker's daily_call_settle uses the same key from 21:00 to 23:50, every 10 min. Send between two runs (for example at :05) so the nonces don't collide. If they collide, the worker's tx fails and is retried.
+5. Restart the worker. Its close run sees the season closed on-chain, then commits the trust scores and settles the challenges, and its open run opens S1 once it is past 00:00.
+
+**Manual open fallback** (S1 not open after 00:20 even though S0 is closed, and a restart didn't help). The times must be the `seasons` row's: S1 is 1795890600 → 1796054400.
+```bash
+SEASON=1 SEASON_START=1795890600 SEASON_END=1796054400 \
+  forge script script/Admin.s.sol:OpenSeason --rpc-url $RPC --account botfolio-committer --sender 0xd27710cB6166560fe86d0aE4Ad412904F7f15D45   # add --broadcast to send
+```
+(openSeason measured 56,548 gas; with `cast send` use `--gas-limit 150000`.) `launch-admin.sh` is not the tool for this: it covers only `publishRules` and the house bots (admin key), and both are done. There is no manual `commitScores` script. A closed season with no scores root is picked up again by the next `season_close` run.
+
+Log every manual tx in `docs/decisions.md` with its hash.
+
+### 9.4 Daily Call settle (21:00, then every 10 min to 23:50 IST, then once at 09:00 the next day)
+
+It needs at least one call made that IST day (`daily_calls.call_tx` set). With none, the job does nothing and logs only `scheduler.job_done`.
+
+**Logs:** `daily_call.settles_late` with `day` and `waiting` (no fresh BTC round from 21:00 yet; normal, it tries again in 10 min), then `daily_call.settled` with `day`, `bots` and `round`.
+
+**SQL:**
+```sql
+select bot_id, day, user_up, bot_up, call_tx is not null as called, settle_tx, settle_round, user_correct, bot_correct
+from daily_calls where day = <IST day> order by bot_id;
+```
+`user_correct` and `bot_correct` stay null after a settle when the price didn't change (no winner).
+
+**On-chain:**
+```bash
+cast call $DAILY_CALL_ADDRESS "calls(uint256,uint32)(bool,bool,int256,uint80,uint64,bool,bool,bool)" <botId> <IST day> --rpc-url $RPC
+# userUp, botUp, priceAtCall, roundAtCall, calledAt, settled, userCorrect, botCorrect
+```
+
+**If it fails:** `scheduler.job_failed` with `job: daily_call_settle` points to the committer balance (section 5) or the RPC (section 4). The 09:00 retry is the last automatic one. From 21:00 the next day the contract voids that day's settle for good (`SETTLE_WINDOW`, `docs/decisions.md` Nov 26). Manual fallback before then, committer key, **UNVERIFIED**: `cast send $DAILY_CALL_ADDRESS "settle(uint256[],uint32)" "[<botId>,...]" <day> --gas-limit 300000 --account botfolio-committer --rpc-url $RPC`. Only send it when `btc.updatedAt` is from 21:00 that day or later. Otherwise the contract skips it and the gas is wasted.
+
+### 9.5 Recap and cards (recap 21:35 IST; trade and roast cards within about a minute)
+
+**Logs:** the card sweeper runs every 60 s and logs `cards.trade` / `cards.roast` with `made` when it writes any, or `cards.sweep_failed`. At 21:35, `cards.recap` with `day` and `made`, then `scheduler.job_done` with `job: recap`. If `/healthz` `jobs.recap.state` is `not_started`, `PAPER_LEDGER_ADDRESS` is missing.
+
+**SQL:**
+```sql
+select id, kind, bot_id, created_at at time zone 'Asia/Kolkata' as made from cards order by created_at desc limit 20;
+```
+Expect one `recap-<botId>-<day>` per active raised bot that has a mark, and a `trade` card after a bot's first trade.
+
+**App:** open `/card/<id>` and `/api/card/<id>` for one real id. **Known:** the live-mode card page crashes on a real card (#105, master plan A8), and unfurls still use mocks (#109, A9). Check whether those PRs are merged before you share a card. Also known: during S0, recap cards can store a hidden-S0 rank and trust score (bug intake, Nov 27). Don't share S0 recap cards publicly.
+
+**If it fails:** `scheduler.job_failed` with `job: recap` is a DB or chain read. Cards are derived data and safe to rebuild. The next sweep or the next 21:35 run writes the missing ones (ids come from their subject, so reruns don't make duplicates).
+
+### 9.6 Challenges (user-signed create and accept; settled at the season close)
+
+**Logs:** `relay.submitted` with selector `0xeffab51d` (`Challenges.create`) or `0x9d14cb64` (`accept`). At the close of that season (9.3): `challenge.settled` with `season`, `code` and `winner`; `challenge.expired` (never accepted); or `challenge.not_on_chain` (a DB row the chain doesn't know).
+
+**SQL:**
+```sql
+select code, season_id, challenger_bot, opponent_bot, status, winner_bot, create_tx, accept_tx
+from challenges order by season_id desc, code;
+```
+
+**On-chain:**
+```bash
+cast call $CHALLENGES_ADDRESS "challenges(bytes32)(uint256,uint256,uint32,uint8)" <code> --rpc-url $RPC   # challenger, opponent, season, status
+cast call $CHALLENGES_ADDRESS "openCount(uint256)(uint8)" <botId> --rpc-url $RPC                          # at most 10 open per bot
+```
+
+**Known:** from the 21:30 close to the 00:00 open, "Challenge a friend" is refused (`WOULD_REVERT`, "That season can't be joined any more"), because the app still names the closed season (bug intake, Nov 27). Tell users to try again after 00:00. Challenges are settled only at a close, so S0's first ones settle on Sat Nov 28 at about 21:30.
+
+**If it fails:** settle and expire run inside the close and are retried by every later close run while a challenge is still `open` or `accepted`. A `scheduler.job_failed` there doesn't undo the data root. Send the `code` to Gokul or Claude.
+
+### 9.7 Big moves (Allow / Shrink / Block within 2 h; sweep every 10 min)
+
+A buy that would put 30 % or more in one asset, or a sell of 50 % or more of a holding, is held for the owner (SPEC §6.4).
+
+**Logs:** at the slot, `runner.decided` with `bigMoves > 0`. When the owner allows it: `relay.submitted` with selector `0x0f485a11` (`PaperLedger.executeApproved`). Every 10 min the sweep shrinks or expires what passed its deadline: `big_moves.swept` with `shrunk` and `expired`. Failures: `big_moves.batch_failed`, `big_moves.bot_failed`, `big_moves.order_mismatch`.
+
+**SQL:**
+```sql
+select id, bot_id, asset, side, bps, status, deadline at time zone 'Asia/Kolkata' as deadline, user_tx,
+       '0x' || encode(order_id, 'hex') as order_id
+from big_moves order by id desc limit 10;
+```
+`status` moves from `pending` to `approved` (the owner allowed it; `user_tx` set), `shrunk` (the sweep sent the safe size), `blocked`, or `expired`.
+
+**On-chain, the double-execution guard:**
+```bash
+cast call $PAPER_LEDGER_ADDRESS "usedOrder(bytes32)(bool)" <order_id> --rpc-url $RPC   # true once executed, by either path
+```
+Exactly one `Trade` event should exist for that `decisionId` and `actionIndex`. An allowed move also emits `ApprovedTrade` with the owner's address. If both the owner's tx and the sweep were sent, the second is skipped as `USED` (an `OrderSkipped` with reason 4, or a reverted `executeApproved` with `OrderRejected(4)`).
+
+**Known limits (accepted for the hackathon, master plan D5 and D6):** an expired cumulative SELL can end above 50 % in total. A second big move in one decision is dropped with no F1 penalty. A big move from the 21:00 slot on a close night can land after the season's root is committed (bug intake, Nov 27).
+
+**If it fails:** `big_moves.batch_failed` points to the runner balance or the RPC, and the next sweep retries it. A pending move whose owner never acts is shrunk or expired by the sweep. Don't send it by hand.
+
+## 10. On-call, Dec 1–7 (demo week and the switch to weekly seasons)
+
+Calendar from `packages/db/seeds/seasons.sql`. Every day also runs the four slots (9.1), the Daily Call settle from 21:00 (9.4) and the recap at 21:35 (9.5). Fill in the names by Nov 30 (#169, master plan H24). The **UNVERIFIED** cells stay that way until the hackathon's demo-day schedule is known.
+
+| Day (IST) | Events | Primary | Backup | What to check |
+|---|---|---|---|---|
+| Tue Dec 1 | 00:00 S2 opens. 04:29 submission deadline passes (we submit Nov 30 around 22:00) | TBD | TBD | `nextSeason() = 3`, `seasonState(2) = 1`. The 09:00 slot (9.1). The submission confirmation is saved |
+| Wed Dec 2 | **21:30 S2 closes** | TBD | TBD | 9.3 for S2, then `pnpm replay 2 --ledger $SEASON_LEDGER_ADDRESS`. Screenshots of the S1 and S2 boards and `/stats` (user-signed first) for the demo |
+| Thu Dec 3 | 00:00 S3 opens | TBD | TBD | `nextSeason() = 4` |
+| Fri Dec 4 | **21:30 S3 closes** | TBD | TBD | 9.3 for S3. The S3 results are in the demo if we present after this |
+| Sat Dec 5 | 00:00 S4 opens. Demo presentation (day **UNVERIFIED**) | TBD | TBD | `nextSeason() = 5`. Before presenting, `/healthz` is `ok` or every reason is understood, and the feeds are fresh |
+| Sun Dec 6 | **21:30 S4 closes** (last 2-day sprint) | TBD | TBD | 9.3 for S4. Section 8 checks are done before today |
+| Mon Dec 7 | **00:00 S5 opens, the first weekly season** (closes Sun Dec 13 21:30). Start of the weekly `/stats` report (#180) | TBD | TBD | `seasons.opened` with `season: 5`, and `nextSeason() = 6` (section 8). From now on the daily 21:30 close does nothing until Dec 13 |
+
+Every day the on-call person:
+- reads `/healthz` after the 09:00 slot: `lastSlotRun` is today's 09:00, and every entry in `reasons` is understood;
+- watches the alert channel (section 5b) and tops up any wallet below 2 QIE (section 5);
+- doesn't merge any PR inside the no-merge windows (every merge redeploys the worker) ([`release.md`](release.md) section 8). Close nights are 20:55–00:20;
+- writes every manual action in `docs/decisions.md`.

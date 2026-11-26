@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { BotPageView } from "@/components/bot/BotPageView";
 import { BOT_ID, bpsPct, fetchBotPage } from "@/lib/bot-record";
 import { Evolution, ShareCardButton, TalkToBot, TrustGauge } from "@/components/site/extras";
+import { talkEnabled } from "@/lib/config";
 import { botSeed } from "@/lib/dna";
 
 type Props = { params: Promise<{ botId: string }> };
@@ -46,7 +47,7 @@ export default async function BotPage({ params }: Props) {
             <div className="bf" style={{ display: "grid", gap: 20, marginTop: 24 }}>
               <Evolution botId={result.page.bot.id} name={result.page.bot.name} dnaSeed={result.page.bot.dna_seed} versions={result.page.versions} />
               {result.page.trust && <div className="card"><div className="block-head"><h3>Trust score</h3></div><TrustGauge total={result.page.trust.total} f={[result.page.trust.fRules, result.page.trust.fDrawdown, result.page.trust.fConsistency, result.page.trust.fExplains]} /></div>}
-              <TalkToBot botId={result.page.bot.id} name={result.page.bot.name} dnaSeed={result.page.bot.dna_seed} />
+              {talkEnabled() && <TalkToBot botId={result.page.bot.id} name={result.page.bot.name} dnaSeed={result.page.bot.dna_seed} />}
               <div className="row"><ShareCardButton label="Save this bot's card" title={result.page.bot.name} line={result.page.bot.persona.slice(0, 110)} stat={result.page.seasons[0] ? `${bpsPct(result.page.seasons[0].return_bps)} this season` : ""} seed={result.page.bot.dna_seed || botSeed(result.page.bot.id)} hint={`${result.page.bot.name} ${result.page.bot.persona}`} example={false} /></div>
             </div>
           </>

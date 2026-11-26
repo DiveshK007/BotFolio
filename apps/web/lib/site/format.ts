@@ -1,5 +1,8 @@
 import type { AssetId } from "@botfolio/shared";
 
+/** Why the explorer shows 1,078 where the app shows $100,000 (START_CASH_E8 = 107800000000, decisions.md Nov 26). */
+export const START_CASH_LINE = "On chain every bot starts with 1,078 play units (PaperLedger.START_CASH_E8); the app scales that to $100,000.";
+
 /** Play $: 103420 → $103,420. Play-money display unit only. */
 export const money = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 

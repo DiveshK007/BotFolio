@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { createLlmClient, loadLlmConfig, type JsonSchema } from "@botfolio/llm";
 import { bpsPct, fetchBotPage } from "@/lib/bot-record";
+import { talkEnabled } from "@/lib/config";
 import { clientIp, RateLimit } from "@/lib/rate-limit";
+import { loadStatus } from "@/lib/status";
 
 /**
  * Talk to a bot: short in-character replies grounded only in the bot's public record (worker /bot-page).
@@ -13,12 +15,20 @@ export const dynamic = "force-dynamic";
 // Still per instance: a shared store (Upstash / Vercel KV) needs a secret and a decision, see HANDOFF #8.
 const TALK_PER_IP = 6;
 const perIp = new RateLimit(TALK_PER_IP, 600_000);
+// The worker's budget can't see calls made from here, so talk has its own cap on top of resting with the bots.
+// shortcut: per instance, so N warm instances allow N × 300 a day. Before relying on talk, give Vercel its own
+// API key with a hard spend limit set in the provider console (not the worker's key), or move talk behind the worker.
+const TALK_PER_DAY = 300;
+const perDay = new RateLimit(TALK_PER_DAY, 86_400_000, 1);
+const NO_STORE = { "cache-control": "no-store" };
 const BANNED = /\b(invest\w*|earn\w*|profit\w*|stak(e|es|ing)|rewards?|prizes?|trustless|decentrali[sz]ed)\b/i;
 const SCHEMA: JsonSchema = { type: "object", properties: { reply: { type: "string", maxLength: 280 } }, required: ["reply"], additionalProperties: false };
 
 export async function POST(req: Request) {
+  // Before any fetch, so a dead request doesn't spend the worker's per-IP budget for Vercel.
+  if (!talkEnabled()) return NextResponse.json({ error: "talk_disabled" }, { status: 503, headers: NO_STORE });
   const wait = perIp.take(clientIp(req.headers));
-  if (wait !== null) return NextResponse.json({ error: "rate_limited", retryAfterSeconds: wait }, { status: 429, headers: { "retry-after": String(wait), "cache-control": "no-store" } });
+  if (wait !== null) return NextResponse.json({ error: "rate_limited", retryAfterSeconds: wait }, { status: 429, headers: { "retry-after": String(wait), ...NO_STORE } });
 
   const body = (await req.json().catch(() => null)) as { botId?: string; messages?: { role: string; content: string }[] } | null;
   if (!body?.botId || !Array.isArray(body.messages)) return NextResponse.json({ error: "bad_request" }, { status: 400 });
@@ -31,6 +41,11 @@ export async function POST(req: Request) {
     version: v ? { v: v.version, maxPerCoinPct: v.max_per_coin_bps / 100, maxTradesPerDay: v.max_trades_per_day } : null,
     lastCall: last ? { status: last.status, reason: last.reason?.slice(0, 200) ?? null } : null,
   };
+  // Rest with the bots. An unreadable status counts as resting: this spend is outside the worker's cap.
+  const status = await loadStatus();
+  if (!status || status.resting) return NextResponse.json({ error: "llm_resting" }, { status: 503, headers: NO_STORE });
+  const dayWait = perDay.take("all");
+  if (dayWait !== null) return NextResponse.json({ error: "busy", retryAfterSeconds: dayWait }, { status: 503, headers: { "retry-after": String(dayWait), ...NO_STORE } });
   const messages = body.messages.slice(-8).map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: String(m.content).slice(0, 200) }));
   try {
     const cfg = loadLlmConfig();

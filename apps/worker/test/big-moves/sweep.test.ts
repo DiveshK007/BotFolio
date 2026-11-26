@@ -13,14 +13,14 @@ import { createTestDb, type TestDb } from "../indexer/helpers/db";
 const BIG_MOVE = { buyWeightBps: 3000, sellBps: 5000, ttlMs: 7_200_000 };
 
 // The paths the fork test can't reach cheaply: stale prices and giving up.
-function deps(opts: { fresh: boolean; chainNow: number; deadline: number }) {
+function deps(opts: { fresh: boolean; chainNow: number; deadline: number; seasonEnded?: boolean }) {
   const updates: unknown[][] = [];
   const db = {
     async query<Row extends object>(sql: string, params: unknown[] = []) {
       if (sql.includes("where m.status = 'pending'")) {
         return {
           rows: [
-            { id: "1", decision: "6f1c2d3e-4a5b-4c6d-8e7f-0123456789ab", bot_id: "7", asset: "SOL", side: "BUY", bps: 4500, action_index: 0, order_id: `0x${"ab".repeat(32)}`, deadline: String(opts.deadline), start_units: null },
+            { id: "1", decision: "6f1c2d3e-4a5b-4c6d-8e7f-0123456789ab", bot_id: "7", asset: "SOL", side: "BUY", bps: 4500, action_index: 0, order_id: `0x${"ab".repeat(32)}`, deadline: String(opts.deadline), start_units: null, season_ended: opts.seasonEnded ?? false },
           ] as unknown as Row[],
         };
       }
@@ -206,5 +206,14 @@ describe("sweepBigMoves logging, on PGlite", () => {
     expect(g.shrinks).toHaveLength(1);
     expect(g.shrinks[0]!.order.bps).toBe(sent[1]![0]);
     expect(shrinkFindings(g)).toEqual([]);
+  });
+});
+
+describe("sweepBigMoves after its season ended (#355)", () => {
+  it("expires it without a shrink or a trade: the season's replay root is committed", async () => {
+    const { d, updates, chain } = deps({ fresh: true, chainNow: 10_000, deadline: 9_000, seasonEnded: true });
+    expect(await sweepBigMoves(d, new AbortController().signal)).toEqual({ shrunk: 0, expired: 1 });
+    expect(updates).toEqual([["1", "expired"]]);
+    expect(chain.executeBatch).not.toHaveBeenCalled();
   });
 });

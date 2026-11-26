@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ErrorNote } from "@/components/create/controls";
 import { getWorkerUrl } from "@/lib/config";
-import { userMessage } from "@/lib/errors";
+import { FlowError, userMessage } from "@/lib/errors";
 import {
   BOARDS,
   fetchLeaderboards,
   formatBps,
   formatSortino,
+  S1_STARTS,
   winRate,
   type BoardEntry,
   type BoardKey,
@@ -17,7 +18,7 @@ import {
   type LeaderboardsAnswer,
 } from "@/lib/leaderboards";
 
-type Load = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; answer: LeaderboardsAnswer };
+type Load = { status: "loading" } | { status: "error"; message: string; code?: string } | { status: "ready"; answer: LeaderboardsAnswer };
 
 /** Why a board can be empty: its SPEC §8 eligibility, in plain words. */
 const EMPTY: Record<BoardKey, string> = {
@@ -38,13 +39,15 @@ export function LeaderboardsView({ season }: { season: number | null }) {
     const controller = new AbortController();
     fetchLeaderboards(workerUrl, season, controller.signal).then(
       (answer) => setLoad({ status: "ready", answer }),
-      (e) => controller.signal.aborted || setLoad({ status: "error", message: userMessage(e) }),
+      (e) => controller.signal.aborted || setLoad({ status: "error", message: userMessage(e), code: e instanceof FlowError ? e.code : undefined }),
     );
     return () => controller.abort();
   }, [workerUrl, season, attempt]);
 
   if (!workerUrl) return <p className="mt-6 text-muted">Leaderboards aren&apos;t switched on yet.</p>;
   if (load.status === "loading") return <Skeleton />;
+  // The worker 404s the current season while S0 stays hidden (#219, #371): say when the first public one opens.
+  if (load.status === "error" && load.code === "NOT_FOUND" && season === null) return <p className="mt-6 text-muted">{S1_STARTS}</p>;
   if (load.status === "error") {
     return (
       <div className="mt-6 flex flex-col gap-3">

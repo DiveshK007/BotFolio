@@ -41,3 +41,24 @@ export function checkDatabaseUrl(raw: string | undefined): DatabaseConfig | stri
   }
   return mode === undefined ? { connectionString: value, ssl: true } : { connectionString: value };
 }
+
+/**
+ * The Supabase session pooler refuses clients past its pool_size: 15 on the small tiers.
+ * UNVERIFIED for our project (Supabase → Database → Settings → Pool size).
+ */
+export const SESSION_POOLER_LIMIT = 15;
+
+/** Every pg pool the worker opens and its max. They must add up to SESSION_POOLER_LIMIT or less (docs/env.md). */
+export const POOL_MAX = {
+  /** One per job running at once: at 16:00 UTC season_close, daily_call_settle, big_move_sweep and the debut watcher, plus one spare. */
+  schedulerLocks: 5,
+  /** Shared by the slot's lanes. Their transactions are short and use only their own client. */
+  schedulerQueries: 3,
+  /** One loop, one transaction at a time. */
+  indexer: 2,
+  /** The public read routes and the card and .qie name sweepers. */
+  reads: 2,
+  /** Relays queue on one advisory lock anyway. */
+  relay: 2,
+  persona: 1,
+} as const;

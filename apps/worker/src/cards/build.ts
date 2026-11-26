@@ -86,17 +86,17 @@ export async function cardBot(db: Queryable, botId: string): Promise<CardBot | n
 
 export async function cardTrust(db: Queryable, botId: string): Promise<CardTrustScore | null> {
   const { rows } = await db.query<{ total: number; provisional: boolean; rules: string }>(
-    "select total, provisional, rules_version as rules from trust_scores where bot_id = $1::bigint order by season_id desc limit 1",
+    "select total, provisional, rules_version as rules from trust_scores where bot_id = $1::bigint and season_id > 0 order by season_id desc limit 1", // S0 is hidden (#219)
     [botId],
   );
   const t = rows[0];
   return t ? { total: t.total, provisional: t.provisional, rulesVersion: t.rules } : null;
 }
 
-/** The season open at `at`, or null between a 21:30 close and the next 00:00 open. */
+/** The public season open at `at`, or null between a 21:30 close and the next 00:00 open, and during the hidden S0 (#219). */
 export async function seasonAt(db: Queryable, at: Date): Promise<number | null> {
   const { rows } = await db.query<{ id: number }>(
-    "select id from seasons where starts_at <= $1::timestamptz and ends_at > $1::timestamptz order by id desc limit 1",
+    "select id from seasons where id > 0 and starts_at <= $1::timestamptz and ends_at > $1::timestamptz order by id desc limit 1",
     [at.toISOString()],
   );
   return rows[0]?.id ?? null;

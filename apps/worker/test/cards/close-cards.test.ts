@@ -111,6 +111,45 @@ describe("season-close cards", () => {
     expect(await card("battle-7-s1")).toBeUndefined();
     expect(await card("season-7-s1")).toBeDefined();
   });
+
+  it("the hidden S0 gets no battle, season or challenge cards, and its trust score is not shown (#219)", async () => {
+    await pg.query(
+      "insert into seasons (id, starts_at, ends_at, kind, provisional_min_trades, status, root_tx) values (0, $1, $2, 'sprint', 8, 'closed', $3)",
+      [ist("2026-11-25T00:00:00"), ist("2026-11-25T21:30:00"), ROOT_TX],
+    );
+    await pg.exec(`
+      insert into slots (slot_time, kind, season_id) values ('2026-11-25T21:00:00+05:30', 'scheduled', 0);
+      insert into portfolio_marks (bot_id, slot_id, cash_e8, holdings, value_e8)
+        select b, (select id from slots where season_id = 0), 0, '{}', 100000000000 from unnest(array[7, 8, 90, 91, 92]) b;
+      insert into season_results (season_id, bot_id, start_value_e8, end_value_e8, return_bps, max_dd_bps, trades, battle_rank)
+        select 0, bot_id, start_value_e8, end_value_e8, return_bps, max_dd_bps, trades, battle_rank from season_results where season_id = 1;
+      insert into trust_scores (season_id, bot_id, rules_version, f_rules, f_drawdown, f_consistency, f_explains, total, provisional, leaf_hash)
+        values (0, 7, 'trust-v1-sprint', 100, 100, 100, 100, 400, true, decode(repeat('00', 32), 'hex'));
+      insert into challenges (code, season_id, challenger_bot, opponent_bot, status, winner_bot) values ('0x${"ef".repeat(32)}', 0, 7, 8, 'settled', 7);`);
+    await sweepCloseCards(deps());
+    const { rows } = await pg.query<{ id: string }>("select id from cards where id like '%-s0' or id like 'challenge-%'");
+    expect(rows).toEqual([]);
+    expect((await card<SeasonCardPayload>("season-7-s1"))!.trust).toBeNull();
+  });
+
+  it("a pass skips bots whose cards exist and builds only the missing one", async () => {
+    await sweepCloseCards(deps());
+    let tradeReads = 0;
+    const counting = {
+      query: (text: string, values?: unknown[]) => {
+        if (text.includes("from trades t")) tradeReads++;
+        return db.query(text, values);
+      },
+    } as Queryable;
+    const withCount = (): CardDeps => ({ ...deps(), db: counting });
+    expect(await sweepCloseCards(withCount())).toBe(0);
+    expect(tradeReads).toBe(0);
+
+    await pg.exec("delete from cards where id = 'battle-7-s1'");
+    expect(await sweepCloseCards(withCount())).toBe(1);
+    expect(await card("battle-7-s1")).toBeDefined();
+    expect(tradeReads).toBe(0); // the season card exists, so its trades aren't re-read
+  });
 });
 
 describe("evolution cards", () => {

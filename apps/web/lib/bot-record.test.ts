@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ageAtCall, bpsPct, callLabel, fetchBotPage, formatUnits, istTime, parseBotPage, weightPct } from "./bot-record";
+import { ageAtCall, bpsPct, callBadge, callLabel, fetchBotPage, formatUnits, istTime, parseBotPage, reasonTagText, staleNote, weightPct } from "./bot-record";
 import { samplePage } from "./bot-record.fixture";
 
 describe("parseBotPage", () => {
@@ -46,6 +46,38 @@ describe("display helpers", () => {
     expect(callLabel("executed")).toBe("Traded");
     expect(callLabel("skipped_stale")).toBe("Held · price too old");
     expect(callLabel("whatever")).toBe("Held");
+  });
+
+  it("never calls a call traded without a trade on QIE (#370)", () => {
+    expect(callBadge({ status: "executed", traded: true }, true)).toBe("Traded");
+    expect(callBadge({ status: "executed", traded: false }, true)).toBe("Sending to QIE");
+    expect(callBadge({ status: "executed", traded: false }, false)).toBe("Didn't reach QIE, tries again next call");
+    expect(callBadge({ status: "executed" }, false)).toBe("Traded"); // older worker: no `traded`
+    expect(callBadge({ status: "skipped_stale", traded: false }, true)).toBe("Held · price too old");
+  });
+
+  it("says which price was too old, and how old", () => {
+    expect(staleNote({ status: "skipped_stale", stale: [{ asset: "BTC", age_s: 52 * 60 + 59 }] })).toBe("QIE's Bitcoin price was 52 min old, so it held.");
+    expect(staleNote({ status: "held", stale: [{ asset: "SOL", age_s: 3600 }, { asset: "GOLD", age_s: 7 * 3600 }] })).toBe(
+      "QIE's Solana price was 60 min old and Gold price was 7 h old, so it held.",
+    );
+    expect(staleNote({ status: "executed", stale: [{ asset: "BTC", age_s: 3000 }] })).toBeNull();
+    expect(staleNote({ status: "skipped_stale", stale: [] })).toBeNull();
+    expect(staleNote({ status: "skipped_stale" })).toBeNull();
+  });
+
+  it("puts reason tags in plain words and drops unknown ones", () => {
+    expect(reasonTagText("stay_cash")).toBe("Staying in cash");
+    expect(reasonTagText("momentum")).toBeNull();
+    expect(reasonTagText("__proto__")).toBeNull();
+    expect(reasonTagText(null)).toBeNull();
+  });
+
+  it("keeps `traded` and checked `stale` rows from the worker", () => {
+    const page = samplePage();
+    const d = { ...page.decisions[0]!, traded: "yes", stale: [{ asset: "BTC", age_s: 60 }, { asset: "DOGE", age_s: 1 }, { asset: "ETH", age_s: -1 }, null] };
+    const parsed = parseBotPage({ ok: true, page: { ...page, decisions: [d] } })!;
+    expect(parsed.decisions[0]).toMatchObject({ traded: undefined, stale: [{ asset: "BTC", age_s: 60 }] });
   });
 
   it("formats IST, percentages, units and weights", () => {

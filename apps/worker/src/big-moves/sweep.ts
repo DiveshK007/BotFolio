@@ -29,6 +29,8 @@ interface PendingMove {
   deadline: number;
   /** A SELL's units of the asset at the start of the gate that made the big move (#347). */
   startUnitsE18?: bigint;
+  /** Its decision's season has ended: the replay root is committed without this trade (#355). */
+  seasonEnded: boolean;
 }
 
 type Status = "approved" | "shrunk" | "expired";
@@ -54,6 +56,7 @@ export async function sweepBigMoves(deps: RunnerDeps, signal: AbortSignal): Prom
     order_id: string;
     deadline: string;
     start_units: string | null;
+    season_ended: boolean;
   }>(
     // start_units: the portfolio isBigMove() judged the SELL against, the retry's input if a stale retry made it.
     `select m.id::text as id, m.decision_id::text as decision, m.bot_id::text as bot_id, m.asset::text as asset,
@@ -65,7 +68,10 @@ export async function sweepBigMoves(deps: RunnerDeps, signal: AbortSignal): Prom
                where coalesce(r -> 'result' -> 'bigMoves', '[]'::jsonb)
                      @> jsonb_build_array(jsonb_build_object('orderId', '0x' || encode(m.order_id, 'hex')))
                limit 1),
-              d.gate_result -> 'replay' -> 'input' -> 'portfolio' -> 'unitsE18' ->> m.asset::text) end as start_units
+              d.gate_result -> 'replay' -> 'input' -> 'portfolio' -> 'unitsE18' ->> m.asset::text) end as start_units,
+            coalesce((select se.ends_at <= to_timestamp($1::float8)
+                      from slots sl join seasons se on se.id = sl.season_id
+                      where sl.id = d.slot_id), false) as season_ended
      from big_moves m join decisions d on d.id = m.decision_id
      where m.status = 'pending' and m.deadline < to_timestamp($1::float8)
      order by m.bot_id, m.created_at, m.id`,
@@ -82,6 +88,7 @@ export async function sweepBigMoves(deps: RunnerDeps, signal: AbortSignal): Prom
     orderId: r.order_id as Hex,
     deadline: Number(r.deadline),
     startUnitsE18: r.start_units === null ? undefined : BigInt(r.start_units),
+    seasonEnded: r.season_ended,
   }));
   if (moves.length === 0) return { shrunk: 0, expired: 0 };
 
@@ -105,6 +112,11 @@ export async function sweepBigMoves(deps: RunnerDeps, signal: AbortSignal): Prom
         // Used without a shrink of ours: the owner's Allow got there first. The indexer adds its tx.
         if (await chain.orderUsed(move.orderId)) {
           await setStatus(move, (await shrinkLogged(deps, move)) ? "shrunk" : "approved");
+          continue;
+        }
+        if (move.seasonEnded) {
+          await setStatus(move, "expired");
+          expired++;
           continue;
         }
         const pending: ApprovedOrder = {

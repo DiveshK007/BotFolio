@@ -40,6 +40,8 @@ export interface RelayGuard {
   hasAcceptedTerms(identity: Pick<Identity, "wallets" | "privyDid">): Promise<boolean>;
   /** The Daily Call pick POST /daily-call/view stored for this bot and IST day, or null if none (#219). */
   dailyCallPick(botId: bigint, day: number): Promise<boolean | null>;
+  /** The big move with this orderId belongs to a season that has ended, so its replay root is committed (#355). */
+  bigMoveSeasonEnded(orderId: Hex): Promise<boolean>;
 }
 
 export interface RelayChain {
