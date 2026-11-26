@@ -72,14 +72,15 @@ export async function decideBot(
   let writeView: Awaited<ReturnType<typeof prepareDailyView>> = async () => {};
 
   if (state.bot.house) {
+    const strategy = houseStrategy(profile.name);
     const context: HouseContext = {
-      strategy: houseStrategy(profile.name),
+      strategy,
       slot,
       seasonStart: slot.season?.startsAt ?? null,
       portfolio: state.portfolio,
       prices: market.prices,
       chg24hPct: Object.fromEntries(Object.entries(market.changes).map(([asset, c]) => [asset, c?.chg24hPct])),
-      pendingRebalance: await pendingRebalanceOf(db, botId, slot),
+      pendingRebalance: await pendingRebalanceOf(db, botId, slot, strategy),
     };
     const input = publicJson({
       ...context,

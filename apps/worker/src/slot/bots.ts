@@ -1,6 +1,6 @@
 import type { AssetId } from "@botfolio/shared";
 import { InternalFailure } from "../auth/log";
-import { staleRebalanceAssets, type HouseStrategy } from "../house/strategies";
+import { owedRebalance, staleRebalanceAssets, type HouseStrategy } from "../house/strategies";
 import type { Queryable } from "../scheduler/db";
 import type { Slot } from "../scheduler/slots";
 import type { ChainBot } from "./chain";
@@ -45,19 +45,21 @@ export function houseStrategy(name: string): HouseStrategy {
 /**
  * `HouseContext.pendingRebalance` for a scheduled slot (#219 item 19): the assets the bot's previous decision in
  * the same season meant to rebalance but couldn't, because their price was still too old after the +15 min retry.
- * A retry slot only targets those assets, so following the chain one decision back is enough.
+ * A retry slot only targets those assets, so following the chain one decision back is enough. If the bot has no
+ * decision since the season's first 09:00 slot (that slot was missed), it is the whole rebalance (`owedRebalance`).
  */
-export async function pendingRebalanceOf(db: Queryable, botId: bigint, slot: Slot): Promise<AssetId[]> {
+export async function pendingRebalanceOf(db: Queryable, botId: bigint, slot: Slot, strategy: HouseStrategy): Promise<AssetId[]> {
   if (slot.kind !== "scheduled" || !slot.season) return [];
-  const { rows } = await db.query<{ id: string; raw: unknown; input: unknown; gate_result: unknown }>(
-    `select d.id::text as id, d.raw_output_json as raw, d.input_json as input, d.gate_result
+  const { rows } = await db.query<{ id: string; time: Date; raw: unknown; input: unknown; gate_result: unknown }>(
+    `select d.id::text as id, s.slot_time as time, d.raw_output_json as raw, d.input_json as input, d.gate_result
      from decisions d join slots s on s.id = d.slot_id
      where d.bot_id = $1::bigint and s.season_id = $2::int and s.kind = 'scheduled' and s.slot_time < $3::timestamptz
      order by s.slot_time desc limit 1`,
     [botId.toString(), slot.season.id, slot.time.toISOString()],
   );
   const row = rows[0];
-  if (!row?.raw) return [];
+  const owed = owedRebalance(strategy, slot, slot.season.startsAt, row ? new Date(row.time) : null);
+  if (owed.length > 0 || !row?.raw) return owed;
   const input = row.input as { strategy: HouseStrategy; slot: { kind: Slot["kind"]; time: string }; seasonStart: string | null; pendingRebalance?: AssetId[] };
   const actions = (row.raw as { actions: { asset: AssetId }[] }).actions;
   const decision: StoredDecision = { id: row.id, botId, raw: row.raw, input: row.input, gateResult: (row.gate_result ?? {}) as StoredDecision["gateResult"] };

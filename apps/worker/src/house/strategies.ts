@@ -60,6 +60,29 @@ export function isRebalanceSlot(slot: HouseContext["slot"], seasonStart: Date | 
   return sinceOpen >= 0 && sinceOpen < 86_400_000;
 }
 
+const DAY_MS = 86_400_000;
+const NINE_IST_AS_UTC_MS = 12_600_000; // 09:00 IST is 03:30 UTC
+
+/**
+ * The rebalance a bot still owes this season because no decision of its ran at or after the season's first 09:00
+ * slot: the worker was asleep then, decide threw at every attempt, or the bot was seeded later. The next scheduled
+ * slot that does decide for it rebalances its whole universe (#356). Empty at the 09:00 slot itself, which
+ * `isRebalanceSlot` already covers. `lastDecided` is the slot time of the bot's latest earlier scheduled decision in
+ * the season, null if none.
+ */
+export function owedRebalance(
+  strategy: HouseStrategy,
+  slot: HouseContext["slot"],
+  seasonStart: Date | null,
+  lastDecided: Date | null,
+): AssetId[] {
+  if (strategy === "momentum_max" || !seasonStart || slot.kind !== "scheduled") return [];
+  const start = seasonStart.getTime();
+  const firstNine = start + ((((NINE_IST_AS_UTC_MS - start) % DAY_MS) + DAY_MS) % DAY_MS);
+  if (slot.time.getTime() <= firstNine || (lastDecided && lastDecided.getTime() >= firstNine)) return [];
+  return [...UNIVERSE[strategy]];
+}
+
 /** This slot rebalances `asset`: the season's first 09:00 slot, or a later one retrying a stale asset. */
 function rebalances(ctx: Pick<HouseContext, "slot" | "seasonStart" | "pendingRebalance">, asset: AssetId): boolean {
   if (isRebalanceSlot(ctx.slot, ctx.seasonStart)) return true;
