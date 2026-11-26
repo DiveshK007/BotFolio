@@ -3,7 +3,7 @@ import { loadWorkerConfig } from "./config";
 import { createQiePublicClient } from "./chain";
 import { committerSender, dailyCallJobs } from "./daily-call";
 import { HealthState, startOracleMonitor } from "./health";
-import { createAlerts, hotWallets, lowBalanceWei, startAlertMonitor } from "./alerts";
+import { createAlerts, hotWallets, lowBalanceWei, startAlertMonitor, startedText } from "./alerts";
 import { consoleLog as jsonLog } from "./scheduler/log";
 import { startIndexer } from "./indexer";
 import { startScheduler } from "./scheduler";
@@ -45,19 +45,9 @@ async function main(): Promise<void> {
   const client = createQiePublicClient(cfg);
   const health = new HealthState({ provider: cfg.llm.provider, capUsd: cfg.llm.monthlyBudgetUsd });
   const stopOracle = startOracleMonitor(client, cfg.feeds, health, cfg.oracleRefreshMs);
-  // Low balance, LLM budget and job failures to ALERT_WEBHOOK_URL, checked every 10 min (issue #66).
-  const stopAlerts = startAlertMonitor(
-    {
-      alerts: createAlerts({ env: process.env, log: jsonLog }),
-      health,
-      wallets: hotWallets(process.env),
-      minWei: lowBalanceWei(process.env),
-      getBalance: (address) => client.getBalance({ address }),
-      log: jsonLog,
-    },
-    10 * 60_000,
-  );
-  const indexer = startIndexer({ rpcUrls: cfg.rpcUrls });
+  const alerts = createAlerts({ env: process.env, log: jsonLog });
+  void alerts.notify("worker_started", startedText(process.env));
+  const indexer = startIndexer({ rpcUrls: cfg.rpcUrls, health });
   const committer = committerSender(process.env, cfg.rpcUrls);
   // For v2 proposals at season close. Without a working provider every bot gets the deterministic fallback.
   let v2Llm: ReturnType<typeof createLlmClient> | null = null;
@@ -100,12 +90,36 @@ async function main(): Promise<void> {
   const origins = loadAllowedOrigins(process.env);
   const clientIp = createClientIp(process.env);
   const auth = setUpAuth(process.env);
-  if (auth.problems.length) consoleLog("auth.not_configured", { env: auth.problems.join(",") });
+  // Variable names only, as the logs: /healthz is public.
+  if (auth.problems.length) {
+    consoleLog("auth.not_configured", { env: auth.problems.join(",") });
+    health.addStartProblem(`sign-in not started: needs ${auth.problems.join(", ")}`);
+  }
   const relayer = setUpRelayer({ env: process.env, auth, rpcUrls: cfg.rpcUrls, log: consoleLog });
-  if (!relayer.relay) consoleLog("relay.disabled", { env: relayer.problems.join(",") });
+  if (!relayer.relay) {
+    consoleLog("relay.disabled", { env: relayer.problems.join(",") });
+    // Also when RELAY_ENABLED is off on purpose: every user action fails meanwhile, so it is degraded.
+    health.addStartProblem(`relay not started: needs ${relayer.problems.join(", ")}`);
+  }
   relayer.start();
   const persona = setUpPersona({ env: process.env, cfg, health, log: consoleLog });
-  if (!persona.service) consoleLog("persona.disabled", { env: persona.problems.join(",") });
+  if (!persona.service) {
+    consoleLog("persona.disabled", { env: persona.problems.join(",") });
+    health.addStartProblem(`persona not started: needs ${persona.problems.join(", ")}`);
+  }
+  // Started once every module has said what didn't start, so the first pass alerts it.
+  // Low balance, LLM budget, job failures, start problems and missed slots to ALERT_WEBHOOK_URL, every 10 min (issue #66).
+  const stopAlerts = startAlertMonitor(
+    {
+      alerts,
+      health,
+      wallets: hotWallets(process.env),
+      minWei: lowBalanceWei(process.env),
+      getBalance: (address) => client.getBalance({ address }),
+      log: jsonLog,
+    },
+    10 * 60_000,
+  );
   // Small pool for the public read routes and the card sweeper.
   const database = databaseConfig(process.env.DATABASE_URL);
   const reads = database ? openDb({ ...database, max: 2 }, consoleLog) : null;

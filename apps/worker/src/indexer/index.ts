@@ -1,3 +1,4 @@
+import type { HealthState } from "../health";
 import { createChainSource } from "./chain";
 import { loadIndexerConfig, type DatabaseConfig } from "./config";
 import { createPgDb, type Db } from "./db";
@@ -11,6 +12,8 @@ export interface StartOptions {
   env?: Record<string, string | undefined>;
   log?: Log;
   openDb?: (database: DatabaseConfig) => Db;
+  /** Told why it didn't start, for /healthz and the alerts. */
+  health?: Pick<HealthState, "addStartProblem">;
 }
 
 /**
@@ -18,10 +21,11 @@ export interface StartOptions {
  * and the rest of the worker keeps running.
  */
 export function startIndexer(options: StartOptions): { stop(): Promise<void> } | null {
-  const { rpcUrls, env = process.env, log = consoleLog, openDb = createPgDb } = options;
+  const { rpcUrls, env = process.env, log = consoleLog, openDb = createPgDb, health } = options;
   const loaded = loadIndexerConfig(env);
   if (!loaded.ok) {
     log.warn("NOT started", { problems: loaded.problems });
+    health?.addStartProblem(`indexer not started: ${loaded.problems.join(", ")}`);
     return null;
   }
 
