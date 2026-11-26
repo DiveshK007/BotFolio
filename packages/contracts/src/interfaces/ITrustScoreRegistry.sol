@@ -12,7 +12,7 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 interface ITrustScoreRegistry is IAccessControl, IERC165 {
     /// @notice A rules version was published. Rules are never edited; a change is a new version.
     event RulesPublished(bytes32 indexed version, string uri, bytes32 docHash);
-    /// @notice A season's score root was committed (may be re-committed, e.g. daily provisional roots).
+    /// @notice A season's score root was committed (may be re-committed, e.g. daily provisional roots, until the season closes).
     event ScoresCommitted(uint32 indexed season, bytes32 indexed rulesVersion, bytes32 root, string uri);
 
     /// @notice This rules version is already published.
@@ -21,9 +21,13 @@ interface ITrustScoreRegistry is IAccessControl, IERC165 {
     error UnknownRules(bytes32 version);
     /// @notice Empty version, URI or root.
     error EmptyValue();
+    /// @notice The season is closed and already has a score root, which can't be replaced.
+    error ScoresLocked(uint32 season);
 
     /// @notice Role of the committer key.
     function COMMITTER_ROLE() external view returns (bytes32);
+    /// @notice The SeasonLedger whose closed seasons lock their score root.
+    function seasonLedger() external view returns (address);
 
     /// @notice Rules doc URL for a version ("" if unpublished). Versions are bytes32 strings, e.g. "trust-v1".
     /// @param version Rules version.
@@ -45,6 +49,7 @@ interface ITrustScoreRegistry is IAccessControl, IERC165 {
     function publishRules(bytes32 version, string calldata uri, bytes32 docHash) external;
 
     /// @notice Commits a season's score root. COMMITTER_ROLE only; `rulesVersion` must be published.
+    ///         Once the season is closed in SeasonLedger, a root already set can't be replaced.
     /// @param season Season number.
     /// @param rulesVersion Rules version the scores were computed with.
     /// @param root Merkle root of the score leaves.

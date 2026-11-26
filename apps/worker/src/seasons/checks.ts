@@ -17,6 +17,7 @@ export interface SeasonCheck {
  *
  * The chain decides what is already open, so a rerun, a restart or a late deploy can't open one twice. A season
  * whose end has also passed is still opened: the contract numbers seasons in order, so the next needs it.
+ * The contract opens S(n+1) only once S(n) is closed (#219 item 3), so a late deploy catches up one season per close.
  * Nothing here knows about sprint or weekly: both are just rows in `seasons` (#55).
  */
 export async function openDueSeasons({ db, chain, now, signal, log }: SeasonCheck): Promise<number[]> {
@@ -33,6 +34,11 @@ export async function openDueSeasons({ db, chain, now, signal, log }: SeasonChec
 
     const startsAt = new Date(season.starts_at);
     if (startsAt > now) break;
+    if (next > 0 && !(await chain.isClosed(next - 1))) {
+      // openSeason would revert with PreviousSeasonOpen. The next run tries again after the close.
+      log.warn("seasons.previous_not_closed", { season: next });
+      break;
+    }
 
     await chain.openSeason(next, startsAt, new Date(season.ends_at));
     opened.push(next);

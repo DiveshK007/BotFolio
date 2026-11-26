@@ -40,11 +40,13 @@ describe.skipIf(!fork)("season open on the real SeasonLedger, on an Anvil fork",
 
   it("the committer opens the due seasons once, with the table's times", async () => {
     const committer = chain(ACCOUNTS.committer);
-    expect(await openDueSeasons({ db, chain: committer, now, signal, log })).toEqual([0, 1]);
+    // S1 is due too, but the contract opens it only after S0's close (#219 item 3).
+    expect(await openDueSeasons({ db, chain: committer, now, signal, log })).toEqual([0]);
     expect(await openDueSeasons({ db, chain: committer, now, signal, log })).toEqual([]);
-    const [start, end, , , closed] = await f.read<[bigint, bigint, string, string, boolean]>("SeasonLedger", "seasons", [1]);
-    expect(start).toBe(BigInt(Date.parse("2026-11-26T00:00:00+05:30") / 1000));
-    expect(end).toBe(BigInt(Date.parse("2026-11-27T21:30:00+05:30") / 1000));
+    expect(await committer.nextSeason()).toBe(1);
+    const [start, end, , , closed] = await f.read<[bigint, bigint, string, string, boolean]>("SeasonLedger", "seasons", [0]);
+    expect(start).toBe(BigInt(Date.parse("2026-11-24T00:00:00+05:30") / 1000));
+    expect(end).toBe(BigInt(Date.parse("2026-11-25T21:30:00+05:30") / 1000));
     expect(closed).toBe(false);
   }, 120_000);
 });

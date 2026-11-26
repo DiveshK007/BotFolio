@@ -79,6 +79,19 @@
   },
   {
     "type": "function",
+    "name": "SETTLE_WINDOW",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "btcFeed",
     "inputs": [],
     "outputs": [
@@ -642,6 +655,17 @@
         "name": "day",
         "type": "uint32",
         "internalType": "uint32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "BotBanned",
+    "inputs": [
+      {
+        "name": "botId",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ]
   },

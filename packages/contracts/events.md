@@ -77,7 +77,7 @@ EIP-712 domain: name `"BotFolio"`, version `"1"`, chainId `1990`, verifyingContr
 | `event ScoresCommitted(uint32 indexed season, bytes32 indexed rulesVersion, bytes32 root, string uri)` | `0xbf3f2287c8959a668f6a973b44e5ae94d6d134e6b906ee7cad08b3cbff78cb5e` | system (committer) |
 
 - `version` / `rulesVersion` are short strings as `bytes32`, left-aligned and zero-padded, e.g. `bytes32("trust-v1-sprint")`, `bytes32("trust-v1")`.
-- A season can get more than one `ScoresCommitted` (optional daily roots). The latest one is `scoresRoot(season)`.
+- A season can get more than one `ScoresCommitted` (optional daily roots) while it is open. The latest one is `scoresRoot(season)`. Once the season is closed in SeasonLedger, a root already set can't be replaced (`ScoresLocked`); a closed season without one can still get its first.
 - Leaf = `keccak256(abi.encode(season, botId, fRules, fDrawdown, fConsistency, fExplains, total))`. Every value is ABI-encoded as a 32-byte word. The tree is keccak256 over sorted pairs (OZ `MerkleProof`).
 
 ## DailyCall
@@ -91,6 +91,8 @@ EIP-712 domain: name `"BotFolio"`, version `"1"`, chainId `1990`, verifyingContr
 - `Called.price`/`roundId` are the BTC/USDT round read at call time. `Settled.price`/`roundId` are the round used to settle; its `updatedAt` is at or after 21:00 IST that day.
 - Equal price at settle gives `userCorrect = botCorrect = false` (no winner).
 - If `settle` finds no fresh BTC round at or after 21:00 IST, it emits nothing and does not revert. No `Settled` event means "settles late" (SPEC §4.7, §6.1).
+- From 21:00 IST the next day (`SETTLE_WINDOW` = 24 h after `SETTLE_FROM`), `settle` always does nothing for that day: a call with no `Settled` event by then is void.
+- `call` reverts with `BotBanned` for an admin-banned bot. A bot its owner paused can still call.
 - Bot view EIP-712 domain: name `"BotFolio DailyCall"`, version `"1"`, chainId `1990`, verifyingContract = DailyCall. Type the runner signs:
   `BotView(uint256 botId,uint32 day,bool botUp)`
 
