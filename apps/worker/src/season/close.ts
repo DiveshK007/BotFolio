@@ -1,4 +1,4 @@
-import { stringToHex, type Hex } from "viem";
+import { stringToHex, zeroHash, type Hex } from "viem";
 import { revealOutputHashes } from "../decisions/secrecy";
 import type { Queryable } from "../scheduler/db";
 import type { Log } from "../scheduler/log";
@@ -60,7 +60,7 @@ export async function closeSeasons(deps: CloseDeps, signal: AbortSignal): Promis
       await revealOutputHashes(db, deps.now());
       await saveSeasonResults(db, season, await computeSeasonResults(db, season, startCash));
     }
-    await commitTrustScores(deps, season, startCash);
+    await commitTrustScores(deps, season, startCash, dataClosed);
     if (dataClosed) {
       await settleChallenges(deps, season);
       continue;
@@ -84,7 +84,7 @@ export async function closeSeasons(deps: CloseDeps, signal: AbortSignal): Promis
 }
 
 /** Scores every bot with a result, saves them, and commits their root unless the chain already has it. */
-async function commitTrustScores(deps: CloseDeps, season: number, startCash: bigint): Promise<void> {
+async function commitTrustScores(deps: CloseDeps, season: number, startCash: bigint, dataClosed: boolean): Promise<void> {
   const { db, chain, store, log } = deps;
   const { rows } = await db.query<{ rules: string | null }>("select trust_rules_version as rules from seasons where id = $1::int", [season]);
   const rules = rows[0]?.rules;
@@ -101,7 +101,13 @@ async function commitTrustScores(deps: CloseDeps, season: number, startCash: big
   await saveTrustScores(db, season, rules, scores);
 
   const file = scoresFile(season, rules, scores);
-  if ((await chain.scoresRoot(season)).toLowerCase() === file.root.toLowerCase()) return;
+  const onChain = (await chain.scoresRoot(season)).toLowerCase();
+  if (onChain === file.root.toLowerCase()) return;
+  if (dataClosed && onChain !== zeroHash) {
+    // A closed season's root is locked (#219 item 4): commitScores would revert and hold up its challenges.
+    log.warn("season.scores_locked", { season, onChain, computed: file.root });
+    return;
+  }
   const version = stringToHex(rules, { size: 32 });
   if (!(await chain.rulesPublished(version))) {
     // Not a reason to hold back the season's data root. The next run tries again.
