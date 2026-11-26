@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AssetId } from "@botfolio/shared";
 import { DnaBot as BotHead } from "./DnaBot";
 import { Badge } from "./ui";
-import { short, usd } from "@/lib/site/format";
+import { cryptoDelayed, short, tickerAge, usd } from "@/lib/site/format";
 import type { DnaMood } from "@/lib/dna";
 
 const rm = () => reducedMotion();
@@ -49,20 +49,31 @@ export function HoloEffects() {
 }
 
 /* ---------- Ticker: LED marquee of oracle prices ---------- */
-export interface TickerItem { asset: AssetId; price: string; roundId: string; ageMin: number; maxAgeMin: number }
+/** updatedAt is the oracle's unix seconds. Ages and LIVE/DELAYED are worked out after mount, so cached HTML never carries them. */
+export interface TickerItem { asset: AssetId; price: string; roundId: string; updatedAt: number }
 export function Ticker({ items, status }: { items: TickerItem[] | null; status: "live" | "example" | "error" }) {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    const tick = () => setNow(Date.now() / 1000);
+    const first = setTimeout(tick, 0), id = setInterval(tick, 30_000);
+    return () => { clearTimeout(first); clearInterval(id); };
+  }, []);
+  const delayed = now !== null && !!items && cryptoDelayed(items, now);
   const row = (aria: boolean) => (
     <span className="row" aria-hidden={aria || undefined}>
       {(items ?? []).map(it => {
-        const tone = it.ageMin > it.maxAgeMin ? "grey" : it.ageMin >= 60 ? "amber" : "";
-        const age = it.ageMin >= 60 ? `${Math.floor(it.ageMin / 60)}h` : `${Math.max(0, Math.round(it.ageMin))}m`;
-        return <span className="ticker-item" key={it.asset}><b>{it.asset}</b><span>{it.price}</span><span className="r">round {it.roundId}</span><span className={`d ${tone}`} /><span className="r">{age} old</span></span>;
+        const age = now === null ? null : tickerAge(it.asset, it.updatedAt, now);
+        return <span className="ticker-item" key={it.asset}><b>{it.asset}</b><span>{it.price}</span><span className="r">round {it.roundId}</span>{age && <><span className={`d ${age.tone}`} /><span className="r">{age.text} old</span></>}</span>;
       })}
     </span>
   );
+  const badge = status === "example" ? <Badge kind="example">EXAMPLE</Badge>
+    : status !== "live" || now === null ? null
+    : delayed ? <Badge kind="delayed" title="Every crypto price is older than 30 min, so bots hold crypto until a fresh one.">DELAYED</Badge>
+    : <Badge kind="live">LIVE</Badge>;
   return (
     <div className="ticker" role="region" aria-label="Oracle prices ticker, focus to pause" tabIndex={0}>
-      <span className="ticker-label"><span>QIE ORACLE</span>{status === "live" ? <Badge kind="live">LIVE</Badge> : status === "example" ? <Badge kind="example">EXAMPLE</Badge> : null}</span>
+      <span className="ticker-label"><span>QIE ORACLE</span>{badge}</span>
       <div className="ticker-track">{status === "error" || !items ? <span className="ticker-item">Oracle prices unavailable right now · check mainnet.qie.digital</span> : <>{row(false)}{row(true)}</>}</div>
     </div>
   );

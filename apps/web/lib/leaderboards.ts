@@ -112,7 +112,7 @@ export async function fetchLeaderboards(workerUrl: string, season: number | null
   if (signal?.aborted) abort();
   signal?.addEventListener("abort", abort);
   try {
-    const res = await fetch(url, { credentials: "omit", signal: controller.signal });
+    const res = await fetch(url, { credentials: "omit", signal: controller.signal, next: { revalidate: 60 } });
     const json: unknown = await res.json().catch(() => null);
     if (res.ok) {
       const answer = parseLeaderboards(json);
