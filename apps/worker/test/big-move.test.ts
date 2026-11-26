@@ -231,6 +231,45 @@ describe("shrinkBigMove() SPEC §6.4 step 10: expiry fallback", () => {
     expect(r).toMatchObject({ outcome: "execute", order: { bps: 4999, buy: false } });
   });
 
+  // #347: the gate judged the second SELL on the holding the decision started with, so the shrink must too.
+  function cumulativeSell(...actions: Parameters<typeof decision>) {
+    const i = input({ portfolio: portfolio({ ETH: 40 }) });
+    const r = run(i, ...actions);
+    const now = applyTrade(i.portfolio, i.prices, { asset: "ETH", buy: false, bps: r.orders[0]!.bps });
+    const s: ShrinkInput = {
+      ...i,
+      portfolio: now,
+      bot: { ...i.bot, tradesToday: 1 },
+      pending: r.bigMoves[0]!.order,
+      nowSeconds: LATE,
+      orderUsed: false,
+      trigger: "expired",
+      startUnitsE18: i.portfolio.unitsE18.ETH,
+    };
+    return { i, now, s };
+  }
+
+  it("shrinks a cumulative SELL so the decision's total stays under 50 %", () => {
+    const { i, now, s } = cumulativeSell(sell("ETH", 40), sell("ETH", 40));
+    const r = shrinkBigMove(s);
+    if (r.outcome !== "execute") throw new Error(r.outcome);
+    // 49.99 % of the start less the 40 % already sold, as a share of the 60 % left.
+    expect(r.order.bps).toBe(1665);
+    expect(isBigMove(i, now, { asset: "ETH", buy: false, bps: r.order.bps })).toBe(false);
+  });
+
+  it("without the starting units, a SELL is judged on the holding now (shrinks logged before #347)", () => {
+    const { s } = cumulativeSell(sell("ETH", 40), sell("ETH", 40));
+    expect(shrinkBigMove({ ...s, startUnitsE18: undefined })).toMatchObject({ outcome: "execute", order: { bps: 4000 } });
+  });
+
+  it("drops a cumulative SELL with no room left under 50 %", () => {
+    const { s } = cumulativeSell(sell("ETH", 40), sell("ETH", 40));
+    expect(shrinkBigMove({ ...s, startUnitsE18: s.portfolio.unitsE18.ETH * 2n })).toEqual({ outcome: "drop", reason: "zero" });
+    // 49 % then 10 % of the rest leaves 0.99 % of the start, under the 1 % minimum order.
+    expect(shrinkBigMove(cumulativeSell(sell("ETH", 49), sell("ETH", 10)).s)).toEqual({ outcome: "drop", reason: "min_order" });
+  });
+
   it("counts what is already held", () => {
     const r = shrinkBigMove(pendingFrom(input({ portfolio: portfolio({ BTC: 20 }) }), buy("BTC", 30)));
     // Just under 100 of room in 800 cash.
@@ -320,11 +359,13 @@ describe("big moves over 3,000 random decisions", () => {
         expect(executeBatch(i.bot, i.portfolio, i.prices, [...r.orders, order]).skips).toEqual([]);
 
         const bot = { ...i.bot, tradesToday: r.orders.length };
-        const s = shrinkBigMove({ ...i, bot, portfolio: sim, pending: order, orderUsed: false, trigger: "owner" });
+        const asset = ASSET_IDS[order.asset]!;
+        const startUnitsE18 = order.buy ? undefined : i.portfolio.unitsE18[asset];
+        const s = shrinkBigMove({ ...i, bot, portfolio: sim, pending: order, orderUsed: false, trigger: "owner", startUnitsE18 });
         if (s.outcome !== "execute") continue;
-        const trade = { asset: ASSET_IDS[order.asset]!, buy: order.buy, bps: s.order.bps };
-        // A shrink is judged on the holding when it runs (shrink.ts), not the one the decision started with.
-        expect(isBigMove({ ...i, portfolio: sim }, sim, trade)).toBe(false);
+        const trade = { asset, buy: order.buy, bps: s.order.bps };
+        // Judged as the gate judged the big move: a SELL against the holding the decision started with (#347).
+        expect(isBigMove(i, sim, trade)).toBe(false);
         expect(tradeAmounts(sim, i.prices, trade).cashE8).toBeGreaterThan(0n);
         expect(executeBatch(bot, sim, i.prices, [s.order]).skips).toEqual([]);
       }
