@@ -15,6 +15,7 @@ export const samplePage = (): BotPage => ({
     status: "active",
     created_at: "2026-11-24T00:00:00.000Z",
     created_tx: TX,
+    dna_seed: null,
   },
   versions: [{ version: 1, source: "create", config_hash: `0x${"22".repeat(32)}`, committed_tx: TX, approved_at: null, max_per_coin_bps: 2500, max_trades_per_day: 4 }],
   trades: [

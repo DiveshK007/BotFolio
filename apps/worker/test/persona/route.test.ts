@@ -179,6 +179,19 @@ describe("POST /persona", () => {
     expect(llm.calls).toHaveLength(0);
   });
 
+  it("carries an optional dnaSeed into the draft without changing personaHash", async () => {
+    const post = await serve();
+    const res = await post({ ...ok, dnaSeed: "pet-4242-wolf" });
+    expect(res.status).toBe(200);
+    expect(res.body.dnaSeed).toBe("pet-4242-wolf");
+    expect(parsePersonaDraft(res.body)?.dnaSeed).toBe("pet-4242-wolf");
+    const draft = await personaDraft(db as never, WALLET, res.body.personaHash as Hex);
+    expect(draft?.dnaSeed).toBe("pet-4242-wolf");
+    const bad = await post({ ...ok, dnaSeed: "<script>" });
+    expect(bad.status).toBe(400);
+    expect(bad.body.error.code).toBe("BAD_REQUEST");
+  });
+
   it("is off until configured", async () => {
     const res = await (await serve({ off: true }))(ok);
     expect(res.body.error.code).toBe("PERSONA_DISABLED");

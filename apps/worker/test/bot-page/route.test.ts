@@ -31,7 +31,7 @@ async function start(over: Partial<BotPageRouteOptions> = {}) {
 
 beforeEach(async () => {
   ({ pg, db } = await testDb()); // bots 7 and 8
-  await pg.exec("update bots set persona_text = '<script>alert(1)</script>' where id = 7");
+  await pg.exec("update bots set persona_text = '<script>alert(1)</script>', dna_seed = 'pet-99' where id = 7");
   const { rows: slots } = await pg.query<{ id: string }>(
     "insert into slots (slot_time, kind) values ($1, 'scheduled'), ($2, 'scheduled') returning id::text as id",
     [ist("2026-11-26T09:00:00"), ist("2026-11-26T13:00:00")],
@@ -86,6 +86,7 @@ describe("GET /bot-page", () => {
     const { page } = (await res.json()) as { page: BotPage };
 
     expect(page.bot.persona).toBe("<script>alert(1)</script>"); // raw text: the web renders it as text, never HTML
+    expect(page.bot.dna_seed).toBe("pet-99");
     expect(page.start_cash_e8).toBe(START.toString());
     expect(page.versions[0]).toMatchObject({ version: 1, config_hash: `0x${"00".repeat(32)}` });
 

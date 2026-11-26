@@ -20,7 +20,8 @@ copied by name in `apps/web/lib/public-record.ts`, so nothing new reaches this A
     "persona": "Buys dips.",               // user/LLM text: render as text only, never HTML or a link (#159)
     "owner_wallet": "0x…", "owner_qie_name": null,
     "is_house": false, "status": "active",
-    "created_at": "2026-11-24T00:00:00.000Z", "created_tx": "0x…"
+    "created_at": "2026-11-24T00:00:00.000Z", "created_tx": "0x…",
+    "dna_seed": "pet-12345"                // optional preview DNA seed from /create (null = bot-<id>)
   },
   "versions": [                             // committed versions, newest first
     { "version": 1, "source": "create", "config_hash": "0x…", "committed_tx": "0x…", "approved_at": null,

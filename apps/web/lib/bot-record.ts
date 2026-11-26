@@ -87,6 +87,7 @@ export interface BotPage {
     status: string;
     created_at: string;
     created_tx: string | null;
+    dna_seed?: string | null;
   };
   versions: BotVersion[];
   trades: BotTrade[];

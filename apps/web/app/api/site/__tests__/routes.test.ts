@@ -1,0 +1,82 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const complete = vi.fn();
+vi.mock("@botfolio/llm", () => ({
+  createLlmClient: () => ({ provider: "fake", complete }),
+  loadLlmConfig: () => ({ models: { persona: "m" }, timeoutMs: 20000 }),
+}));
+vi.mock("@/lib/bot-record", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/bot-record")>("@/lib/bot-record");
+  const { samplePage } = await import("@/lib/bot-record.fixture");
+  return { ...actual, fetchBotPage: vi.fn(async (id: string) => (id === "7" ? { kind: "ok", page: samplePage() } : { kind: "not_found" })) };
+});
+
+const talkReq = (ip: string, botId = "7") => new Request("http://x/api/site/talk", { method: "POST", headers: { "x-forwarded-for": ip, "content-type": "application/json" }, body: JSON.stringify({ botId, messages: [{ role: "user", content: "zebra-banana-42" }] }) });
+
+describe("POST /api/site/talk", () => {
+  beforeEach(() => complete.mockReset());
+  it("answers in character from the record", async () => {
+    complete.mockResolvedValue({ output: { reply: "Bought a little BTC. Calmly." } });
+    const { POST } = await import("../talk/route");
+    const r = await POST(talkReq("1.1.1.1"));
+    expect(await r.json()).toEqual({ reply: "Bought a little BTC. Calmly." });
+    const sent = complete.mock.calls[0]![0];
+    expect(sent.input.facts.name).toBe("AlphaWolf");
+    expect(sent.system).not.toContain("zebra-banana-42");
+    expect(JSON.stringify(sent.input)).toContain("zebra-banana-42"); // user text never goes in the system prompt
+  });
+  it("replaces replies that use banned money words", async () => {
+    complete.mockResolvedValue({ output: { reply: "You could earn a lot of profit!" } });
+    const { POST } = await import("../talk/route");
+    const j = await (await POST(talkReq("2.2.2.2"))).json();
+    expect(j.reply).not.toMatch(/earn|profit/i);
+  });
+  it("rate-limits after 6 messages per visitor", async () => {
+    complete.mockResolvedValue({ output: { reply: "ok" } });
+    const { POST } = await import("../talk/route");
+    for (let i = 0; i < 6; i++) await POST(talkReq("3.3.3.3"));
+    expect((await POST(talkReq("3.3.3.3"))).status).toBe(429);
+  });
+  it("404s an unknown bot and 503s when the LLM fails", async () => {
+    const { POST } = await import("../talk/route");
+    expect((await POST(talkReq("4.4.4.4", "999"))).status).toBe(404);
+    complete.mockResolvedValue({ output: {} }); // malformed provider answer → treated as unavailable
+    expect((await POST(talkReq("5.5.5.5"))).status).toBe(503);
+  });
+});
+
+describe("GET /api/site/verify", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it("rejects a bad hash", async () => {
+    const { GET } = await import("../verify/route");
+    expect((await GET(new Request("http://x/api/site/verify?tx=nope"))).status).toBe(400);
+  });
+  it("reads the tx and receipt from QIE", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (_u: string, init: RequestInit) => {
+      const { method } = JSON.parse(String(init.body));
+      const result = method === "eth_getTransactionByHash" ? { to: "0x" + "9".repeat(40), blockNumber: "0x10" } : { status: "0x1", logs: [{}, {}], blockNumber: "0x10" };
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }));
+    }));
+    const { GET } = await import("../verify/route");
+    const j = await (await GET(new Request(`http://x/api/site/verify?tx=0x${"ab".repeat(32)}`))).json();
+    expect(j).toMatchObject({ ok: true, found: true, block: "16", status: "success", logs: 2, contract: null });
+  });
+  it("says so when every RPC fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("tls"); }));
+    const { GET } = await import("../verify/route");
+    expect((await GET(new Request(`http://x/api/site/verify?tx=0x${"ab".repeat(32)}`))).status).toBe(502);
+  });
+});
+
+describe("POST /api/site/event", () => {
+  it("logs allowed events only, with filtered props", async () => {
+    const log = vi.spyOn(console, "info").mockImplementation(() => {});
+    const { POST } = await import("../event/route");
+    await POST(new Request("http://x", { method: "POST", body: JSON.stringify({ name: "dc_pick", props: { pick: "up", sentence: "x".repeat(200), Bad: 1 } }) }));
+    await POST(new Request("http://x", { method: "POST", body: JSON.stringify({ name: "steal_wallet", props: {} }) }));
+    expect(log).toHaveBeenCalledTimes(1);
+    const line = JSON.parse(String(log.mock.calls[0]![0]));
+    expect(line.props).toEqual({ pick: "up" });
+    log.mockRestore();
+  });
+});

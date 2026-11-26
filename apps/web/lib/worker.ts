@@ -66,12 +66,13 @@ export async function requestPersona(
   auth: Auth,
   sentence: string,
   signal?: AbortSignal,
+  dnaSeed?: string,
 ): Promise<PersonaDraft> {
   const json = await postJson({
     url: workerUrl + PERSONA_PATH,
     auth,
     // termsAccepted lets the worker write users.terms_accepted_at (SPEC §3). Only reachable after the 18+ tick.
-    body: { sentence, termsAccepted: true },
+    body: { sentence, termsAccepted: true, ...(dnaSeed ? { dnaSeed } : {}) },
     timeoutMs: PERSONA_TIMEOUT_MS,
     noAnswer: "The bot maker isn't responding. Please try again.",
     signal,

@@ -102,7 +102,8 @@ create table bots (
   created_at    timestamptz not null default now(),
   created_tx    tx_hash,                                    -- null = optimistic row, not yet indexed
   is_house      boolean not null default false,             -- Steady Sam, Gold Granny, Momentum Max (§8)
-  status        bot_status not null default 'active'
+  status        bot_status not null default 'active',
+  dna_seed      text                                        -- optional preview DNA seed from /create; null = bot-<id>
 );
 comment on table bots is 'One row per on-chain bot. id is the on-chain botId.';
 
@@ -390,7 +391,7 @@ create index challenges_season_idx on challenges (season_id);
 
 create view site_bots as
 select b.id, b.owner_wallet, q.qie_name as owner_qie_name, b.name, b.emoji, b.persona_text, b.persona_hash,
-       b.created_at, b.created_tx, b.is_house, b.status
+       b.created_at, b.created_tx, b.is_house, b.status, b.dna_seed
 from bots b
 left join qie_names q on q.wallet_address = b.owner_wallet;
 

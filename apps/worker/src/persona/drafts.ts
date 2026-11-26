@@ -9,13 +9,20 @@ interface Queryable {
 /** How many drafts one wallet keeps: enough for a few "try again"s before Launch. */
 export const DRAFTS_KEPT = 10;
 
+/** Safe ASCII token for a bot's preview DNA seed (never free text). */
+export const DNA_SEED_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
+
 /*
  * A bot's name and text exist before its id does, and BotCreated carries only the hash. So the drafts live in
  * `users.flags.personas[personaHash]` (users is never anon-readable) until the debut watcher or the indexer
  * sees a bot by that owner with that hash.
  */
 
-export async function personaDraft(db: Queryable, owner: string, personaHash: Hex): Promise<Persona | null> {
+export interface StoredPersonaDraft extends Persona {
+  dnaSeed: string | null;
+}
+
+export async function personaDraft(db: Queryable, owner: string, personaHash: Hex): Promise<StoredPersonaDraft | null> {
   const { rows } = await db.query<{ draft: Record<string, unknown> | null }>(
     "select flags #> array['personas', $2::text] as draft from users where wallet_address = $1::text",
     [owner.toLowerCase(), personaHash.toLowerCase()],
@@ -26,7 +33,9 @@ export async function personaDraft(db: Queryable, owner: string, personaHash: He
     const value = draft[name];
     return typeof value === "string" ? pgSafeText(value) : "";
   };
-  return { name: field("name"), emoji: field("emoji"), persona: field("persona"), rules: field("rules") };
+  const rawSeed = draft.dna_seed;
+  const dnaSeed = typeof rawSeed === "string" && DNA_SEED_PATTERN.test(rawSeed) ? rawSeed : null;
+  return { name: field("name"), emoji: field("emoji"), persona: field("persona"), rules: field("rules"), dnaSeed };
 }
 
 export interface DraftOwner {
@@ -45,6 +54,7 @@ export async function savePersonaDraft(
   personaHash: Hex,
   persona: Persona,
   now: Date,
+  dnaSeed: string | null = null,
 ): Promise<void> {
   const wallet = owner.wallet.toLowerCase();
   await tx.query(
@@ -67,6 +77,7 @@ export async function savePersonaDraft(
       emoji: text(persona.emoji),
       persona: text(persona.persona),
       rules: text(persona.rules),
+      ...(dnaSeed ? { dna_seed: dnaSeed } : {}),
       at: now.toISOString(),
     },
   };

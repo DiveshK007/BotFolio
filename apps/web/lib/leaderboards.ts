@@ -13,6 +13,7 @@ export interface BoardEntry {
   emoji: string;
   isHouse: boolean;
   ownerQieName: string | null;
+  dnaSeed?: string | null;
   /** null for house bots: listed with a badge, never ranked. */
   rank: number | null;
 }
@@ -71,6 +72,7 @@ function isEntry(e: unknown): e is BoardEntry {
     typeof e.emoji === "string" &&
     typeof e.isHouse === "boolean" &&
     (e.ownerQieName === null || typeof e.ownerQieName === "string") &&
+    (e.dnaSeed === undefined || e.dnaSeed === null || typeof e.dnaSeed === "string") &&
     (e.rank === null || isInt(e.rank))
   );
 }

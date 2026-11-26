@@ -26,7 +26,7 @@ export interface PublicTrust {
 }
 
 export interface PublicRecord {
-  bot: Pick<BotPage["bot"], "id" | "name" | "emoji" | "persona" | "owner_wallet" | "owner_qie_name" | "is_house" | "status" | "created_at" | "created_tx">;
+  bot: Pick<BotPage["bot"], "id" | "name" | "emoji" | "persona" | "owner_wallet" | "owner_qie_name" | "is_house" | "status" | "created_at" | "created_tx" | "dna_seed">;
   versions: BotVersion[];
   trades: BotTrade[];
   seasons: BotSeason[];
@@ -52,7 +52,7 @@ function trustOf(raw: unknown): PublicTrust | null {
 
 export function toPublicRecord(page: BotPage): PublicRecord {
   return {
-    bot: pick(page.bot, ["id", "name", "emoji", "persona", "owner_wallet", "owner_qie_name", "is_house", "status", "created_at", "created_tx"]),
+    bot: { ...pick(page.bot, ["id", "name", "emoji", "persona", "owner_wallet", "owner_qie_name", "is_house", "status", "created_at", "created_tx"]), dna_seed: page.bot.dna_seed ?? null },
     versions: page.versions.map((v) =>
       pick(v, ["version", "source", "config_hash", "committed_tx", "approved_at", "max_per_coin_bps", "max_trades_per_day"]),
     ),

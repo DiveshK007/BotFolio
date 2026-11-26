@@ -3,6 +3,7 @@ import { ASSETS } from "@botfolio/shared";
 import { AppHeader } from "@/components/AppHeader";
 import { ExplorerLink } from "@/components/ui/ExplorerLink";
 import { isAddress } from "@/lib/format";
+import { VerifyTx } from "@/components/site/extras";
 
 export const metadata: Metadata = {
   title: "Proof",
@@ -46,6 +47,13 @@ export default function ProofPage() {
             promise, and how to recompute a whole season yourself.
           </p>
         </section>
+
+        {/* v3: verify any tx against QIE mainnet (app/api/site/verify). */}
+        <section aria-labelledby="verifyH" className="bf"><div className="card stack">
+          <h2 id="verifyH" style={{ fontSize: 22 }}>Verify any BotFolio transaction</h2>
+          <p className="small muted">Paste a tx hash. We read it from QIE mainnet and tell you which block it&apos;s in, whether it went to a BotFolio contract and, for a trade, the oracle round and price the contract read itself.</p>
+          <VerifyTx explorer={process.env.NEXT_PUBLIC_QIE_EXPLORER_URL ?? "https://mainnet.qie.digital"} />
+        </div></section>
 
         <section aria-labelledby="contracts" className="flex flex-col gap-3">
           <h2 id="contracts" className="font-display text-xl font-extrabold">7 contracts on QIE mainnet</h2>
@@ -167,7 +175,7 @@ export default function ProofPage() {
             ids and tx hashes. AI output isn&apos;t guaranteed to repeat, so we log it.{" "}
             <b className="text-ink">Given the logged output, everything after it is deterministic and recomputable.</b>
           </p>
-          <pre className={code}>
+          <pre className={code} tabIndex={0} aria-label="Replay command">
             {`git clone ${REPO}.git && cd BotFolio
 pnpm install && pnpm --filter @botfolio/replay build
 pnpm replay 0 --ledger ${ledgerArg}`}

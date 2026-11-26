@@ -87,10 +87,10 @@ export class DebutWatcher {
       const draft = await personaDraft(db, bot.owner, bot.personaHash);
       await db.transaction(async (tx) => {
         await tx.query(
-          `insert into bots (id, owner_wallet, name, emoji, persona_text, persona_hash, created_at, is_house)
-           values ($1::bigint, $2::text, $3::text, $4::text, $5::text, decode($6::text, 'hex'), $7::timestamptz, $8::boolean)
+          `insert into bots (id, owner_wallet, name, emoji, persona_text, persona_hash, dna_seed, created_at, is_house)
+           values ($1::bigint, $2::text, $3::text, $4::text, $5::text, decode($6::text, 'hex'), $9::text, $7::timestamptz, $8::boolean)
            on conflict (id) do nothing`,
-          [id, bot.owner, draft?.name || `Bot #${id}`, draft?.emoji ?? "", draft?.persona ?? "", bot.personaHash.slice(2), bot.createdAt.toISOString(), bot.house],
+          [id, bot.owner, draft?.name || `Bot #${id}`, draft?.emoji ?? "", draft?.persona ?? "", bot.personaHash.slice(2), bot.createdAt.toISOString(), bot.house, draft?.dnaSeed ?? null],
         );
         await tx.query(
           `insert into bot_versions
