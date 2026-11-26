@@ -134,6 +134,11 @@ describe("wantsDailyCall()", () => {
     ["scheduled", "17:00", false],
     ["scheduled", "21:00", false],
     ["debut", "15:37", true],
+    ["debut", "00:05", true],
+    ["debut", "19:59", true],
+    // #219: from 20:00 the day's calls are closed, so no signed view for it.
+    ["debut", "20:00", false],
+    ["debut", "23:30", false],
   ] as const)("%s at %s IST → %s", (kind, time, wanted) => {
     expect(wantsDailyCall({ kind, time: ist(time) })).toBe(wanted);
   });
