@@ -9,6 +9,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsup",
     "start": "node dist/index.js",
+    "house:seed": "tsx src/house/seed-cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:anvil": "RELAY_ANVIL=1 vitest run anvil --testTimeout=90000"
