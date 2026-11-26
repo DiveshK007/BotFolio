@@ -19,3 +19,6 @@ packages/contracts/cache/
 packages/contracts/broadcast/*/31337/
 # media over 10 MB stays out of git
 media/*.mp4
+
+# local Claude Code state (worktrees, settings)
+.claude/
