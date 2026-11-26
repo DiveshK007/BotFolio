@@ -29,6 +29,7 @@ import { mcpRoutes } from "./mcp/mcp";
 import { verifyTrade } from "./mcp/verify-trade";
 import { bigMoveRoutes } from "./big-moves/route";
 import { DEFAULT_USDINR_SOURCE_URL, usdInrCache, usdInrRoutes } from "./fx/usd-inr";
+import { startQieNameSweeper } from "./qie-names/sweeper";
 import { dailyCallRoutes } from "./daily-call/route";
 import { statusRoutes } from "./status/route";
 import { ownerRoutes } from "./owner/route";
@@ -111,6 +112,8 @@ async function main(): Promise<void> {
   const reads = database ? openDb({ ...database, max: 2 }, consoleLog) : null;
   if (!reads) consoleLog("trust.proofs_disabled", { env: "DATABASE_URL" });
   const stopCards = reads && cardChain ? startCardSweeper({ db: reads, chain: cardChain, log: { info: consoleLog, warn: consoleLog } }) : null;
+  // .qie names for bot owners (#104), shown by every view that joins qie_names.
+  const stopQieNames = reads ? startQieNameSweeper({ db: reads, log: { info: consoleLog, warn: consoleLog } }) : null;
   const boards = reads && isAddress(paperLedger) ? { db: reads, startCashE8 } : null;
   if (!boards) consoleLog("leaderboards.disabled", { env: "DATABASE_URL,PAPER_LEDGER_ADDRESS" });
   // Display-only USD/INR for the ₹ tooltip; first fetch starts now.
@@ -149,7 +152,7 @@ async function main(): Promise<void> {
     stopOracle();
     stopAlerts();
     // Let a broadcast and an indexer batch in progress finish, then close.
-    void Promise.allSettled([relayer.stop(), indexer?.stop(), scheduler?.stop(), persona.stop(), (stopCards?.() ?? Promise.resolve()).then(() => reads?.close())]).then(() => server.close(() => process.exit(0)));
+    void Promise.allSettled([relayer.stop(), indexer?.stop(), scheduler?.stop(), persona.stop(), Promise.all([stopCards?.(), stopQieNames?.()]).then(() => reads?.close())]).then(() => server.close(() => process.exit(0)));
     setTimeout(() => process.exit(1), 10_000).unref();
   };
   process.on("SIGTERM", () => shutdown("SIGTERM"));
