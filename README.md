@@ -19,7 +19,14 @@
 <br/>
 
 > [!IMPORTANT]
-> **Hackathon build (Nov 20 – Nov 30 2026). All 7 contracts are live and verified on QIE mainnet (chain 1990) since Nov 26 2026** — addresses in [Contracts](#contracts), deploy record in [`packages/contracts/deployments/1990.env`](packages/contracts/deployments/1990.env). The live app URL and demo video go in [Submission links](#submission-links) when they exist.
+> **Hackathon build (Nov 20 – Nov 30 2026). Live app: https://bot-folio.vercel.app**
+>
+> Status on Nov 27 2026, 02:30 IST:
+> - All 7 contracts have been live and source-verified on QIE mainnet (chain 1990) since Nov 26. Addresses are in [Contracts](#contracts), and the deploy record is [`packages/contracts/deployments/1990.env`](packages/contracts/deployments/1990.env).
+> - Season 0, the hidden test season, opened on-chain Nov 27 00:24 IST and closes Nov 28 21:30. Season 1, the first public one, runs Nov 29 00:00 → Nov 30 21:30 IST.
+> - Proven on mainnet: passkey sign-up on Android, and a user-created bot (#4) where the user signed and our relayer paid the gas.
+> - UNVERIFIED until seen: the first trade (debut or slot), the Daily Call settle, a season close with its trust-score commit, challenges, and the replay of a closed season. First-run checks: [docs/runbook.md](docs/runbook.md) §9.
+> - The demo video goes in [Submission links](#submission-links) when it exists.
 >
 > **Play money. Not investment advice. No prizes.**
 
@@ -101,7 +108,7 @@ curl localhost:10000/healthz                           # in another shell: "ok" 
 pnpm --filter @botfolio/web dev                        # app on http://localhost:3000
 ```
 
-The worker listens on `PORT` (default 10000). With an empty `.env` it starts and reports itself `degraded`: each part it can't run yet (relayer, scheduler, indexer) is listed in the startup log with the variables it is missing. For the web app, copy the `NEXT_PUBLIC_*` lines from `.env.example` into `apps/web/.env.local` and point `NEXT_PUBLIC_RELAY_URL` at the worker. Until the contracts are deployed, run against a local mainnet fork: [docs/anvil-fork.md](docs/anvil-fork.md).
+The worker listens on `PORT` (default 10000). With an empty `.env` it starts and reports itself `degraded`: each part it can't run yet (relayer, scheduler, indexer) is listed in the startup log with the variables it is missing. For the web app, copy the `NEXT_PUBLIC_*` lines from `.env.example` into `apps/web/.env.local` and point `NEXT_PUBLIC_RELAY_URL` at the worker. To try changes without touching mainnet, run against a local mainnet fork: [docs/anvil-fork.md](docs/anvil-fork.md).
 
 ## Usage
 
@@ -147,7 +154,7 @@ Settings come from environment variables. [`.env.example`](.env.example) lists e
 ```bash
 QIE_CHAIN_ID=1990          # QIE mainnet; also used on the local fork
 QIE_RPC_URLS=...           # comma-separated rpc1–rpc5 with failover (default: all five mainnet RPCs)
-LLM_PROVIDER=xai           # xai | openai | anthropic | fake (default: xai)
+LLM_PROVIDER=anthropic     # xai | openai | anthropic | fake. Production: anthropic (Claude Haiku 5.5). Unset: xai
 ```
 
 ### Environment variables
@@ -158,10 +165,10 @@ The ones you most often need. Never paste values into an issue, PR or chat.
 | :--- | :--- |
 | `QIE_RPC_URLS` | QIE RPCs, tried in order. The worker starts at rpc3 because rpc1 and rpc2 sometimes drop TLS. Set `http://127.0.0.1:8545` for the local fork. |
 | `FEED_BTC` … `FEED_GOLD` | The 5 QIE oracle feed addresses. |
-| `FORWARDER_ADDRESS`, `BOT_REGISTRY_ADDRESS`, `PAPER_LEDGER_ADDRESS`, `SEASON_LEDGER_ADDRESS`, `TRUST_REGISTRY_ADDRESS`, `DAILY_CALL_ADDRESS`, `CHALLENGES_ADDRESS` | Contract addresses, empty until the deploy. |
+| `FORWARDER_ADDRESS`, `BOT_REGISTRY_ADDRESS`, `PAPER_LEDGER_ADDRESS`, `SEASON_LEDGER_ADDRESS`, `TRUST_REGISTRY_ADDRESS`, `DAILY_CALL_ADDRESS`, `CHALLENGES_ADDRESS` | Contract addresses. The mainnet ones are in [`deployments/1990.env`](packages/contracts/deployments/1990.env). |
 | `RELAYER_PRIVATE_KEY`, `RUNNER_PRIVATE_KEY`, `COMMITTER_PRIVATE_KEY` | Three separate hot wallets, server only. |
 | `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Postgres and Storage (replay files). Server only. |
-| `LLM_PROVIDER`, `XAI_API_KEY`, `LLM_MODEL_DECISION` | LLM provider, key and model. `fake` runs without a key. |
+| `LLM_PROVIDER`, `ANTHROPIC_API_KEY` (or `XAI_API_KEY`, `OPENAI_API_KEY`), `LLM_MODEL_DECISION` | LLM provider, key and model (production: `anthropic`, `claude-haiku-5-5`). `fake` runs without a key. |
 | `RELAY_ENABLED` | The relayer only sends when this is exactly `true`; anything else, or unset, keeps it off. Not in `.env.example`. |
 | `NEXT_PUBLIC_RELAY_URL` | Where the browser finds the worker (`/relay` and the read routes). |
 | `NEXT_PUBLIC_*_ADDRESS` | Contract addresses for the browser. Addresses and public URLs only. |
@@ -182,7 +189,7 @@ flowchart LR
     U["User on the web app<br/>(Next.js, Vercel)"] -- "signs EIP-712<br/>ForwardRequest" --> R["Relayer<br/>POST /relay"]
     subgraph W["Worker (one Render service)"]
         R
-        S["Scheduler<br/>4 slots a day"] --> L["LlmClient<br/>Grok via xAI"]
+        S["Scheduler<br/>4 slots a day"] --> L["LlmClient<br/>Claude Haiku 5.5"]
         L --> G["gate()<br/>deterministic risk rules"]
         I["Indexer<br/>10 s loop"]
         A["Read routes + MCP<br/>/bot-page, /leaderboards, /mcp"]
@@ -219,18 +226,18 @@ Solidity 0.8.24, `evm_version = "shanghai"`, OpenZeppelin 5.0.2. Source in [pack
 
 | Component | Where it is used | Status |
 | :--- | :--- | :--- |
-| **QIE oracle feeds** (BTC, ETH, SOL, XRP, Gold) | Read inside `PaperLedger` and `DailyCall` (`src/lib/OracleReader.sol`); re-read by `verify_trade` and the replay script | In the code |
+| **QIE oracle feeds** (BTC, ETH, SOL, XRP, Gold) | Read inside `PaperLedger` and `DailyCall` (`src/lib/OracleReader.sol`); re-read by `verify_trade` and the replay script | Live in the deployed contracts (Nov 26); first mainnet trade UNVERIFIED (Nov 27) |
 | **QIE mainnet** (chain 1990) | All 7 contracts; RPC failover over rpc1–rpc5 | Live, verified (Nov 26) |
-| **QIE Wallet** | "Connect QIE Wallet" login next to passkey ([#86](https://github.com/DiveshK007/BotFolio/issues/86), PR #322); relay auth for it is in the worker (`/auth/nonce`, `/auth/verify`) | Connect live; EIP-712 signing on chain 1990 not tested yet ([#99](https://github.com/DiveshK007/BotFolio/issues/99)) |
-| **QIE ID / `.qie` names** | `name.qie` instead of `0x…` on bot pages, leaderboards and cards ([#87](https://github.com/DiveshK007/BotFolio/issues/87), [#104](https://github.com/DiveshK007/BotFolio/issues/104)) | In the code (PR #321); lookups checked live Nov 26 |
-| **QIE Wallet MCP** | Server-side `.qie` reverse lookups (`qie_reverse_lookup`, cached 24 h) ([#104](https://github.com/DiveshK007/BotFolio/issues/104)) | In the code (PR #321); checked live Nov 26 |
-| **QIE Pass** | Optional "verified human" badge behind `PASS_ENABLED` ([#110](https://github.com/DiveshK007/BotFolio/issues/110)) | Partner access not confirmed (unverified) |
+| **QIE Wallet** | "Connect QIE Wallet" login next to passkey ([#86](https://github.com/DiveshK007/BotFolio/issues/86), PR #322); relay auth for it is in the worker (`/auth/nonce`, `/auth/verify`) | Connect live; EIP-712 signing on chain 1990 not tested yet as of Nov 27 ([#99](https://github.com/DiveshK007/BotFolio/issues/99)) |
+| **QIE ID / `.qie` names** | `name.qie` instead of `0x…` on bot pages, leaderboards and cards ([#87](https://github.com/DiveshK007/BotFolio/issues/87), [#104](https://github.com/DiveshK007/BotFolio/issues/104)) | Live (PR #321); lookups checked on mainnet Nov 26 |
+| **QIE Wallet MCP** | Server-side `.qie` reverse lookups (`qie_reverse_lookup`, cached 24 h) ([#104](https://github.com/DiveshK007/BotFolio/issues/104)) | Live (PR #321); `qie_reverse_lookup` checked Nov 26 with qie.qie |
+| **QIE Pass** | Optional "verified human" badge behind `PASS_ENABLED` ([#110](https://github.com/DiveshK007/BotFolio/issues/110)) | Partner access not confirmed (UNVERIFIED, Nov 27) |
 
 ### Submission links
 
 | Item | Link |
 | :--- | :--- |
-| Live app | coming at submission |
+| Live app | https://bot-folio.vercel.app (live mode, checked Nov 27) |
 | Demo video | coming at submission ([#116](https://github.com/DiveshK007/BotFolio/issues/116)) |
 | Contract addresses | [Contracts](#contracts) · [`deployments/1990.env`](packages/contracts/deployments/1990.env) |
 | Explorer | [mainnet.qie.digital](https://mainnet.qie.digital) |
@@ -240,12 +247,12 @@ Solidity 0.8.24, `evm_version = "shanghai"`, OpenZeppelin 5.0.2. Source in [pack
 | Component | Tool |
 | :--- | :--- |
 | **Web app** | [Next.js 15](https://nextjs.org) (App Router, TypeScript) + [Tailwind CSS](https://tailwindcss.com), hosted on [Vercel](https://vercel.com) |
-| **Wallet** | [Privy](https://www.privy.io) passkey embedded wallet (fallback [thirdweb](https://thirdweb.com)), not wired yet ([#71](https://github.com/DiveshK007/BotFolio/issues/71)) |
+| **Wallet** | [Privy](https://www.privy.io) passkey embedded wallet, live; sign-up checked on Android by Nov 27, iPhone Safari UNVERIFIED ([#71](https://github.com/DiveshK007/BotFolio/issues/71)). QIE Wallet connect as the second login |
 | **Chain library** | [viem](https://viem.sh) with fallback transport over the 5 QIE RPCs |
 | **Contracts** | [Foundry](https://getfoundry.sh), [OpenZeppelin Contracts 5.0.2](https://github.com/OpenZeppelin/openzeppelin-contracts), solc 0.8.24 |
 | **Worker** | Node 20 / TypeScript web service on [Render](https://render.com): relayer, runner, scheduler, indexer, season close, MCP |
 | **Database and storage** | [Supabase](https://supabase.com) Postgres + Storage (replay files) |
-| **LLM** | Grok via the [xAI API](https://docs.x.ai) behind `LlmClient`; OpenAI or Anthropic by env |
+| **LLM** | Claude Haiku 5.5 (`claude-haiku-5-5`) through the Anthropic API since Nov 26, via `LlmClient` (swappable by env: `LLM_PROVIDER=xai` for Grok, or `openai`). Capped at $4 a month; at the cap bots hold |
 | **Chain** | [QIE mainnet](https://mainnet.qie.digital), chain id 1990 |
 
 ## Project structure
@@ -328,7 +335,7 @@ curl localhost:10000/healthz   # "reasons" lists what is still degraded
 
 - **Oracle freshness.** QIE feeds sometimes go 45–144 min without a new crypto round, and gold has gone over 6 h. Those slots hold that asset instead of trading. Gold prices can be hours old, so the app always shows the price age.
 - **One feed operator.** A single QIE-operated wallet pushes all feed updates. Trades are settled against QIE's official mainnet oracle; they are only as good as that feed.
-- **LLM output is not reproducible.** Calls use temperature 0 where the model accepts it and a logged model id, but the same input can give a different answer. What we claim: given the logged LLM output, everything after it (gate, orders, balances, marks, trust scores) is deterministic and recomputable.
+- **LLM output is not reproducible.** Calls log the model id and use temperature 0 where the model accepts it (Claude Haiku 5.5 doesn't, so it runs at its default), but the same input can give a different answer. What we claim: given the logged LLM output, everything after it (gate, orders, balances, marks, trust scores) is deterministic and recomputable.
 - **No Cancun on QIE.** Contracts target Shanghai: no `mcopy`, `tstore`/`tload`, no P-256 precompile, no EIP-7702 or ERC-4337 smart-account wallets.
 - **Five assets, long or cash.** BTC, ETH, SOL, XRP and Gold only (QIE has no stock feeds). No shorting, no leverage.
 
@@ -340,7 +347,9 @@ curl localhost:10000/healthz   # "reasons" lists what is still degraded
 - [x] Replay script, leaderboards, BotFolio MCP server code
 - [x] `/proof`, `/about`, `/terms`, `/privacy`, bot page and leaderboards pages
 - [x] Deploy the 7 contracts to QIE mainnet and verify them ([#25](https://github.com/DiveshK007/BotFolio/issues/25), [#26](https://github.com/DiveshK007/BotFolio/issues/26))
-- [x] Passkey sign-in with Privy on chain 1990, code (PR #322); real-phone check pending ([#71](https://github.com/DiveshK007/BotFolio/issues/71))
+- [x] Passkey sign-in with Privy on chain 1990 (PR #322); Android checked by Nov 27, iPhone Safari pending ([#71](https://github.com/DiveshK007/BotFolio/issues/71))
+- [x] Worker live on Render, Season 0 opened on-chain (Nov 27 00:24 IST)
+- [ ] Season 0 closed, replayed and its trust scores committed (Nov 28 21:30 IST)
 - [ ] Newcomer path end to end on mainnet in under 30 s ([#76](https://github.com/DiveshK007/BotFolio/issues/76))
 - [x] Public API `GET /api/v1/bots/:id/record` ([#106](https://github.com/DiveshK007/BotFolio/issues/106)) and `/stats` ([#92](https://github.com/DiveshK007/BotFolio/issues/92))
 - [x] Connect QIE Wallet and `.qie` names, code ([#86](https://github.com/DiveshK007/BotFolio/issues/86), [#87](https://github.com/DiveshK007/BotFolio/issues/87))
@@ -361,7 +370,11 @@ curl localhost:10000/healthz   # "reasons" lists what is still degraded
 | [docs/trust-rules.md](docs/trust-rules.md) | Trust score rules `trust-v1-sprint` and `trust-v1` |
 | [docs/deploy.md](docs/deploy.md) | First production deploy, end to end: keys, contracts, database, rules and house bots, Render, Vercel, smoke test |
 | [docs/env.md](docs/env.md) | Every environment variable: where it comes from, and whether it is a secret |
-| [docs/runbook.md](docs/runbook.md) | Incidents: restart, stale oracle, LLM down, RPC down, wallet top-up, key rotation |
+| [docs/runbook.md](docs/runbook.md) | Incidents (restart, stale oracle, LLM down, RPC down, wallet top-up, key rotation), first-run checks per path, Dec 1–7 on-call |
+| [docs/release.md](docs/release.md) | Release checklist, code freeze, no-merge windows |
+| [docs/judge-qa.md](docs/judge-qa.md) | The four judge questions with code pointers, and the known limits |
+| [docs/launch-copy.md](docs/launch-copy.md) | Launch post drafts, coding-club run sheet, stopwatch sheet |
+| [docs/master-plan.md](docs/master-plan.md) | The Nov 27 – Dec 7 plan: waves, human checklist, risks, decisions |
 | [docs/rollback.md](docs/rollback.md) | Rollback: Vercel, Render, contract-address switch |
 | [docs/gas.md](docs/gas.md) | Gas report from a mainnet fork, and the relayer gas cap |
 | [docs/anvil-fork.md](docs/anvil-fork.md) | Local mainnet-fork staging with Anvil |
