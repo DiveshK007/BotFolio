@@ -109,7 +109,7 @@ Rollback if a freeze merge breaks production: [`rollback.md`](rollback.md).
 
 ## 8. No-merge windows (worker auto-deploy)
 
-`render.yaml` has `autoDeploy: true` and no `buildFilter`, so **every** merge to `main` rebuilds and restarts the worker on Render, even a docs-only one. A restart is safe by design (`runbook.md` section 1), but one in the middle of a slot or a close costs a retry or a whole night. So **no PR is merged** in these windows, every day (IST):
+`render.yaml` has `autoDeploy: true` and, since #375, a `buildFilter`: only merges that touch `apps/worker/**` (not its tests), `packages/**`, the root install files or `render.yaml` rebuild and restart the worker. Docs-only and web-only merges don't. **UNVERIFIED** until the first docs-only merge after #375 leaves `/healthz` `startedAt` unchanged, since Render applies blueprint changes only when the blueprint syncs. Until that check passes, treat every merge as a restart. A restart is safe by design (`runbook.md` section 1), but one in the middle of a slot or a close costs a retry or a whole night. So **no PR is merged** in these windows, every day (IST):
 
 | Window (IST) | What runs then |
 |---|---|
@@ -118,7 +118,7 @@ Rollback if a freeze merge breaks production: [`rollback.md`](rollback.md).
 | 16:55–17:25 | 17:00 slot and retries |
 | **20:55–00:20** | 21:00 slot and retries, Daily Call settle (21:00 to 23:50), season close (21:30), recap (21:35), season open (00:00) |
 
-- A `buildFilter` in `render.yaml` (paths `apps/worker/**`, `packages/**`, `pnpm-lock.yaml`, `render.yaml`) would let docs and web-only PRs merge at any time. That is a WS B change in its own PR (#375), and is not made here. Until then, the windows apply to every PR. **UNVERIFIED**: whether a build filter was set in the Render dashboard instead.
+- Once the filter is confirmed, the windows apply only to PRs that touch the worker's build paths. Docs and web-only PRs can merge at any time (Vercel still redeploys the site).
 - Batch merges into about one deploy per open window. After each deploy, check `/healthz` (`startedAt` is new, `reasons` holds nothing new) and the boot alert, if it is set up.
 - The season-close nights are the strictest: Sat Nov 28 (S0), Mon Nov 30 (S1), Wed Dec 2 (S2), Fri Dec 4 (S3), Sun Dec 6 (S4), and Mon Dec 7 around 00:00 (weekly S5 opens). The last Wave A worker merge is Sat Nov 28 20:50.
 - An emergency fix inside a window is the on-call person's call. Write it in `docs/decisions.md` with the reason.

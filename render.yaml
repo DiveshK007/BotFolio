@@ -13,6 +13,25 @@ services:
     plan: free
     branch: main
     autoDeploy: true
+    # Only changes that can alter the worker's build redeploy it (#375). Docs and web-only merges no longer restart
+    # a running slot or season close. Keep this list in step with what buildCommand reads: the worker, the
+    # workspace packages it bundles (shared, llm, db, contracts/abi), and the root install and TS config.
+    buildFilter:
+      paths:
+        - apps/worker/**
+        - packages/**
+        - package.json
+        - pnpm-lock.yaml
+        - pnpm-workspace.yaml
+        - tsconfig.base.json
+        - .nvmrc
+        - render.yaml
+      ignoredPaths:
+        - "**/*.md"
+        - apps/worker/test/**
+        - packages/contracts/test/**
+        - packages/contracts/script/**
+        - packages/contracts/broadcast/**
     buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @botfolio/worker build
     startCommand: node apps/worker/dist/index.js
     healthCheckPath: /healthz
