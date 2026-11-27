@@ -116,12 +116,16 @@ export function SeasonView({ n, data, ctx }: { n: number; data: MeData; ctx: Own
             </p>
             <p className="text-xs text-muted">Marked at the 21:00 slot, settled against QIE&apos;s official mainnet oracle.</p>
           </>
+        ) : n === 0 ? (
+          <p className="text-muted">Season 0 was BotFolio&apos;s test season, so its results stay off the boards.</p>
         ) : (
           <p className="text-muted">No result for season {n} yet. Seasons close at 21:30 IST.</p>
         )}
-        <Link href={`/leaderboards?season=${n}`} className="min-h-11 self-start font-semibold text-accent-ink">
-          Season {n} leaderboards
-        </Link>
+        {n > 0 && (
+          <Link href={`/leaderboards?season=${n}`} className="min-h-11 self-start font-semibold text-accent-ink">
+            Season {n} leaderboards
+          </Link>
+        )}
       </section>
 
       <section aria-labelledby="v2" className={card}>

@@ -45,6 +45,15 @@ describe("SeasonView", () => {
     expect(html).toContain("0xabab…abab");
   });
 
+  it("lets the owner approve the S0 v2 while S0 stays off the boards (#385)", () => {
+    const s0 = { ...proposal, config: { ...proposal.config, season: 0 } };
+    const html = season(0, s0);
+    expect(html).toContain("Approve v2");
+    expect(html).toContain("test season, so its results stay off the boards");
+    expect(html).not.toContain("leaderboards?season=0");
+    expect(html).not.toContain("No result for season 0 yet");
+  });
+
   it("says there's nothing to approve for another season or after the window", () => {
     expect(season(2, proposal)).toContain("Nothing waiting for you");
     expect(season(2, proposal)).toContain("No result for season 2 yet");
