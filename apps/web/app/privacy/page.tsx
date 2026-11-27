@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AppHeader } from "@/components/AppHeader";
-import { PLAY_MONEY_LINE } from "@/components/ui/PlayMoneyFooter";
+import { PLAY_MONEY_LINE, feedbackUrl } from "@/components/ui/PlayMoneyFooter";
 
 export const metadata: Metadata = {
   title: "Privacy policy",
@@ -20,11 +20,14 @@ const ul = "mt-1 list-disc space-y-1 pl-5 text-sm text-muted";
  * - Correction notes: apps/worker/src/v2/propose.ts sends them to the LLM; site_corrections leaves the note out.
  * - IP: apps/worker/src/auth/client-ip.ts + relay/ip-limit.ts keep it in memory; relay_log has no IP column.
  * - Browser storage: app/layout.tsx (bf-theme, localStorage), lib/draft.ts (sessionStorage).
- * UNVERIFIED: what Privy, Vercel, Render, Supabase and xAI log on their side (their own policies apply).
- * UNVERIFIED: the web app's Privy sign-in isn't wired yet (#71); re-check this page when it is.
+ * - AI model: render.yaml sets LLM_PROVIDER=anthropic and LLM_MODEL_DECISION=claude-haiku-5-5 (decision Nov 26); /healthz says anthropic (Nov 28).
+ * - Feedback link: shown only when NEXT_PUBLIC_FEEDBACK_URL is set (components/ui/PlayMoneyFooter.tsx).
+ * UNVERIFIED: what Privy, Vercel, Render, Supabase, Anthropic and a feedback form's host log on their side (their own policies apply).
  * UNVERIFIED: Sentry (#161) and analytics (#164) aren't in the code yet; update section 6 before either ships.
  * TODO(#172): add a contact for deletion requests once the team picks one.
  */
+const FEEDBACK = feedbackUrl(process.env.NEXT_PUBLIC_FEEDBACK_URL);
+
 export default function PrivacyPage() {
   return (
     <>
@@ -32,7 +35,7 @@ export default function PrivacyPage() {
       <main className="mx-auto w-full max-w-xl px-4 pb-12 pt-6">
         <h1 className="font-display text-3xl font-extrabold leading-tight tracking-tight">Privacy policy</h1>
         <p className="mt-2 text-sm font-semibold">{PLAY_MONEY_LINE}</p>
-        <p className="mt-1 text-xs text-muted">Last updated 25 November 2026.</p>
+        <p className="mt-1 text-xs text-muted">Last updated 28 November 2026.</p>
 
         <h2 className={h2}>1. The short version</h2>
         <p className={p}>
@@ -67,9 +70,9 @@ export default function PrivacyPage() {
           note stays off-chain; only its hash goes on-chain, and the note isn&apos;t shown publicly.
         </p>
 
-        <h2 className={h2}>5. What you write (xAI)</h2>
+        <h2 className={h2}>5. What you write (Anthropic)</h2>
         <p className={p}>
-          Your one-sentence description is sent to our server and to an AI model (Grok, by xAI) to write your bot&apos;s
+          Your one-sentence description is sent to our server and to an AI model (Claude, by Anthropic) to write your bot&apos;s
           personality. We save the personality it writes, not your sentence. Until you launch, the sentence is also kept
           in your browser tab&apos;s session storage. At season close, your correction notes go to the same AI model to
           suggest your bot&apos;s next version.
@@ -80,6 +83,12 @@ export default function PrivacyPage() {
           None are switched on yet. Before we add error tracking (Sentry) or analytics, we&apos;ll list here what they
           collect.
         </p>
+        {FEEDBACK && (
+          <p className={p}>
+            The Feedback link in the footer opens a form run by another service. What you write there goes to that service
+            and to our team, under that service&apos;s own policy. Don&apos;t put keys or passwords in it.
+          </p>
+        )}
 
         <h2 className={h2}>7. IP address and logs</h2>
         <p className={p}>

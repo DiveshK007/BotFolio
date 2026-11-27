@@ -59,6 +59,7 @@ All of these are public (they end up in the browser bundle), so only addresses a
 | Name | Value |
 |---|---|
 | `NEXT_PUBLIC_RELAY_URL` | the Render service URL, e.g. `https://botfolio-worker.onrender.com` |
+| `NEXT_PUBLIC_FEEDBACK_URL` | optional https feedback form or group. Shows a "Feedback" link in the footer and a line on /privacy; hidden when empty (#182) |
 | `NEXT_PUBLIC_FORWARDER_ADDRESS` … `NEXT_PUBLIC_CHALLENGES_ADDRESS` | the 7 addresses from `deployments/1990.env` (the deploy script prints them with the prefix) |
 | `NEXT_PUBLIC_PRIVY_APP_ID` | same App ID as the worker |
 | `NEXT_PUBLIC_QIE_RPC_URLS` | optional; the browser's RPC list (defaults to the 5 mainnet RPCs) |
