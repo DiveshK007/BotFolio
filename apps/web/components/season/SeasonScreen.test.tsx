@@ -6,7 +6,7 @@ import { samplePage } from "@/lib/bot-record.fixture";
 import type { OwnerConfig } from "@/lib/config";
 import type { OwnerBot, PublicChallenge } from "@/lib/owner";
 import type { WalletSession } from "@/lib/wallet";
-import { SeasonView } from "./SeasonScreen";
+import { SeasonBoardsLink, SeasonView } from "./SeasonScreen";
 
 const addr = (b: string) => `0x${b.repeat(20)}` as `0x${string}`;
 const config: OwnerConfig = { workerUrl: "https://w", forwarder: addr("11"), targets: { SeasonLedger: addr("22") } };
@@ -52,6 +52,11 @@ describe("SeasonView", () => {
     expect(html).toContain("test season, so its results stay off the boards");
     expect(html).not.toContain("leaderboards?season=0");
     expect(html).not.toContain("No result for season 0 yet");
+  });
+
+  it("links the season's boards from S1, never for S0, signed in or out", () => {
+    expect(renderToStaticMarkup(createElement(SeasonBoardsLink, { n: 0 }))).toBe("");
+    expect(renderToStaticMarkup(createElement(SeasonBoardsLink, { n: 1 }))).toContain("leaderboards?season=1");
   });
 
   it("says there's nothing to approve for another season or after the window", () => {

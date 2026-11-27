@@ -174,7 +174,7 @@ export function MeView({ data, ctx, now, onReload }: { data: MeData; ctx: OwnerC
         {proposal ? (
           <>
             <p>
-              Your bot&apos;s v{proposal.version} is ready: {proposal.config.changes.length || "no"} change{proposal.config.changes.length === 1 ? "" : "s"} from your coaching.
+              Your bot&apos;s v{proposal.version} is ready: {proposal.config.changes.length || "no"} change{proposal.config.changes.length === 1 ? "" : "s"}.
             </p>
             <p className="text-xs text-muted">Approve by {istTime(proposal.approveBy)}, or it keeps v{proposal.config.from.version}.</p>
             <Link href={`/season/${proposal.config.season}`} className="inline-flex h-12 items-center justify-center rounded-full bg-accent px-6 font-semibold text-on-accent">

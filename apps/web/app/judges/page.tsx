@@ -82,7 +82,7 @@ export default async function Judges() {
         <p className="remember">{SENTENCE}</p>
         <div className="row"><CopyButton text={SENTENCE} label="Copy the sentence" className="btn" />
           <a className="btn ghost" href="https://github.com/DiveshK007/BotFolio" rel="noopener">Repo</a><Link className="btn ghost" href="/proof">Proof page</Link></div>
-        {VIDEO && <a className="poster" style={{ maxWidth: 560 }} href={VIDEO} rel="noopener"><div><div className="play"><Icon name="play" size={26} /></div><b>Demo video, 2 minutes</b><p className="small muted">Recorded on live mainnet data.</p></div></a>}
+        {VIDEO && <a className="poster" style={{ maxWidth: 560 }} href={VIDEO} rel="noopener"><div><div className="play"><Icon name="play" size={26} /></div><b>Demo video, 3 minutes</b><p className="small muted">Recorded on QIE mainnet. Anything not live is labelled.</p></div></a>}
       </div></section>
       </main>
     </>
