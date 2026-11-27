@@ -18,7 +18,14 @@ const LINKS = [
   ["/privacy", "Privacy"],
 ] as const;
 
-export function PlayMoneyFooter() {
+/** An https feedback form or group (#182 stopgap, master plan B7), or null: the link stays hidden until it's set. */
+export function feedbackUrl(raw: string | undefined): string | null {
+  return raw && /^https:\/\/\S+$/.test(raw.trim()) ? raw.trim() : null;
+}
+
+const FEEDBACK = feedbackUrl(process.env.NEXT_PUBLIC_FEEDBACK_URL);
+
+export function PlayMoneyFooter({ feedback = FEEDBACK }: { feedback?: string | null }) {
   return (
     <footer className="border-t border-line bg-surface-2 px-4 py-5 text-center text-sm">
       <p className="font-semibold">{PLAY_MONEY_LINE}</p>
@@ -29,6 +36,11 @@ export function PlayMoneyFooter() {
             {label}
           </Link>
         ))}
+        {feedback && (
+          <a href={feedback} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-muted underline hover:text-ink">
+            Feedback
+          </a>
+        )}
       </nav>
       <SiteControls />
     </footer>

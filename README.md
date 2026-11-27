@@ -401,6 +401,10 @@ Please don't report security problems in public issues. Contact a maintainer (li
 - **Gokul** ([Gokul-social](https://github.com/Gokul-social)): built all code workstreams through Sun Nov 22
 - **Dijo** ([Dijo-404](https://github.com/Dijo-404)): joined after Nov 22
 
+## License
+
+[MIT](LICENSE). BotFolio uses play money only: no real money, tokens, NFTs or prizes.
+
 ## Acknowledgements
 
 - [QIE](https://www.qie.digital) for the mainnet, the oracle feeds and [Hackathon 3.0](https://hackathon.qie.digital)
