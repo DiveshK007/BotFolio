@@ -5,7 +5,8 @@ import { SeasonScreen } from "@/components/season/SeasonScreen";
 
 type Props = { params: Promise<{ n: string }> };
 
-const SEASON = /^[1-9]\d{0,5}$/; // S0 is the hidden test season
+// S0 is the hidden test season: it opens here only so its owner can approve the S0 v2 (#385). Owner-only and noindexed, never on the boards.
+const SEASON = /^(0|[1-9]\d{0,5})$/;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { n } = await params;
