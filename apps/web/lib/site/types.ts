@@ -51,6 +51,8 @@ export interface Trade {
   userSigned: boolean;
   /** $ display value: 100000 × cash / startCash (SPEC §3). */
   inrDisplay: number;
+  /** SPEC §5.7 label for the price, e.g. "2m old at the call"; null when the read's age isn't known. */
+  age?: string | null;
   /** Joined bot info for display (name, emoji). */
   bot?: Bot;
 }

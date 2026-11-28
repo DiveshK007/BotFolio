@@ -31,7 +31,8 @@ export type MeData =
       /** null = that owner read failed; the rest still shows. */
       owner: OwnerBot | null;
       daily: DailyCallToday | null;
-      moves: PendingBigMove[];
+      /** null = the big-moves read failed: say so, a prompt may be waiting (#89). */
+      moves: PendingBigMove[] | null;
       /** null = the cards read failed. */
       cards: BotCardLink[] | null;
     };
@@ -68,7 +69,7 @@ export async function loadMe(config: OwnerConfig, session: WalletSession): Promi
     page: page.value.page,
     owner: ok(owner)?.find((b) => b.botId === id) ?? null,
     daily: ok(daily),
-    moves: (ok(moves) ?? []).filter((m) => m.botId === id),
+    moves: ok(moves)?.filter((m) => m.botId === id) ?? null,
     cards: ok(cards),
   };
 }
@@ -149,9 +150,11 @@ export function MeView({ data, ctx, now, onReload }: { data: MeData; ctx: OwnerC
 
   const panel = (
     <>
-      {moves.map((m) => (
-        <BigMoveCard key={m.orderId} ctx={ctx} move={m} now={now} />
-      ))}
+      {moves === null ? (
+        <NotLive>Big moves waiting for your OK didn&apos;t load. Reload the page in a minute.</NotLive>
+      ) : (
+        moves.map((m) => <BigMoveCard key={m.orderId} ctx={ctx} move={m} now={now} />)
+      )}
       <section aria-labelledby="controls" className={card}>
         <h2 id="controls" className={h2}>
           Your controls

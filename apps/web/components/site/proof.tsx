@@ -42,7 +42,7 @@ export function LatestTrades({ trades }: { trades: Loaded<Trade[]> }) {
       <div className="card"><ul className="feed">{trades.data.map(t => {
         const b = t.bot ?? (trades.status === "example" ? SAMPLE_BOTS[t.botId] : undefined) ?? { id: t.botId, name: `Bot #${t.botId}`, emoji: "", isHouse: false, ownerWallet: "0x" as `0x${string}`, color: undefined };
         return <li key={t.txHash}><BotHead size={40} bot={b} /><div><div className="what">{b.name}{b.isHouse && <> <Badge kind="house">HOUSE</Badge></>} {t.side === "BUY" ? "bought" : "sold"} {money(t.inrDisplay)} of {assetLabel(t.asset as AssetId)}</div>
-          <div className="meta"><span className="nowrap">{istTime(t.blockTime)}</span><span className="mono nowrap">{usd(e8ToNumber(t.priceE8), priceDecimals(t.asset))}</span><span className="mono nowrap">round {t.roundId}</span><span className="nowrap">{t.userSigned ? <b>signed by owner</b> : "sent by runner"}</span></div></div><TxChip hash={t.txHash} /></li>;
+          <div className="meta"><span className="nowrap">{istTime(t.blockTime)}</span><span className="mono nowrap">{usd(e8ToNumber(t.priceE8), priceDecimals(t.asset))}</span><span className="mono nowrap">round {t.roundId}</span>{t.age && <span className="nowrap">{t.age}</span>}<span className="nowrap">{t.userSigned ? <b>signed by owner</b> : "sent by runner"}</span></div></div><TxChip hash={t.txHash} /></li>;
       })}</ul></div>
     </>
   );

@@ -148,14 +148,15 @@ export async function getBotCards(botId: string): Promise<BotCardLink[]> {
   });
 }
 
-export async function getCard(cardId: string): Promise<Loaded<CardPayload>> {
+export async function getCard(cardId: string): Promise<Loaded<CardPayload> & { notFound?: boolean }> {
   // The /card/example-* demo links work in every mode; they carry the EXAMPLE badge and example hashes.
   const sample = Object.hasOwn(SAMPLE_CARDS, cardId) ? SAMPLE_CARDS[cardId] : undefined;
   if (SITE_MODE === "example" || sample) return wrap(sample ?? SAMPLE_CARDS["example-roast"]!, "sample");
   if (SITE_MODE === "notlive") return notLive("/proof");
   try {
     const c = await getStoredCard(cardId);
-    if (!c) return failed("/proof");
+    // No such card (a typo'd or made-up link) is a 404, not "can't load right now" (#89).
+    if (!c) return { ...failed<CardPayload>("/proof"), notFound: true };
     return { status: "live", data: toSiteCard(c), updatedAt: c.createdAt, source: "/proof" };
   } catch { return failed("/proof"); }
 }

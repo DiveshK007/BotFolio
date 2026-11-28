@@ -23,7 +23,11 @@ describe("arena racers (#371)", () => {
   it("shows real bots with the S1 start while the board is hidden, never example bots", async () => {
     const r = await arenaRacers("https://w", async () => null, async () => listed);
     expect(r).toMatchObject({ example: false, note: S1_STARTS, data: [{ id: "4", name: "Real", dnaSeed: "s", ret: 0 }] });
-    expect(await arenaRacers("https://w", async () => null, async () => null)).toMatchObject({ example: false, data: [] });
+  });
+  it("says the race can't load when the worker doesn't answer, never example bots (#89)", async () => {
+    const r = await arenaRacers("https://w", async () => null, async () => null);
+    expect(r).toMatchObject({ example: false, data: [] });
+    expect(r.note).toContain("can't load right now");
   });
 });
 

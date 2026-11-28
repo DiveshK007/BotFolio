@@ -37,7 +37,8 @@ export async function arenaRacers(
   if (!base) return { example: true, data: EX_RACERS };
   const b = await loadBoards();
   if (b && b.topReturns.length > 0) return { example: false, data: b.topReturns.slice(0, 6).map(e => ({ id: e.botId, name: e.name, dnaSeed: e.dnaSeed ?? null, isHouse: e.isHouse, ret: e.returnBps / 100, vol: 0, lines: [e.returnBps >= 0 ? "Up this season." : "Down this season.", "Down this season."] })) };
-  const bots = (await loadBots(base)) ?? [];
+  const bots = await loadBots(base);
+  if (!bots) return { example: false, note: "The race can't load right now. Every trade is on QIE mainnet either way.", data: [] }; // worker down (#89)
   return { example: false, note: S1_STARTS, data: bots.slice(0, 6).map(x => ({ id: x.botId, name: x.name, dnaSeed: x.dnaSeed ?? null, isHouse: x.isHouse, ret: 0, vol: 0, lines: [S1_STARTS, S1_STARTS] })) };
 }
 

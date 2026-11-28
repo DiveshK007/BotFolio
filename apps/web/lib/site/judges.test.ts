@@ -48,6 +48,12 @@ describe("judges trades from the worker", () => {
     expect(rows[0]).toMatchObject({ inrDisplay: 10000, userSigned: false, bot: { name: "AlphaWolf" } });
     expect(rows[1]!.userSigned).toBe(true);
   });
+  it("labels each trade price with its age at the call, as the bot page does (SPEC §5.7, #89)", () => {
+    const page = samplePage();
+    expect(tradesFromPages([page])[0]!.age).toBe("2m old at the call");
+    page.trades[0]!.oracle_updated_at = null;
+    expect(tradesFromPages([page])[0]!.age).toBeNull();
+  });
   it("uses labelled EXAMPLE data only when no worker is configured", async () => {
     expect((await judgesTrades(null)).status).toBe("example");
   });

@@ -94,6 +94,12 @@ describe("MeView", () => {
     expect(html).toContain("AlphaWolf");
     expect(html).toContain("Daily Call and your season scores didn");
   });
+
+  it("says so when the big-moves read fails, instead of showing none waiting (#89)", () => {
+    const html = view({ kind: "ok", page: samplePage(), owner: owner(), daily: null, moves: null, cards: [] });
+    expect(html).toContain("Big moves waiting for your OK didn&#x27;t load");
+    expect(view({ kind: "ok", page: samplePage(), owner: owner(), daily: null, moves: [], cards: [] })).not.toContain("Big moves waiting");
+  });
 });
 
 describe("DailyCallCard", () => {

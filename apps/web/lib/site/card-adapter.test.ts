@@ -74,11 +74,16 @@ describe("getCard / getStoredCard in live mode", () => {
     expect(c).toMatchObject({ status: "live", data: { kind: "trade", bot: { name: "AlphaWolf" } } });
   });
 
-  it("shows the error fallback for a missing card or a payload it can't read, never a crash", async () => {
+  it("404s a missing card or a payload it can't read, and keeps the error fallback for a failed read, never a crash (#89)", async () => {
     for (const rows of [[], [{ payload: { kind: "trade" } }]]) {
       const { data } = await live(rows);
-      expect(await data.getCard("trade-7")).toMatchObject({ status: "error", data: null });
+      expect(await data.getCard("trade-7")).toMatchObject({ status: "error", data: null, notFound: true });
     }
+    const { data } = await live([]);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("down", { status: 503 })));
+    const down = await data.getCard("trade-7");
+    expect(down).toMatchObject({ status: "error", data: null });
+    expect(down.notFound).toBeUndefined();
   });
 
   it("still serves the example-* demo cards, marked as examples", async () => {

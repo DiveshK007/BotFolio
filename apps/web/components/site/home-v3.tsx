@@ -6,6 +6,7 @@ import { sentenceSeed, type DnaMood } from "@/lib/dna";
 import { DnaBot } from "./DnaBot";
 import { Flap } from "./arcade";
 import { reducedMotion, sfx, track } from "./fx";
+import { PriceAge } from "./ui";
 
 /* ---------- next decision slot (09/13/17/21 IST) ---------- */
 export function nextSlot(now = new Date()) {
@@ -74,10 +75,10 @@ interface Btc { price: number; roundId: string; updatedAt: string }
 interface Pick { pick: "up" | "down"; bot: "up" | "down"; price: number; roundId: string; settleAt: string; result?: { dir: "up" | "down"; pct: string; price: number; roundId: string } }
 const KEY = "bf-dc-v1";
 export function DailyCall() {
-  const [btc, setBtc] = useState<Btc | null | "error">(null); const [p, setP] = useState<Pick | null>(null); const [streak, setStreak] = useState(0); const [now, setNow] = useState(() => Date.now());
+  const [btc, setBtc] = useState<Btc | null | "error">(null); const [p, setP] = useState<Pick | null>(null); const [streak, setStreak] = useState(0); const [now, setNow] = useState(() => Date.now()); const [quiet, setQuiet] = useState(false);
   const load = async () => { try { const r = await fetch("/api/site/btc", { cache: "no-store" }); if (!r.ok) throw new Error(); const j = (await r.json()) as Btc; setBtc(j); return j; } catch { setBtc("error"); return null; } };
   useEffect(() => { const first = setTimeout(() => { void load(); try { const s = JSON.parse(localStorage.getItem(KEY) || "{}"); if (s.p) setP(s.p); if (s.streak) setStreak(s.streak); } catch { /* none */ } }, 0); const id = setInterval(() => setNow(Date.now()), 1000); return () => { clearTimeout(first); clearInterval(id); }; }, []);
-  const save = (np: Pick | null, ns = streak) => { setP(np); setStreak(ns); try { localStorage.setItem(KEY, JSON.stringify({ p: np, streak: ns })); } catch { /* storage blocked */ } };
+  const save = (np: Pick | null, ns = streak) => { setP(np); setStreak(ns); setQuiet(false); try { localStorage.setItem(KEY, JSON.stringify({ p: np, streak: ns })); } catch { /* storage blocked */ } };
   const choose = (pick: "up" | "down") => {
     if (!btc || btc === "error") return; const slot = nextSlot();
     save({ pick, bot: (slot.label.charCodeAt(0) + slot.label.charCodeAt(1)) % 2 ? "up" : "down", price: btc.price, roundId: btc.roundId, settleAt: slot.at.toISOString() });
@@ -85,7 +86,7 @@ export function DailyCall() {
   };
   const settle = async () => {
     if (!p) return; const j = await load(); if (!j) return;
-    if (j.roundId === p.roundId) return; // no new round yet: keep waiting, never guess
+    if (j.roundId === p.roundId) return setQuiet(true); // no new round yet: keep waiting, never guess, but say so
     const dir = j.price >= p.price ? "up" : "down", won = p.pick === dir;
     save({ ...p, result: { dir, pct: (((j.price - p.price) / p.price) * 100).toFixed(2), price: j.price, roundId: j.roundId } }, won ? streak + 1 : 0);
     sfx(won ? "win" : "sad");
@@ -100,9 +101,10 @@ export function DailyCall() {
         <div className="dc-body" aria-live="polite">
           {btc === null && <p>Reading QIE&apos;s BTC feed…</p>}
           {btc === "error" && <p>Can&apos;t reach QIE&apos;s oracle right now, so no call. Try again in a bit.</p>}
-          {btc && btc !== "error" && !p && <p><b>BTC is ${btc.price.toLocaleString("en-US", { maximumFractionDigits: 2 })}</b> (oracle round {btc.roundId}). Up or down by the next call?</p>}
+          {btc && btc !== "error" && !p && <BtcPrompt btc={btc} now={now}>Up or down by the next call?</BtcPrompt>}
           {p && !p.result && <><p>You: <b>{arrow(p.pick)}</b> · Bot: <b>{arrow(p.bot)}</b> · from ${p.price.toLocaleString("en-US", { maximumFractionDigits: 2 })}</p>
-            {due ? <button className="btn sm" type="button" onClick={settle} style={{ marginTop: 8 }}>Check the oracle</button> : <p className="small">Settles in {hms(left)} against QIE&apos;s oracle.</p>}</>}
+            {due ? <button className="btn sm" type="button" onClick={settle} style={{ marginTop: 8 }}>Check the oracle</button> : <p className="small">Settles in {hms(left)} against QIE&apos;s oracle.</p>}
+            {quiet && btc && btc !== "error" && <BtcPrompt btc={btc} now={now}>No new round since your call, so no result yet. Check again in a few minutes.</BtcPrompt>}</>}
           {p?.result && <><p>BTC went <b className={p.result.dir === "up" ? "up" : "down"}>{p.result.dir === "up" ? "▲" : "▼"} {p.result.pct}%</b> (round {p.result.roundId})</p>
             <p><b>{p.pick === p.result.dir && p.bot !== p.result.dir ? "You beat the bot." : p.bot === p.result.dir && p.pick !== p.result.dir ? "The bot got you this time." : p.pick === p.result.dir ? "You both called it." : "You both missed."}</b></p>
             <button className="btn sm" type="button" onClick={() => save(null)} style={{ marginTop: 8 }}>New call</button></>}
@@ -113,6 +115,11 @@ export function DailyCall() {
       </div>
     </div>
   );
+}
+
+/** QIE's BTC price with its age (SPEC §5.7), so a quiet feed reads "Holding — price too old" (#89). */
+export function BtcPrompt({ btc, now, children }: { btc: Btc; now: number; children?: ReactNode }) {
+  return <p><b>BTC is ${btc.price.toLocaleString("en-US", { maximumFractionDigits: 2 })}</b> (oracle round {btc.roundId}, <PriceAge asset="BTC" ageMin={(now - Date.parse(btc.updatedAt)) / 60_000} />). {children}</p>;
 }
 
 /* ---------- Bot of the Week ---------- */
