@@ -20,6 +20,7 @@ const SENTENCE = "Raise an AI trader in one sentence, coach it every season, and
 const VIDEO = /^https:\/\//.test(process.env.NEXT_PUBLIC_DEMO_VIDEO_URL ?? "") ? process.env.NEXT_PUBLIC_DEMO_VIDEO_URL : null;
 // Without that env, the walkthrough is served from this site (public/video, #394); the 1-minute trailer is on X.
 const TRAILER = "https://x.com/diveshbuilds/status/2126515736873247034";
+const YOUTUBE = "https://youtu.be/pv4XaaVm74c";
 
 // QIE components: flip `coming` to `verified` only after WS D confirms each in docs/qie-components.md (SPEC §0.6).
 // QIE Wallet stays IN TESTING until signTypedData_v4 on chain 1990 is checked by a person (#99).
@@ -92,7 +93,7 @@ export default async function Judges() {
             <video controls playsInline preload="metadata" poster="/video/botfolio-demo-walkthrough.jpg" src="/video/botfolio-demo-walkthrough.mp4" style={{ width: "100%", aspectRatio: "16 / 9", borderRadius: "var(--r2)", background: "#000" }}>
               <track kind="captions" src="/video/botfolio-demo-walkthrough.vtt" srcLang="en" label="English" />
             </video>
-            <figcaption className="small muted"><b>Demo video, 3 minutes.</b> Recorded on QIE mainnet. Anything not live is labelled. <a href={TRAILER} rel="noopener">1-minute trailer on X</a></figcaption>
+            <figcaption className="small muted"><b>Demo video, 3 minutes.</b> Recorded on QIE mainnet. Anything not live is labelled. <a href={TRAILER} rel="noopener">1-minute trailer on X</a> · <a href={YOUTUBE} rel="noopener">Watch on YouTube</a></figcaption>
           </figure>
         )}
       </div></section>
