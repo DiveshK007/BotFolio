@@ -19,6 +19,15 @@ const pct = (bps: number) => bpsPct(bps, false);
 
 type Proposal = NonNullable<OwnerBot["proposal"]>;
 
+/** S0 is the hidden test season, so it gets no boards link, signed in or out. */
+export function SeasonBoardsLink({ n }: { n: number }) {
+  return n > 0 ? (
+    <Link href={`/leaderboards?season=${n}`} className="min-h-11 self-start font-semibold text-accent-ink">
+      Season {n} leaderboards
+    </Link>
+  ) : null;
+}
+
 /** The diff the owner approves (SPEC §2.3 step 3): every limit and rule change, each tied to a correction or the results. */
 export function V2Diff({ p }: { p: Proposal }) {
   const c = p.config;
@@ -121,11 +130,7 @@ export function SeasonView({ n, data, ctx }: { n: number; data: MeData; ctx: Own
         ) : (
           <p className="text-muted">No result for season {n} yet. Seasons close at 21:30 IST.</p>
         )}
-        {n > 0 && (
-          <Link href={`/leaderboards?season=${n}`} className="min-h-11 self-start font-semibold text-accent-ink">
-            Season {n} leaderboards
-          </Link>
-        )}
+        <SeasonBoardsLink n={n} />
       </section>
 
       <section aria-labelledby="v2" className={card}>
@@ -167,9 +172,7 @@ export function SeasonScreen({ n }: { n: number }) {
       <div className="flex flex-col gap-4">
         <h1 className="font-display text-3xl font-extrabold tracking-tight">Season {n}</h1>
         {loading ? <SessionLoading /> : <SignInCard why="Sign in to see your bot's season result and approve its next version." />}
-        <Link href={`/leaderboards?season=${n}`} className="min-h-11 self-start font-semibold text-accent-ink">
-          Season {n} leaderboards
-        </Link>
+        <SeasonBoardsLink n={n} />
       </div>
     );
   }
