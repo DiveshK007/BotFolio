@@ -1,0 +1,158 @@
+WEBVTT
+
+00:00:00.230 --> 00:00:01.717
+This is BotFolio.
+
+00:00:01.800 --> 00:00:05.657
+You type one sentence,
+and Claude raises an AI trader.
+
+00:00:05.740 --> 00:00:09.820
+It trades play money on QIE mainnet,
+and you coach it.
+
+00:00:10.900 --> 00:00:12.880
+Built for newcomers on phones.
+
+00:00:13.080 --> 00:00:16.300
+Every live claim here comes
+with a receipt you can check.
+
+00:00:17.620 --> 00:00:22.220
+Sign-up is one sentence and a passkey,
+so there's no seed phrase to lose.
+
+00:00:25.170 --> 00:00:30.830
+Claude writes each new bot: a name,
+a personality, two limits you can change.
+
+00:00:31.070 --> 00:00:32.810
+Launch takes one signature.
+
+00:00:33.770 --> 00:00:36.547
+Here's Dad's Gold Guard's launch on QIE.
+
+00:00:36.630 --> 00:00:39.190
+Our relayer sent it and paid the gas.
+
+00:00:40.580 --> 00:00:45.440
+But the signer is the owner's own wallet,
+and it still holds zero QIE.
+
+00:00:48.050 --> 00:00:51.470
+Four times a day,
+every bot decides on its own.
+
+00:00:52.270 --> 00:00:54.727
+The AI gets the latest
+prices and holdings,
+
+00:00:54.810 --> 00:00:57.710
+and answers in strict JSON, with a reason.
+
+00:00:59.390 --> 00:01:02.507
+Then a deterministic risk gate,
+plain tested code,
+
+00:01:02.590 --> 00:01:06.270
+clips anything over the limits
+and skips stale coins.
+
+00:01:06.690 --> 00:01:08.570
+And it explains itself.
+
+00:01:08.730 --> 00:01:11.670
+Even a hold comes with a reason,
+in character.
+
+00:01:14.800 --> 00:01:17.900
+Every trade card links
+to its receipt on QIE.
+
+00:01:18.730 --> 00:01:23.850
+This batch came from our runner:
+seven trades, three bots, one transaction.
+
+00:01:25.320 --> 00:01:30.157
+Look inside the orders:
+bot, coin, buy or sell, and size.
+
+00:01:30.240 --> 00:01:31.780
+There's no price in them.
+
+00:01:32.060 --> 00:01:37.080
+The contract reads the price from QIE's
+oracle itself, and logs the round.
+
+00:01:37.180 --> 00:01:41.000
+Ask the oracle for round fifteen oh fifty:
+same number.
+
+00:01:41.960 --> 00:01:46.020
+Every trade is settled against
+QIE's official mainnet oracle.
+
+00:01:46.300 --> 00:01:49.960
+Stale price?
+That coin holds; the batch goes on.
+
+00:01:51.260 --> 00:01:56.120
+Season zero opened on chain
+on November twenty seventh, India time.
+
+00:01:56.220 --> 00:01:59.220
+Its close commits a root
+of every decision.
+
+00:02:00.530 --> 00:02:02.627
+Anyone can run this replay command:
+
+00:02:02.710 --> 00:02:06.410
+it re-checks every gate result
+and every oracle round.
+
+00:02:08.100 --> 00:02:11.537
+The AI's answers aren't reproducible,
+so we log them.
+
+00:02:11.620 --> 00:02:13.640
+Everything after them is.
+
+00:02:14.060 --> 00:02:16.177
+AI paper trading exists.
+
+00:02:16.260 --> 00:02:20.777
+What's new: you coach it;
+each version is signed on QIE.
+
+00:02:20.860 --> 00:02:22.440
+This one's an example.
+
+00:02:22.590 --> 00:02:24.867
+Other AI agents can check it too.
+
+00:02:24.950 --> 00:02:29.630
+Our read-only MCP server re-checks
+a trade straight from QIE:
+
+00:02:29.830 --> 00:02:31.750
+seven of seven prices match.
+
+00:02:33.300 --> 00:02:37.120
+We count users by who signed,
+not what our servers send.
+
+00:02:38.160 --> 00:02:43.740
+Seasons are built to bring people back.
+Next ninety days: our first hundred users.
+
+00:02:44.110 --> 00:02:48.390
+Built by Divesh, Gokul and Dijo,
+for QIE Hackathon three.
+
+00:02:51.720 --> 00:02:54.097
+Raise an AI trader in one sentence,
+
+00:02:54.180 --> 00:02:57.800
+coach it every season,
+and let QIE keep score.
