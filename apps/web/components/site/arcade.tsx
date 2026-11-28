@@ -149,7 +149,8 @@ export function Arena({ initial, btcSeries, btcRound, status, note }: { initial:
             <div className="who"><b>{r.name}</b>{r.isHouse ? <span className="house">HOUSE</span> : r.you ? <span className="house" style={{ color: "#FF6FA8" }}>YOURS</span> : r.owner ? <span className="mono" style={{ color: "#8C93B8", fontSize: 12 }}>{short(r.owner)}</span> : null}</div>
             <div className="track"><span className={`runner ${x < 30 ? "l" : x > 70 ? "r" : ""}`} style={{ left: `${x}%` }}>
               <BotHead size={54} bot={{ id: r.id, name: r.name, personaText: r.personaText, dnaSeed: r.dnaSeed }} mood={b && b !== "dots" ? b.mood : "smile"} />
-              {r === top && <span className="crown" aria-label="Top human-raised bot">👑</span>}
+              {/* role="img": screen readers ignore aria-label on a plain span (axe aria-prohibited-attr, #147) */}
+              {r === top && <span className="crown" role="img" aria-label="Top human-raised bot">👑</span>}
               {b && <span className={`think ${b === "dots" ? "dots" : ""}`}>{b === "dots" ? "thinking" : b.text}</span>}
             </span></div>
             <div className={`ret ${r.ret >= 0 ? "up" : "down"}`}>{r.ret >= 0 ? "▲ +" : "▼ −"}{Math.abs(r.ret).toFixed(2)}%</div>
