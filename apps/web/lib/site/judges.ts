@@ -6,7 +6,7 @@
  * A worker that fails → error state with the proof link. Never made-up numbers in live mode.
  */
 import { getWorkerUrl } from "@/lib/config";
-import { fetchBotPage, type BotPage, type BotPageResult } from "@/lib/bot-record";
+import { ageAtCall, fetchBotPage, type BotPage, type BotPageResult } from "@/lib/bot-record";
 import { fetchBots, type PublicBot } from "@/lib/bots";
 import { fetchLeaderboards, type Leaderboards } from "@/lib/leaderboards";
 import { fetchStats, type ActivityStats as WorkerStats, type StatsResult } from "@/lib/stats";
@@ -57,7 +57,7 @@ export function tradesFromPages(pages: BotPage[], limit = TRADE_ROWS): Trade[] {
     for (const t of p.trades) {
       rows.push({
         botId: bot.id, asset: t.asset, side: t.side, cashE8: t.cash_e8, priceE8: t.price_e8, roundId: t.round_id,
-        txHash: t.tx_hash as `0x${string}`, blockTime: t.slot_time, userSigned: t.owner_signed, inrDisplay: inrDisplay(t.cash_e8, p.start_cash_e8), bot,
+        txHash: t.tx_hash as `0x${string}`, blockTime: t.slot_time, userSigned: t.owner_signed, inrDisplay: inrDisplay(t.cash_e8, p.start_cash_e8), age: ageAtCall(t), bot,
       });
     }
   }
