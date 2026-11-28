@@ -26,7 +26,7 @@
 > - Season 0, the hidden test season, opened on-chain Nov 27 00:24 IST and closes Nov 28 21:30. Season 1, the first public one, runs Nov 29 00:00 → Nov 30 21:30 IST.
 > - Proven on mainnet: passkey sign-up on Android, and a user-created bot (#4) where the user signed and our relayer paid the gas.
 > - UNVERIFIED until seen: the first trade (debut or slot), the Daily Call settle, a season close with its trust-score commit, challenges, and the replay of a closed season. First-run checks: [docs/runbook.md](docs/runbook.md) §9.
-> - The demo video goes in [Submission links](#submission-links) when it exists.
+> - Demo video: the [3-minute walkthrough](https://bot-folio.vercel.app/judges#demo), hosted on the site, and the [1-minute trailer on X](https://x.com/diveshbuilds/status/2126515736873247034). Both are also in [Submission links](#submission-links).
 >
 > **Play money. Not investment advice. No prizes.**
 
@@ -238,7 +238,7 @@ Solidity 0.8.24, `evm_version = "shanghai"`, OpenZeppelin 5.0.2. Source in [pack
 | Item | Link |
 | :--- | :--- |
 | Live app | https://bot-folio.vercel.app (live mode, checked Nov 27) |
-| Demo video | coming at submission ([#116](https://github.com/DiveshK007/BotFolio/issues/116)) |
+| Demo video | [3-minute walkthrough](https://bot-folio.vercel.app/judges#demo) (hosted on the site, [#394](https://github.com/DiveshK007/BotFolio/issues/394)) · [1-minute trailer on X](https://x.com/diveshbuilds/status/2126515736873247034) |
 | Contract addresses | [Contracts](#contracts) · [`deployments/1990.env`](packages/contracts/deployments/1990.env) |
 | Explorer | [mainnet.qie.digital](https://mainnet.qie.digital) |
 
