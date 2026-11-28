@@ -118,7 +118,7 @@ Rollback if a freeze merge breaks production: [`rollback.md`](rollback.md).
 | 16:55–17:25 | 17:00 slot and retries |
 | **20:55–00:20** | 21:00 slot and retries, Daily Call settle (21:00 to 23:50), season close (21:30), recap (21:35), season open (00:00) |
 
-- The windows apply only to PRs that touch the worker's build paths. Docs and web-only PRs can merge at any time (Vercel still redeploys the site).
+- The windows apply only to PRs that touch the worker's build paths. Docs and web-only PRs can merge at any time (Vercel still redeploys the site). — as long as the branch has no merge-from-main commit touching a buildFilter path: rebase onto main instead, because #392's merge commit carried `render.yaml` and redeployed the worker (#131).
 - Batch merges into about one deploy per open window. After each deploy, check `/healthz` (`startedAt` is new, `reasons` holds nothing new) and the boot alert, if it is set up.
 - The season-close nights are the strictest: Sat Nov 28 (S0), Mon Nov 30 (S1), Wed Dec 2 (S2), Fri Dec 4 (S3), Sun Dec 6 (S4), and Mon Dec 7 around 00:00 (weekly S5 opens). The last Wave A worker merge is Sat Nov 28 20:50.
 - An emergency fix inside a window is the on-call person's call. Write it in `docs/decisions.md` with the reason.

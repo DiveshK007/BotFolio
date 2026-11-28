@@ -70,7 +70,7 @@ dashboard.privy.io → create app "BotFolio" → Login methods: **Passkey** on (
 
 ## 7. Worker on Render (YOU: dashboard)
 
-render.com → New → **Blueprint** → this repo (`render.yaml`, **free** plan, Singapore). The free plan sleeps after 15 minutes without inbound requests, which would skip trading slots: add a free monitor at uptimerobot.com (HTTP(s), `https://<service>.onrender.com/healthz`, every 5 minutes) right after the first deploy. Before deploying, check the Claude key with one real call (a fraction of a cent): `LLM_PROVIDER=anthropic ANTHROPIC_API_KEY=… pnpm --filter ./apps/worker llm:smoke`. Fill every `sync: false` value from [`env.md`](env.md) (addresses from `deployments/1990.env`; the three hot keys; Supabase; xAI; Privy; webhook). Leave `RELAY_ENABLED=false`. Deploy, then:
+render.com → New → **Blueprint** → this repo (`render.yaml`, **free** plan; the live service runs in Mumbai per the Render dashboard (Divesh, Nov 28), while render.yaml still says `singapore` (#34)). The free plan sleeps after 15 minutes without inbound requests, which would skip trading slots: add a free monitor at uptimerobot.com (HTTP(s), `https://<service>.onrender.com/healthz`, every 5 minutes) right after the first deploy. Before deploying, check the Claude key with one real call (a fraction of a cent): `LLM_PROVIDER=anthropic ANTHROPIC_API_KEY=… pnpm --filter ./apps/worker llm:smoke`. Fill every `sync: false` value from [`env.md`](env.md) (addresses from `deployments/1990.env`; the three hot keys; Supabase; xAI; Privy; webhook). Leave `RELAY_ENABLED=false`. Deploy, then:
 
 ```sh
 curl -s https://<service>.onrender.com/healthz | jq '.status, .reasons, .jobs'
