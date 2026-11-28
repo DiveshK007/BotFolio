@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { AssetId } from "@botfolio/shared";
 import { cryptoDelayed, MAX_AGE_MIN, tickerAge } from "./format";
 import { Ticker, type TickerItem } from "@/components/site/arcade";
+import { BtcPrompt } from "@/components/site/home-v3";
 
 const NOW = 1_800_000_000;
 const ago = (min: number) => NOW - min * 60;
@@ -47,5 +48,14 @@ describe("Ticker server HTML", () => {
   });
   it("still says when the oracle can't be read", () => {
     expect(renderToStaticMarkup(createElement(Ticker, { items: null, status: "error" }))).toContain("Oracle prices unavailable");
+  });
+});
+
+describe("Daily Call practice prompt (#89)", () => {
+  const prompt = (min: number) =>
+    renderToStaticMarkup(createElement(BtcPrompt, { btc: { price: 60002.55, roundId: "52889", updatedAt: new Date((NOW - min * 60) * 1000).toISOString() }, now: NOW * 1000 }));
+  it("shows the BTC price with its age, and says when it's too old (SPEC §5.7)", () => {
+    expect(prompt(5)).toContain("oracle round 52889, <span class=\"age \">5m old</span>");
+    expect(prompt(36)).toContain("<span class=\"age grey\">Holding — price too old</span>");
   });
 });

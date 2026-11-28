@@ -6,6 +6,7 @@ import { sentenceSeed, type DnaMood } from "@/lib/dna";
 import { DnaBot } from "./DnaBot";
 import { Flap } from "./arcade";
 import { reducedMotion, sfx, track } from "./fx";
+import { PriceAge } from "./ui";
 
 /* ---------- next decision slot (09/13/17/21 IST) ---------- */
 export function nextSlot(now = new Date()) {
@@ -100,7 +101,7 @@ export function DailyCall() {
         <div className="dc-body" aria-live="polite">
           {btc === null && <p>Reading QIE&apos;s BTC feed…</p>}
           {btc === "error" && <p>Can&apos;t reach QIE&apos;s oracle right now, so no call. Try again in a bit.</p>}
-          {btc && btc !== "error" && !p && <p><b>BTC is ${btc.price.toLocaleString("en-US", { maximumFractionDigits: 2 })}</b> (oracle round {btc.roundId}). Up or down by the next call?</p>}
+          {btc && btc !== "error" && !p && <BtcPrompt btc={btc} now={now} />}
           {p && !p.result && <><p>You: <b>{arrow(p.pick)}</b> · Bot: <b>{arrow(p.bot)}</b> · from ${p.price.toLocaleString("en-US", { maximumFractionDigits: 2 })}</p>
             {due ? <button className="btn sm" type="button" onClick={settle} style={{ marginTop: 8 }}>Check the oracle</button> : <p className="small">Settles in {hms(left)} against QIE&apos;s oracle.</p>}</>}
           {p?.result && <><p>BTC went <b className={p.result.dir === "up" ? "up" : "down"}>{p.result.dir === "up" ? "▲" : "▼"} {p.result.pct}%</b> (round {p.result.roundId})</p>
@@ -113,6 +114,11 @@ export function DailyCall() {
       </div>
     </div>
   );
+}
+
+/** The practice prompt. QIE's BTC price carries its age (SPEC §5.7), so a quiet feed reads "Holding — price too old" (#89). */
+export function BtcPrompt({ btc, now }: { btc: Btc; now: number }) {
+  return <p><b>BTC is ${btc.price.toLocaleString("en-US", { maximumFractionDigits: 2 })}</b> (oracle round {btc.roundId}, <PriceAge asset="BTC" ageMin={(now - Date.parse(btc.updatedAt)) / 60_000} />). Up or down by the next call?</p>;
 }
 
 /* ---------- Bot of the Week ---------- */
