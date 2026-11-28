@@ -13,7 +13,7 @@ curl localhost:10000/healthz
 `LLM_PROVIDER=fake` runs without any LLM key.
 
 ## Render
-- Service type: Web Service, paid Starter (always-on — free tier sleeps, SPEC §10). Region Singapore.
+- Service type: Web Service on the free plan, kept awake by a 5-minute UptimeRobot check on /healthz (docs/decisions.md, Nov 26). Region: Mumbai per the Render dashboard (Nov 28); render.yaml still says `singapore` (#34).
 - Build: `corepack enable && pnpm install --frozen-lockfile && pnpm --filter @botfolio/worker build`
 - Start: `node apps/worker/dist/index.js` · Health check path: `/healthz`
 - Env: everything in `.env.example` that the worker uses, set in the Render dashboard only.
