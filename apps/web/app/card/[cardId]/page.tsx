@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { CARD_SIZES } from "@botfolio/shared";
 import { isRenderedKind } from "@/app/api/card/render";
 import { FlipCard } from "@/components/site/interactive";
@@ -27,6 +28,7 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
 export default async function CardPage({ params }: P) {
   const { cardId } = await params;
   const c = await getCard(cardId);
+  if (c.notFound) notFound();
   return (
     <>
     <SiteHeader />
