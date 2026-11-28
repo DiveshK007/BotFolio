@@ -53,9 +53,9 @@ describe("Ticker server HTML", () => {
 
 describe("Daily Call practice prompt (#89)", () => {
   const prompt = (min: number) =>
-    renderToStaticMarkup(createElement(BtcPrompt, { btc: { price: 60002.55, roundId: "52889", updatedAt: new Date((NOW - min * 60) * 1000).toISOString() }, now: NOW * 1000 }));
+    renderToStaticMarkup(createElement(BtcPrompt, { btc: { price: 60002.55, roundId: "52889", updatedAt: new Date((NOW - min * 60) * 1000).toISOString() }, now: NOW * 1000 }, "Up or down by the next call?"));
   it("shows the BTC price with its age, and says when it's too old (SPEC §5.7)", () => {
-    expect(prompt(5)).toContain("oracle round 52889, <span class=\"age \">5m old</span>");
+    expect(prompt(5)).toContain("oracle round 52889, <span class=\"age \">5m old</span>). Up or down by the next call?");
     expect(prompt(36)).toContain("<span class=\"age grey\">Holding — price too old</span>");
   });
 });
